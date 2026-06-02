@@ -374,7 +374,7 @@ tbody tr:hover td{background:var(--accent-l);}
 </div>
 
 <script>
-var API_URL=localStorage.getItem('lpx_api')||'https://script.google.com/macros/s/AKfycbzssS9yQF6fzGp4YNL-E73qt5tqBNJ1AYQaZl-PvGxLEmZ5x2SfFuy9r211S18g9fDM/exec';
+var API_URL=localStorage.getItem('lpx_api')||'https://script.google.com/macros/s/AKfycbyaDcAcxFmoMOwrfxzJkhXso8ctiiWgHD-3jwWvq35jIe6OrM52XJYYIGFQ1gN6lrbJ/exec';
 var DEMO=false;
 var _items=[];var _txnType='IN';var _dStocks=[];var _clRows=[];var _clDate='';
 
@@ -580,7 +580,7 @@ function updROP(){
 async function saveItem(){
   var name=document.getElementById('f-name').value.trim();
   if(!name){toast('Item Name required','err');return;}
-  var sku=editSKU||name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,40)+'_'+Date.now().toString(36);
+  var sku=editSKU||name.replace(/\s+/g,'_').slice(0,30)+'_'+Date.now().toString(36);
   var btn=document.getElementById('im-btn');btn.disabled=true;btn.textContent='Saving...';
   var p={sku:editSKU||sku,name,cat:document.getElementById('f-cat').value,unit:document.getElementById('f-unit').value,
     stock:Number(document.getElementById('f-stock').value)||0,adc:Number(document.getElementById('f-adc').value)||0,
@@ -588,7 +588,7 @@ async function saveItem(){
     moq:Number(document.getElementById('f-moq').value)||0,maxL:Number(document.getElementById('f-max').value)||0,
     remarks:document.getElementById('f-remarks').value};
   try{
-    await api(editSKU?'updateItem':'addItem',p);
+    if(editSKU){var orig=_items.find(i=>i.sku===editSKU);p.originalName=orig?orig.name:p.name;}await api(editSKU?'updateItem':'addItem',p);
     _items=await api('getItems');
     toast(editSKU?'Item updated ✓':'Item added ✓','ok');
     closeM('item-modal');filterItems();refreshDash();
@@ -597,7 +597,7 @@ async function saveItem(){
 }
 async function delItem(sku){
   var item=_items.find(i=>i.sku===sku);if(!confirm('Delete "'+(item?item.name:sku)+'"? This cannot be undone.'))return;
-  try{await api('deleteItem',{sku});_items=_items.filter(i=>i.sku!==sku);toast('Item deleted','err');filterItems();refreshDash();}
+  try{var dItem=_items.find(i=>i.sku===sku);await api('deleteItem',{name:dItem?dItem.name:sku});_items=_items.filter(i=>i.sku!==sku);toast('Item deleted','err');filterItems();refreshDash();}
   catch(e){toast(e.message,'err');}
 }
 
@@ -613,15 +613,15 @@ function openTxn(type){
 }
 function popSKU(){
   var sel=document.getElementById('t-sku');
-  sel.innerHTML=_items.length?_items.map(i=>`<option value="${i.sku}">${i.name}</option>`).join(''):'<option>No items yet</option>';
+  sel.innerHTML=_items.length?_items.map(i=>`<option value="${i.name}">${i.name}</option>`).join(''):'<option>No items yet</option>';
   updTxnStock();
 }
 async function updTxnStock(){
-  var sku=document.getElementById('t-sku').value,inf=document.getElementById('t-sinfo');
-  if(!sku){inf.style.display='none';return;}
+  var nm=document.getElementById('t-sku').value,inf=document.getElementById('t-sinfo');
+  if(!nm){inf.style.display='none';return;}
   try{
-    var s=_dStocks.find(x=>x.sku===sku);
-    if(!s){var d=await api('getDashboard');_dStocks=d.stocks||[];s=_dStocks.find(x=>x.sku===sku);}
+    var s=_dStocks.find(x=>x.name===nm);
+    if(!s){var d=await api('getDashboard');_dStocks=d.stocks||[];s=_dStocks.find(x=>x.name===nm);}
     if(s){document.getElementById('t-cs').textContent=s.currentStock+' '+(s.unit||'');document.getElementById('t-rp').textContent=s.reorderPoint+' '+(s.unit||'');inf.style.display='block';}
   }catch(e){}
 }
@@ -645,12 +645,12 @@ async function renderTxns(){
   }catch(e){toast(e.message,'err');}
 }
 async function saveTxn(){
-  var sku=document.getElementById('t-sku').value,qty=Number(document.getElementById('t-qty').value),date=document.getElementById('t-date').value;
+  var qty=Number(document.getElementById('t-qty').value),date=document.getElementById('t-date').value;
   if(!qty||qty<=0){toast('Enter valid quantity','err');return;}
   if(!date){toast('Select date','err');return;}
   var btn=document.getElementById('tm-btn');btn.disabled=true;
   try{
-    await api('addTransaction',{sku,qty,type:_txnType,date,party:document.getElementById('t-party').value,ref:document.getElementById('t-ref').value,by:document.getElementById('t-by').value});
+    var tName=document.getElementById('t-sku').value;await api('addTransaction',{itemName:tName,qty,type:_txnType,date,party:document.getElementById('t-party').value,ref:document.getElementById('t-ref').value,by:document.getElementById('t-by').value});
     toast(_txnType==='IN'?'Inward recorded ✓':'Outward recorded ✓','ok');
     closeM('txn-modal');_items=[];_dStocks=[];renderTxns();refreshDash();
   }catch(e){toast(e.message,'err');}finally{btn.disabled=false;}
