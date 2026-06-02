@@ -252,8 +252,8 @@ tbody tr:hover td{background:var(--accent-l);}
       <div class="card">
         <div class="tw">
           <table>
-            <thead><tr><th>SKU Code</th><th>Item Name</th><th>Category</th><th>Current Stock</th><th>Reorder Point</th><th>Max Level</th><th>ADC</th><th>Status</th><th>Actions</th></tr></thead>
-            <tbody id="items-tb"><tr class="lr2"><td colspan="9"><span class="loader"></span></td></tr></tbody>
+            <thead><tr><th>Item Name</th><th>Category</th><th>Current Stock</th><th>Reorder Point</th><th>Max Level</th><th>ADC</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="items-tb"><tr class="lr2"><td colspan="8"><span class="loader"></span></td></tr></tbody>
           </table>
         </div>
         <div id="items-empty" class="empty" style="display:none;"><div class="ei">📦</div><div class="et">No items yet</div><div class="es">Add your first item to get started</div></div>
@@ -283,7 +283,7 @@ tbody tr:hover td{background:var(--accent-l);}
       <div class="card">
         <div class="tw">
           <table>
-            <thead><tr><th>Date</th><th>SKU</th><th>Item Name</th><th>Type</th><th>Qty</th><th>Party / Reason</th><th>Ref No.</th><th>By</th></tr></thead>
+            <thead><tr><th>Date</th><th>Item Name</th><th>Type</th><th>Qty</th><th>Party / Reason</th><th>Ref No.</th><th>By</th></tr></thead>
             <tbody id="txn-tb"><tr class="lr2"><td colspan="8"><span class="loader"></span></td></tr></tbody>
           </table>
         </div>
@@ -324,8 +324,7 @@ tbody tr:hover td{background:var(--accent-l);}
     <div class="mh"><h2 id="im-title">Add New Item</h2><button class="mc2" onclick="closeM('item-modal')">✕</button></div>
     <div class="mb">
       <div class="fg2">
-        <div class="fi"><label>SKU Code *</label><input class="inp" id="f-sku" placeholder="e.g. LPX-RM-001"><div class="hint">Unique identifier for this item</div></div>
-        <div class="fi"><label>Item Name *</label><input class="inp" id="f-name" placeholder="e.g. 18650 Cell 3.7V 2600mAh"></div>
+        <div class="fi full"><label>Item Name *</label><input class="inp" id="f-name" placeholder="e.g. 18650 Cell 3.7V 2600mAh"></div>
         <div class="fi"><label>Category *</label><select class="inp" id="f-cat"><option value="Raw Material">Raw Material</option><option value="Finished Good">Finished Good</option><option value="Consumable">Consumable</option></select></div>
         <div class="fi"><label>Unit of Measure</label><input class="inp" id="f-unit" placeholder="Pcs / Kg / Meters / Roll"></div>
         <div class="fi"><label>Opening Stock</label><input class="inp" id="f-stock" type="number" placeholder="0" min="0"><div class="hint">Current physical stock count</div></div>
@@ -375,7 +374,7 @@ tbody tr:hover td{background:var(--accent-l);}
 </div>
 
 <script>
-var API_URL=localStorage.getItem('lpx_api')||'https://script.google.com/macros/s/AKfycbwQsEPkUVJ8AahW2jtDymsskhistE63LDZSBNkUaorbENg7BB4DaLKVU5cbfPVWF2B_/exec';
+var API_URL=localStorage.getItem('lpx_api')||'https://script.google.com/macros/s/AKfycbxIA0pWbifE6MsuKozQAsOMOKPZkR51plpfIHh4mOZIY6gsV4Mh-uJSnjt7QroSwIlE/exec';
 var DEMO=false;
 var _items=[];var _txnType='IN';var _dStocks=[];var _clRows=[];var _clDate='';
 
@@ -502,7 +501,7 @@ async function refreshDash(){
     var al=document.getElementById('d-alerts');
     al.innerHTML=!d.alerts?.length?'<div class="empty"><div class="ei">✅</div><div class="et">All stocks healthy!</div></div>':
       d.alerts.map(s=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 16px;border-bottom:1px solid var(--border);">
-        <div><div style="font-weight:600;color:var(--navy);font-size:13px;">${s.name}</div><div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:2px;">${s.sku}</div></div>
+        <div><div style="font-weight:600;color:var(--navy);font-size:13px;">${s.name}</div></div>
         <div style="text-align:right;">${stB(s.status)}<div style="font-size:11px;color:var(--muted);margin-top:4px;">Stock: <strong>${s.currentStock}</strong> | ROP: ${s.reorderPoint}</div></div>
       </div>`).join('');
     var rt=document.getElementById('d-recent');
@@ -518,7 +517,7 @@ async function refreshDash(){
 var editSKU=null;
 async function renderItems(){
   if(!_items.length){
-    document.getElementById('items-tb').innerHTML='<tr class="lr2"><td colspan="9"><span class="loader"></span></td></tr>';
+    document.getElementById('items-tb').innerHTML='<tr class="lr2"><td colspan="8"><span class="loader"></span></td></tr>';
     try{_items=await api('getItems');}catch(e){toast(e.message,'err');return;}
   }
   filterItems();
@@ -526,7 +525,7 @@ async function renderItems(){
 function filterItems(){
   var s=document.getElementById('item-search').value.toLowerCase();
   var cf=document.getElementById('item-cf').value;
-  var fl=_items.filter(i=>(!s||i.sku.toLowerCase().includes(s)||i.name.toLowerCase().includes(s))&&(!cf||i.cat===cf));
+  var fl=_items.filter(i=>(!s||i.name.toLowerCase().includes(s))&&(!cf||i.cat===cf));
   var tb=document.getElementById('items-tb'),em=document.getElementById('items-empty');
   if(!fl.length){tb.innerHTML='';em.style.display='block';return;}
   em.style.display='none';
@@ -538,8 +537,7 @@ function filterItems(){
     var pct=mx>0?Math.min(100,Math.round(cS/mx*100)):0;
     var bc=st==='OK'?'var(--green)':st==='Reorder'?'var(--orange)':'var(--red)';
     return`<tr>
-      <td><span style="font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:600;">${item.sku}</span></td>
-      <td><div style="font-weight:500;">${item.name}</div><div style="font-size:11px;color:var(--muted);">${item.unit||''}</div></td>
+      <td><div style="font-weight:600;color:var(--navy);">${item.name}</div><div style="font-size:11px;color:var(--muted);">${item.unit||''}</div></td>
       <td>${catB(item.cat)}</td>
       <td><span style="font-family:var(--mono);font-weight:700;font-size:15px;">${cS}</span><div class="sbw"><div class="sbf" style="width:${pct}%;background:${bc};"></div></div></td>
       <td style="font-family:var(--mono);color:var(--orange);">${rp}</td>
@@ -553,11 +551,11 @@ function filterItems(){
 
 function openIM(sku){
   editSKU=sku||null;
-  var flds=['f-sku','f-name','f-unit','f-stock','f-adc','f-lt','f-sf','f-moq','f-max','f-remarks'];
+  var flds=['f-name','f-unit','f-stock','f-adc','f-lt','f-sf','f-moq','f-max','f-remarks'];
   if(sku){
     var item=_items.find(i=>i.sku===sku);
     document.getElementById('im-title').textContent='Edit Item';
-    document.getElementById('f-sku').value=item.sku;document.getElementById('f-name').value=item.name;
+    document.getElementById('f-name').value=item.name;
     document.getElementById('f-cat').value=item.cat;document.getElementById('f-unit').value=item.unit||'';
     document.getElementById('f-stock').value=item.stock||0;document.getElementById('f-adc').value=item.adc||0;
     document.getElementById('f-lt').value=item.lt||0;document.getElementById('f-sf').value=item.sf||1.2;
@@ -567,7 +565,7 @@ function openIM(sku){
     document.getElementById('im-title').textContent='Add New Item';
     flds.forEach(id=>document.getElementById(id).value='');
     document.getElementById('f-sf').value='1.2';document.getElementById('f-cat').value='Raw Material';
-    document.getElementById('f-sku').disabled=false;
+
   }
   updROP();document.getElementById('item-modal').classList.add('open');
 }
@@ -580,10 +578,11 @@ function updROP(){
 ['f-adc','f-lt','f-sf','f-unit'].forEach(id=>setTimeout(()=>{var el=document.getElementById(id);if(el)el.addEventListener('input',updROP);},500));
 
 async function saveItem(){
-  var sku=document.getElementById('f-sku').value.trim(),name=document.getElementById('f-name').value.trim();
-  if(!sku||!name){toast('SKU and Name required','err');return;}
+  var name=document.getElementById('f-name').value.trim();
+  if(!name){toast('Item Name required','err');return;}
+  var sku=editSKU||name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,40)+'_'+Date.now().toString(36);
   var btn=document.getElementById('im-btn');btn.disabled=true;btn.textContent='Saving...';
-  var p={sku,name,cat:document.getElementById('f-cat').value,unit:document.getElementById('f-unit').value,
+  var p={sku:editSKU||sku,name,cat:document.getElementById('f-cat').value,unit:document.getElementById('f-unit').value,
     stock:Number(document.getElementById('f-stock').value)||0,adc:Number(document.getElementById('f-adc').value)||0,
     lt:Number(document.getElementById('f-lt').value)||0,sf:Number(document.getElementById('f-sf').value)||1.2,
     moq:Number(document.getElementById('f-moq').value)||0,maxL:Number(document.getElementById('f-max').value)||0,
@@ -597,7 +596,7 @@ async function saveItem(){
   finally{btn.disabled=false;btn.textContent='Save Item';}
 }
 async function delItem(sku){
-  if(!confirm('Delete '+sku+'? This cannot be undone.'))return;
+  var item=_items.find(i=>i.sku===sku);if(!confirm('Delete "'+(item?item.name:sku)+'"? This cannot be undone.'))return;
   try{await api('deleteItem',{sku});_items=_items.filter(i=>i.sku!==sku);toast('Item deleted','err');filterItems();refreshDash();}
   catch(e){toast(e.message,'err');}
 }
@@ -614,7 +613,7 @@ function openTxn(type){
 }
 function popSKU(){
   var sel=document.getElementById('t-sku');
-  sel.innerHTML=_items.length?_items.map(i=>`<option value="${i.sku}">${i.sku} — ${i.name}</option>`).join(''):'<option>No items yet</option>';
+  sel.innerHTML=_items.length?_items.map(i=>`<option value="${i.sku}">${i.name}</option>`).join(''):'<option>No items yet</option>';
   updTxnStock();
 }
 async function updTxnStock(){
@@ -636,7 +635,6 @@ async function renderTxns(){
     em.style.display='none';
     document.getElementById('txn-tb').innerHTML=txns.map(t=>`<tr>
       <td style="font-size:12px;color:var(--muted);">${fmtD(t.date)}</td>
-      <td><span style="font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:600;">${t.sku}</span></td>
       <td style="font-weight:500;">${t.itemName||'—'}</td>
       <td><span class="badge ${t.type==='IN'?'bin':'bot'}">${t.type==='IN'?'↑ Inward':'↓ Outward'}</span></td>
       <td style="font-family:var(--mono);font-weight:700;">${t.qty}</td>
@@ -689,7 +687,7 @@ function roCard(s){
   var bc=isCr?'var(--red)':'var(--orange)';
   return`<div class="rc ${isCr?'cr2':'ro2'}">
     <div class="rl">
-      <div class="sku">${s.sku} · ${catB(s.cat)}</div>
+      <div class="sku">${catB(s.cat)}</div>
       <div class="iname">${s.name}</div>
       <div class="meta">ROP: <strong>${s.reorderPoint}</strong> | MOQ: <strong>${s.moq||0}</strong> | Lead Time: <strong>${s.lt||0} days</strong> | ADC: <strong>${s.adc||0}/day</strong></div>
       <div class="sbw" style="width:180px;margin-top:8px;"><div class="sbf" style="width:${pct}%;background:${bc};"></div></div>
@@ -715,10 +713,9 @@ async function genClosing(){
       <div class="sc or"><div class="si">⚠️</div><div class="sl2">Items Below ROP</div><div class="sv">${al}</div></div>
     </div>`;
     html+=`<div class="card"><div class="tw"><table>
-      <thead><tr><th>SKU</th><th>Item Name</th><th>Category</th><th>Opening</th><th>Today IN</th><th>Today OUT</th><th>Closing Stock</th><th>ROP</th><th>Status</th></tr></thead>
+      <thead><tr><th>Item Name</th><th>Category</th><th>Opening</th><th>Today IN</th><th>Today OUT</th><th>Closing Stock</th><th>ROP</th><th>Status</th></tr></thead>
       <tbody>${rows.map(r=>`<tr>
-        <td style="font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:600;">${r.sku}</td>
-        <td style="font-weight:500;">${r.name}</td><td>${catB(r.cat)}</td>
+        <td style="font-weight:600;color:var(--navy);">${r.name}</td><td>${catB(r.cat)}</td>
         <td style="font-family:var(--mono);">${r.opening}</td>
         <td style="font-family:var(--mono);color:var(--green);font-weight:600;">${r.todayIn>0?'+'+r.todayIn:'—'}</td>
         <td style="font-family:var(--mono);color:var(--red);font-weight:600;">${r.todayOut>0?'-'+r.todayOut:'—'}</td>
