@@ -3,7 +3,7 @@
 // API URL: change here if redeployed
 // ============================================================
 
-const API = 'https://script.google.com/macros/s/AKfycbyjQEi050eO91bSqs96_Jj8k0quTTM7o3uuHMN_AOfmvXLTcC60wtUuzAOkZgQ6smY/exec';
+const API = 'https://script.google.com/macros/s/AKfycbxcYTXbqLVPgObjy2vR5-7ekOO0qQAGrI5EYgmlVkN1jxqbJWxX4W3ZJAKvey5CV_X6/exec';
 
 const DEPTS = ['Volt Wing','Ampere Wing','Volt x Ampere Wing','Mega Grid','Cathodic Wing','Future Cell','Phoenix Wing','Other'];
 
@@ -151,6 +151,46 @@ async function loadDash() {
           </div>
           <span class="badge ${t.txnType === 'IN' ? 'b-in' : 'b-out'}">${t.txnType === 'IN' ? '↑ IN' : '↓ OUT'} ${t.qty || t.qtyProduced || ''}</span>
         </div>`).join('');
+    }
+
+    // WIP Section
+    const wipWrap = document.getElementById('d-wip');
+    if (wipWrap) {
+      if (!d.wipItems || !d.wipItems.length) {
+        wipWrap.innerHTML = `<div class="empty"><div class="ei">🏭</div><div class="et">No WIP — Production mein kuch nahi</div></div>`;
+      } else {
+        wipWrap.innerHTML = d.wipItems.map(s => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);">
+            <div>
+              <div style="font-weight:600;font-size:13px;">${s.name}</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px;">Store: <b style="color:var(--navy)">${s.currentStock} ${s.unit||''}</b></div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--purple);">${s.wip}</div>
+              <div style="font-size:10px;color:var(--muted);">In Production</div>
+            </div>
+          </div>`).join('');
+      }
+    }
+
+    // FG Section
+    const fgWrap = document.getElementById('d-fg');
+    if (fgWrap) {
+      if (!d.fg || !d.fg.length) {
+        fgWrap.innerHTML = `<div class="empty"><div class="ei">📦</div><div class="et">No FG dispatched yet</div></div>`;
+      } else {
+        fgWrap.innerHTML = d.fg.map(f => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);">
+            <div>
+              <div style="font-weight:600;font-size:13px;">${f.model}</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px;">Last: ${fmtD(f.lastDate)}</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--green);">${f.totalProduced}</div>
+              <div style="font-size:10px;color:var(--muted);">Units Produced</div>
+            </div>
+          </div>`).join('');
+      }
     }
 
     setDot('ok', 'Connected');
