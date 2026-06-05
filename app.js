@@ -483,7 +483,7 @@ function openItemModal(name) {
     document.getElementById('f-remarks').value = item.remarks || '';
   } else {
     document.getElementById('im-title').textContent = 'Add Item';
-    ['f-name','f-unit','f-adc','f-lt','f-moq','f-max','f-mit','f-remarks'].forEach(id => document.getElementById(id).value = '');
+    ['f-name','f-unit','f-adc','f-lt','f-mit','f-remarks'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('f-sf').value  = '1.2';
     document.getElementById('f-cat').value = 'Raw Material';
   }
@@ -493,11 +493,31 @@ function openItemModal(name) {
 function editItem(name) { openItemModal(name); }
 
 function updROP() {
-  const a = Number(document.getElementById('f-adc').value) || 0;
-  const l = Number(document.getElementById('f-lt').value)  || 0;
-  const s = Number(document.getElementById('f-sf').value)  || 1;
-  const u = document.getElementById('f-unit').value || 'units';
-  document.getElementById('rop-prev').innerHTML = `${a} × ${l} × ${s} = <strong style="color:var(--accent)">${Math.ceil(a*l*s)}</strong> ${u}`;
+  const a   = Number(document.getElementById('f-adc').value) || 0;
+  const l   = Number(document.getElementById('f-lt').value)  || 0;
+  const s   = Number(document.getElementById('f-sf').value)  || 1;
+  const u   = document.getElementById('f-unit').value || 'units';
+  const rop = Math.ceil(a * l * s);
+  const moq = rop;
+  const max = rop * 2;
+  document.getElementById('rop-prev').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:4px;">
+      <div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:2px;">REORDER POINT</div>
+        <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--accent);">${rop} <span style="font-size:11px;">${u}</span></div>
+        <div style="font-size:10px;color:var(--muted);">${a} × ${l} × ${s}</div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:2px;">MOQ (AUTO)</div>
+        <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--orange);">${moq} <span style="font-size:11px;">${u}</span></div>
+        <div style="font-size:10px;color:var(--muted);">= ROP</div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:2px;">MAX LEVEL (AUTO)</div>
+        <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--green);">${max} <span style="font-size:11px;">${u}</span></div>
+        <div style="font-size:10px;color:var(--muted);">= ROP × 2</div>
+      </div>
+    </div>`;
 }
 
 async function saveItem() {
@@ -505,14 +525,16 @@ async function saveItem() {
   if (!name) { toast('Item Name required', 'err'); return; }
   const btn = document.getElementById('im-btn');
   btn.disabled = true; btn.textContent = 'Saving...';
+  const adc = Number(document.getElementById('f-adc').value) || 0;
+  const lt  = Number(document.getElementById('f-lt').value)  || 0;
+  const sf  = Number(document.getElementById('f-sf').value)  || 1.2;
+  const rop = Math.ceil(adc * lt * sf);
   const payload = {
     name, cat: document.getElementById('f-cat').value,
     unit: document.getElementById('f-unit').value,
-    adc:  Number(document.getElementById('f-adc').value) || 0,
-    lt:   Number(document.getElementById('f-lt').value)  || 0,
-    sf:   Number(document.getElementById('f-sf').value)  || 1.2,
-    moq:  Number(document.getElementById('f-moq').value) || 0,
-    maxL: Number(document.getElementById('f-max').value) || 0,
+    adc, lt, sf,
+    moq:  rop,
+    maxL: rop * 2,
     mit:  Number(document.getElementById('f-mit').value) || 0,
     remarks: document.getElementById('f-remarks').value,
   };
