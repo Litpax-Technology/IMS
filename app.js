@@ -39,12 +39,15 @@ async function api(action, body) {
     if (body) {
       r = await fetch(API, {
         method: 'POST',
+        redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({ action, ...body }),
       });
     } else {
-      r = await fetch(`${API}?action=${action}`);
+      r = await fetch(`${API}?action=${action}`, { redirect: 'follow' });
     }
-    const d = await r.json();
+    const text = await r.text();
+    const d = JSON.parse(text);
     if (d.error) throw new Error(d.error);
     return d;
   } catch(e) {
