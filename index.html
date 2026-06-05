@@ -259,12 +259,38 @@
       <div class="tb">
         <div class="pt"><h1>Daily Closing</h1><p>End-of-day stock snapshot</p></div>
         <div class="ta">
+          <!-- Tab toggle -->
+          <button class="btn bg bsm" id="cl-tab-single" onclick="switchClTab('single')" style="border-color:var(--accent);color:var(--accent);">Single Day</button>
+          <button class="btn bg bsm" id="cl-tab-range" onclick="switchClTab('range')">Date Range</button>
+        </div>
+      </div>
+
+      <!-- Single Day -->
+      <div id="cl-single-wrap">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
           <input type="date" class="inp" id="cl-date" style="width:170px;">
           <button class="btn bp" onclick="genClosing()">Generate</button>
           <button class="btn bgn bsm" onclick="saveSnapshot()">💾 Save Snapshot</button>
         </div>
+        <div id="cl-content"></div>
       </div>
-      <div id="cl-content"></div>
+
+      <!-- Date Range History -->
+      <div id="cl-range-wrap" style="display:none;">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <label style="font-size:12px;color:var(--muted);font-weight:600;">From</label>
+            <input type="date" class="inp" id="cl-from" style="width:160px;">
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <label style="font-size:12px;color:var(--muted);font-weight:600;">To</label>
+            <input type="date" class="inp" id="cl-to" style="width:160px;">
+          </div>
+          <button class="btn bp" onclick="genHistory()">Show History</button>
+          <button class="btn bg bsm" onclick="exportHistoryCSV()">↓ Export CSV</button>
+        </div>
+        <div id="cl-history-content"></div>
+      </div>
     </div>
 
   </div><!-- /main -->
