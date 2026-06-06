@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Material Request — Litpax</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #f0f2f7;
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100vh;
+  padding: 20px 16px 48px;
+}
+.header {
+  display: flex; align-items: center; gap: 12px;
+  max-width: 600px; margin: 0 auto 20px;
+}
+.logo-box {
+  width: 40px; height: 40px;
+  background: linear-gradient(135deg, #162444, #243a72);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'DM Mono', monospace; font-weight: 700; font-size: 17px;
+  color: #f59e0b; flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(22,36,68,.2);
+}
+.header-text .title { font-size: 15px; font-weight: 700; color: #162444; }
+.header-text .sub   { font-size: 10px; color: #6b7280; letter-spacing: .8px; text-transform: uppercase; }
+
+.card {
+  background: #fff; border-radius: 14px;
+  box-shadow: 0 4px 20px rgba(15,29,53,.08);
+  max-width: 600px; margin: 0 auto;
+  overflow: hidden;
+}
+.card-header {
+  background: linear-gradient(135deg, #162444, #1e3260);
+  padding: 18px 22px; color: #fff;
+}
+.card-header h1 { font-size: 17px; font-weight: 700; }
+.card-header p  { font-size: 12px; color: rgba(255,255,255,.55); margin-top: 3px; }
+
+.card-body { padding: 20px 22px; }
+
+/* TOP FIELDS */
+.top-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+.field label {
+  display: block; font-size: 10px; font-weight: 700;
+  color: #374151; text-transform: uppercase; letter-spacing: .7px;
+  margin-bottom: 5px;
+}
+.field label span { color: #dc2626; }
+.inp {
+  width: 100%; background: #f6f8fc;
+  border: 1.5px solid #dde3ef; border-radius: 8px;
+  padding: 9px 12px;
+  font-family: 'DM Sans', sans-serif; font-size: 13px; color: #0f1d35;
+  outline: none; transition: all .15s;
+}
+.inp:focus { border-color: #2558e8; box-shadow: 0 0 0 3px rgba(37,88,232,.1); background: #fff; }
+.inp::placeholder { color: #9ca3af; }
+select.inp { cursor: pointer; }
+
+/* SECTION */
+.section {
+  margin-bottom: 18px;
+  border: 1px solid #dde3ef;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.section-header {
+  background: #f6f8fc;
+  padding: 10px 14px;
+  display: flex; align-items: center; gap: 8px;
+  border-bottom: 1px solid #dde3ef;
+}
+.section-header .icon { font-size: 15px; }
+.section-header h3 { font-size: 11px; font-weight: 700; color: #162444; text-transform: uppercase; letter-spacing: .8px; }
+
+/* ITEM ROW */
+.item-row {
+  display: flex; align-items: center;
+  padding: 8px 14px;
+  border-bottom: 1px solid #f0f2f7;
+  gap: 10px;
+}
+.item-row:last-child { border-bottom: none; }
+.item-label { flex: 1; font-size: 13px; color: #374151; font-weight: 500; }
+.item-label .sub { font-size: 10px; color: #9ca3af; display: block; margin-top: 1px; }
+.qty-inp {
+  width: 80px; background: #f6f8fc;
+  border: 1.5px solid #dde3ef; border-radius: 7px;
+  padding: 6px 10px; text-align: center;
+  font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 600;
+  color: #162444; outline: none; transition: all .15s;
+}
+.qty-inp:focus { border-color: #2558e8; background: #fff; }
+.unit-label { font-size: 11px; color: #9ca3af; width: 32px; text-align: left; }
+
+/* WIRE SPECIAL */
+.wire-row {
+  display: grid; grid-template-columns: 1fr 70px 70px 70px 32px;
+  gap: 6px; align-items: center;
+  padding: 8px 14px; border-bottom: 1px solid #f0f2f7;
+  font-size: 12px;
+}
+.wire-row:last-child { border-bottom: none; }
+.wire-header {
+  display: grid; grid-template-columns: 1fr 70px 70px 70px 32px;
+  gap: 6px; padding: 6px 14px;
+  font-size: 10px; font-weight: 700; color: #9ca3af;
+  text-transform: uppercase; letter-spacing: .5px;
+  border-bottom: 1px solid #dde3ef; background: #fafbff;
+}
+
+/* OTHER INPUT */
+.other-row { padding: 8px 14px; }
+.other-inp {
+  width: 100%; background: #f6f8fc;
+  border: 1.5px solid #dde3ef; border-radius: 7px;
+  padding: 7px 12px; font-family: 'DM Sans', sans-serif;
+  font-size: 12px; color: #374151; outline: none;
+}
+.other-inp:focus { border-color: #2558e8; background: #fff; }
+
+/* REMARKS */
+.remarks-section { margin-bottom: 20px; }
+
+/* SUBMIT */
+.submit-btn {
+  width: 100%; background: linear-gradient(135deg, #162444, #1e3260);
+  color: #fff; border: none; border-radius: 10px;
+  padding: 14px; font-family: 'DM Sans', sans-serif;
+  font-size: 15px; font-weight: 700; cursor: pointer;
+  transition: all .2s; display: flex; align-items: center;
+  justify-content: center; gap: 8px;
+}
+.submit-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(22,36,68,.3); }
+.submit-btn:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+
+/* SUCCESS */
+.success-card {
+  display: none; background: #fff; border-radius: 14px;
+  box-shadow: 0 4px 20px rgba(15,29,53,.08);
+  max-width: 600px; margin: 0 auto;
+  padding: 48px 24px; text-align: center;
+}
+.success-icon { font-size: 60px; margin-bottom: 16px; }
+.success-title { font-size: 22px; font-weight: 700; color: #162444; margin-bottom: 8px; }
+.success-sub { font-size: 13px; color: #6b7280; margin-bottom: 20px; line-height: 1.7; }
+.success-id {
+  background: #f0fdf4; border: 1px solid #bbf7d0;
+  border-radius: 8px; padding: 10px 16px; margin-bottom: 24px;
+  font-family: 'DM Mono', monospace; font-size: 13px;
+  font-weight: 600; color: #16a34a;
+}
+.new-btn {
+  background: #f0f2f7; color: #162444; border: none;
+  border-radius: 10px; padding: 12px 28px;
+  font-family: 'DM Sans', sans-serif; font-size: 14px;
+  font-weight: 600; cursor: pointer;
+}
+.new-btn:hover { background: #e0e4ee; }
+
+.footer { text-align: center; font-size: 11px; color: #9ca3af; margin-top: 20px; max-width: 600px; margin-left: auto; margin-right: auto; }
+
+.overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(15,29,53,.4); backdrop-filter: blur(3px);
+  z-index: 99; align-items: center; justify-content: center;
+}
+.overlay.show { display: flex; }
+.spinner {
+  width: 40px; height: 40px;
+  border: 3px solid rgba(255,255,255,.3);
+  border-top-color: #fff; border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 480px) {
+  .top-row { grid-template-columns: 1fr; }
+  .wire-row { grid-template-columns: 1fr 60px 60px 60px 28px; gap: 4px; }
+  .wire-header { grid-template-columns: 1fr 60px 60px 60px 28px; }
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo-box">L</div>
+  <div class="header-text">
+    <div class="title">Litpax Technology Pvt. Ltd.</div>
+    <div class="sub">Production Material Requisition Form</div>
+  </div>
+</div>
+
+<!-- FORM -->
+<div class="card" id="form-card">
+  <div class="card-header">
+    <h1>📋 Material Requisition</h1>
+    <p>Jo material chahiye uski qty bharein — Store Manager ko turant pata chal jaayega</p>
+  </div>
+  <div class="card-body">
+
+    <!-- NAME + DEPARTMENT -->
+    <div class="top-row">
+      <div class="field">
+        <label>Aapka Naam <span>*</span></label>
+        <input class="inp" id="f-name" placeholder="Apna naam likhein">
+      </div>
+      <div class="field">
+        <label>Department <span>*</span></label>
+        <select class="inp" id="f-dept">
+          <option value="">-- Select --</option>
+          <option>Volt Wing</option>
+          <option>Ampere Wing</option>
+          <option>Volt x Ampere Wing</option>
+          <option>Mega Grid</option>
+          <option>Cathodic Wing</option>
+          <option>Future Cell</option>
+          <option>Phoenix Wing</option>
+          <option>Other</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- CELLS -->
+    <div class="section">
+      <div class="section-header"><span class="icon">🔋</span><h3>Cells</h3></div>
+      <div class="item-row"><span class="item-label">3.6V 4.5AH</span><input class="qty-inp" type="number" min="0" placeholder="0" id="cell-1"><span class="unit-label">Pcs</span></div>
+      <div class="item-row"><span class="item-label">3.6V 5AH</span><input class="qty-inp" type="number" min="0" placeholder="0" id="cell-2"><span class="unit-label">Pcs</span></div>
+      <div class="item-row"><span class="item-label">3.2V 100AH</span><input class="qty-inp" type="number" min="0" placeholder="0" id="cell-3"><span class="unit-label">Pcs</span></div>
+      <div class="item-row"><span class="item-label">3.2V 150AH</span><input class="qty-inp" type="number" min="0" placeholder="0" id="cell-4"><span class="unit-label">Pcs</span></div>
+      <div class="item-row"><span class="item-label">3.2V 314AH</span><input class="qty-inp" type="number" min="0" placeholder="0" id="cell-5"><span class="unit-label">Pcs</span></div>
+      <div class="item-row"><span class="item-label">Other <span class="sub">Naam likhein</span></span><input class="qty-inp" type="number" min="0" placeholder="0" id="cell-other-qty"><span class="unit-label">Pcs</span></div>
+      <div class="other-row"><input class="other-inp" type="text" id="cell-other-name" placeholder="Other cell ka naam..."></div>
+    </div>
+
+    <!-- BMS -->
+    <div class="section">
+      <div class="section-header"><span class="icon">⚡</span><h3>BMS</h3></div>
+      <div class="item-row"><span class="item-label">10S 20Amp</span><input class="qty-inp" type="number" min="0" placeholder="0" id="bms-1"><span class="unit-label">Pcs</span></div>
+      <div class="item-row"><span class="item-label">2-Wheeler BMS</span><input class="qty-inp" type="number" min="0" placeholder="0" id="bms-2"><span class="unit-label">Pcs</span></div>
+      <div class="item-row"><span class="item-label">4S 100Amp</span><input class="qty-inp" type="number" min="0" placeholder="0" id="bms-3"><span class="unit-label">Pcs</span></div>
+      <div class="item-row"><span class="item-label">8S 100Amp</span><input class="qty-inp" type="number" min="0" placeholder="0" id="bms-4"><span class="unit-label">Pcs</span></div>
+      <div class="item-row"><span class="item-label">16S 100Amp</span><input class="qty-inp" type="number" min="0" placeholder="0" id="bms-5"><span class="unit-label">Pcs</span></div>
+      <div class="item-row"><span class="item-label">Other <span class="sub">Naam likhein</span></span><input class="qty-inp" type="number" min="0" placeholder="0" id="bms-other-qty"><span class="unit-label">Pcs</span></div>
+      <div class="other-row"><input class="other-inp" type="text" id="bms-other-name" placeholder="Other BMS ka naam..."></div>
+    </div>
+
+    <!-- WIRE -->
+    <div class="section">
+      <div class="section-header"><span class="icon">🔌</span><h3>Wire</h3></div>
+      <div class="wire-header"><span>Size</span><span style="text-align:center;">Red</span><span style="text-align:center;">Black</span><span style="text-align:center;">Both</span><span>Unit</span></div>
+      <div class="wire-row"><span>1mm</span><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-1-r"><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-1-b"><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-1-both"><span class="unit-label">m</span></div>
+      <div class="wire-row"><span>1.5mm</span><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-2-r"><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-2-b"><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-2-both"><span class="unit-label">m</span></div>
+      <div class="wire-row"><span>2.5mm</span><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-3-r"><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-3-b"><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-3-both"><span class="unit-label">m</span></div>
+      <div class="wire-row"><span>6mm</span><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-4-r"><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-4-b"><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-4-both"><span class="unit-label">m</span></div>
+      <div class="wire-row"><span>10mm</span><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-5-r"><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-5-b"><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-5-both"><span class="unit-label">m</span></div>
+      <div class="wire-row"><span>16mm</span><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-6-r"><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-6-b"><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-6-both"><span class="unit-label">m</span></div>
+      <div class="wire-row"><span>25mm</span><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-7-r"><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-7-b"><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-7-both"><span class="unit-label">m</span></div>
+    </div>
+
+    <!-- NICKEL -->
+    <div class="section">
+      <div class="section-header"><span class="icon">🪙</span><h3>Nickel Strip</h3></div>
+      <div class="item-row"><span class="item-label">21700</span><input class="qty-inp" type="number" min="0" placeholder="0" id="nkl-1"><span class="unit-label">Kg</span></div>
+      <div class="item-row"><span class="item-label">18650</span><input class="qty-inp" type="number" min="0" placeholder="0" id="nkl-2"><span class="unit-label">Kg</span></div>
+      <div class="item-row"><span class="item-label">32140</span><input class="qty-inp" type="number" min="0" placeholder="0" id="nkl-3"><span class="unit-label">Kg</span></div>
+      <div class="item-row"><span class="item-label">33140</span><input class="qty-inp" type="number" min="0" placeholder="0" id="nkl-4"><span class="unit-label">Kg</span></div>
+      <div class="item-row"><span class="item-label">Single Strip</span><input class="qty-inp" type="number" min="0" placeholder="0" id="nkl-5"><span class="unit-label">Kg</span></div>
+    </div>
+
+    <!-- OTHER MATERIAL -->
+    <div class="section">
+      <div class="section-header"><span class="icon">🧰</span><h3>Other Material</h3></div>
+      <div class="item-row"><span class="item-label">Silicon Tube</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-1"><span class="unit-label">Pcs</span></div>
+      <div class="item-row"><span class="item-label">PG7</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-2"><span class="unit-label">Pcs</span></div>
+      <div class="item-row"><span class="item-label">Pressure Vent</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-3"><span class="unit-label">Pcs</span></div>
+      <div class="item-row"><span class="item-label">Handle</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-4"><span class="unit-label">Pcs</span></div>
+      <div class="item-row"><span class="item-label">Thimble 2.5mm</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-5"><span class="unit-label">Pcs</span></div>
+      <div class="item-row"><span class="item-label">Thimble 25mm</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-6"><span class="unit-label">Pcs</span></div>
+      <div class="item-row"><span class="item-label">BusBar</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-7"><span class="unit-label">Pcs</span></div>
+      <div class="item-row"><span class="item-label">Soldering Wire</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-8"><span class="unit-label">Pcs</span></div>
+      <div class="item-row"><span class="item-label">Rivet</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-9"><span class="unit-label">Pcs</span></div>
+      <div class="item-row"><span class="item-label">MCB</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-10"><span class="unit-label">Pcs</span></div>
+      <div class="item-row"><span class="item-label">SB50 Connector</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-11"><span class="unit-label">Pcs</span></div>
+      <div class="item-row"><span class="item-label">ESS Connector</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-12"><span class="unit-label">Pcs</span></div>
+      <div class="item-row"><span class="item-label">Inverter Handle</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-13"><span class="unit-label">Pcs</span></div>
+    </div>
+
+    <!-- REMARKS -->
+    <div class="remarks-section">
+      <div class="field">
+        <label>Remarks (Optional)</label>
+        <input class="inp" id="f-remarks" placeholder="Koi khaas baat ho toh likhein...">
+      </div>
+    </div>
+
+    <button class="submit-btn" id="submit-btn" onclick="submitForm()">
+      <span>📤</span> Request Bhejo
+    </button>
+
+  </div>
+</div>
+
+<!-- SUCCESS -->
+<div class="success-card" id="success-card">
+  <div class="success-icon">✅</div>
+  <div class="success-title">Request Bheji Gayi!</div>
+  <div class="success-sub">Aapki request Ajay (Store Manager) ke paas pahunch gayi hai.<br>Woh jald hi material issue karenge.</div>
+  <div class="success-id" id="success-summary"></div>
+  <button class="new-btn" onclick="resetForm()">+ Nayi Request Bhejo</button>
+</div>
+
+<div class="footer">Litpax Technology Pvt. Ltd. &nbsp;·&nbsp; Designed by Darpan</div>
+
+<div class="overlay" id="overlay"><div class="spinner"></div></div>
+
+<script>
+const API = 'https://script.google.com/macros/s/AKfycbyy5PjWL4FY1O4REf7bwTvYWO3tkKiXietk9on2f0Llx-gzakCQ0dcb0mYS4Tz9hvtz/exec';
+
+function g(id) { return document.getElementById(id); }
+function v(id) { const el = g(id); return el ? (Number(el.value)||0) : 0; }
+function t(id) { const el = g(id); return el ? (el.value.trim()) : ''; }
+
+async function submitForm() {
+  const name = t('f-name');
+  const dept = t('f-dept');
+  if (!name) { alert('Apna naam bharein'); return; }
+  if (!dept) { alert('Department select karein'); return; }
+
+  // Collect all items with qty > 0
+  const items = [];
+
+  // Cells
+  const cells = [
+    {id:'cell-1', name:'Cell 3.6V 4.5AH', unit:'Pcs'},
+    {id:'cell-2', name:'Cell 3.6V 5AH', unit:'Pcs'},
+    {id:'cell-3', name:'Cell 3.2V 100AH', unit:'Pcs'},
+    {id:'cell-4', name:'Cell 3.2V 150AH', unit:'Pcs'},
+    {id:'cell-5', name:'Cell 3.2V 314AH', unit:'Pcs'},
+  ];
+  cells.forEach(c => { const q = v(c.id); if (q > 0) items.push({item: c.name, qty: q, unit: c.unit}); });
+  const coq = v('cell-other-qty'), con = t('cell-other-name');
+  if (coq > 0 && con) items.push({item: 'Cell - '+con, qty: coq, unit: 'Pcs'});
+
+  // BMS
+  const bms = [
+    {id:'bms-1', name:'BMS 10S 20Amp'},
+    {id:'bms-2', name:'BMS 2-Wheeler'},
+    {id:'bms-3', name:'BMS 4S 100Amp'},
+    {id:'bms-4', name:'BMS 8S 100Amp'},
+    {id:'bms-5', name:'BMS 16S 100Amp'},
+  ];
+  bms.forEach(b => { const q = v(b.id); if (q > 0) items.push({item: b.name, qty: q, unit: 'Pcs'}); });
+  const boq = v('bms-other-qty'), bon = t('bms-other-name');
+  if (boq > 0 && bon) items.push({item: 'BMS - '+bon, qty: boq, unit: 'Pcs'});
+
+  // Wire
+  const wireSizes = ['1mm','1.5mm','2.5mm','6mm','10mm','16mm','25mm'];
+  wireSizes.forEach((sz, i) => {
+    const n = i+1;
+    const r = v(`wire-${n}-r`), b = v(`wire-${n}-b`), both = v(`wire-${n}-both`);
+    if (r > 0)    items.push({item: `Wire ${sz} Red`, qty: r, unit: 'm'});
+    if (b > 0)    items.push({item: `Wire ${sz} Black`, qty: b, unit: 'm'});
+    if (both > 0) items.push({item: `Wire ${sz} Both`, qty: both, unit: 'm'});
+  });
+
+  // Nickel
+  const nkl = [
+    {id:'nkl-1', name:'Nickel 21700'},
+    {id:'nkl-2', name:'Nickel 18650'},
+    {id:'nkl-3', name:'Nickel 32140'},
+    {id:'nkl-4', name:'Nickel 33140'},
+    {id:'nkl-5', name:'Nickel Single Strip'},
+  ];
+  nkl.forEach(n => { const q = v(n.id); if (q > 0) items.push({item: n.name, qty: q, unit: 'Kg'}); });
+
+  // Other
+  const oth = [
+    {id:'oth-1', name:'Silicon Tube'},
+    {id:'oth-2', name:'PG7'},
+    {id:'oth-3', name:'Pressure Vent'},
+    {id:'oth-4', name:'Handle'},
+    {id:'oth-5', name:'Thimble 2.5mm'},
+    {id:'oth-6', name:'Thimble 25mm'},
+    {id:'oth-7', name:'BusBar'},
+    {id:'oth-8', name:'Soldering Wire'},
+    {id:'oth-9', name:'Rivet'},
+    {id:'oth-10', name:'MCB'},
+    {id:'oth-11', name:'SB50 Connector'},
+    {id:'oth-12', name:'ESS Connector'},
+    {id:'oth-13', name:'Inverter Handle'},
+  ];
+  oth.forEach(o => { const q = v(o.id); if (q > 0) items.push({item: o.name, qty: q, unit: 'Pcs'}); });
+
+  if (!items.length) { alert('Kam se kam ek item ki qty bharein'); return; }
+
+  g('overlay').classList.add('show');
+  g('submit-btn').disabled = true;
+
+  try {
+    // Send one request per item
+    const ids = [];
+    for (const it of items) {
+      const r = await fetch(API, {
+        method: 'POST', redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+          action: 'addRequest',
+          itemName: it.item, qty: it.qty,
+          department: dept, requestedBy: name,
+          remarks: t('f-remarks'),
+        }),
+      });
+      const data = JSON.parse(await r.text());
+      if (data.id) ids.push(data.id);
+    }
+
+    // Show success
+    g('success-summary').innerHTML =
+      `<b>${items.length} items</b> request bheji gayi<br>` +
+      items.map(i => `• ${i.item}: <b>${i.qty} ${i.unit}</b>`).join('<br>');
+    g('form-card').style.display = 'none';
+    g('success-card').style.display = 'block';
+    window.scrollTo(0, 0);
+  } catch(e) {
+    alert('Error: ' + e.message);
+    g('submit-btn').disabled = false;
+  } finally {
+    g('overlay').classList.remove('show');
+  }
+}
+
+function resetForm() {
+  document.querySelectorAll('.qty-inp').forEach(el => el.value = '');
+  document.querySelectorAll('.other-inp').forEach(el => el.value = '');
+  g('f-name').value = '';
+  g('f-dept').value = '';
+  g('f-remarks').value = '';
+  g('submit-btn').disabled = false;
+  g('form-card').style.display = 'block';
+  g('success-card').style.display = 'none';
+  window.scrollTo(0, 0);
+}
+</script>
+</body>
+</html>
