@@ -3,7 +3,7 @@
 // API URL: change here if redeployed
 // ============================================================
 
-const API = 'https://script.google.com/macros/s/AKfycbxeYpyGqR2UnyIDPUTkR_2FUSQc8MNlBPQ1bvH6-7xyXG-2pi3oe0FVvHEBYERaObNp/exec';
+const API = 'https://script.google.com/macros/s/AKfycbyy5PjWL4FY1O4REf7bwTvYWO3tkKiXietk9on2f0Llx-gzakCQ0dcb0mYS4Tz9hvtz/exec';
 
 const DEPTS = ['Volt Wing','Ampere Wing','Volt x Ampere Wing','Mega Grid','Cathodic Wing','Future Cell','Phoenix Wing','Other'];
 
@@ -128,6 +128,12 @@ async function loadDash() {
     if (nbi) {
       if (d.pendingIndents > 0) { nbi.style.display = 'inline'; nbi.textContent = d.pendingIndents; }
       else nbi.style.display = 'none';
+    }
+    // Pending requests badge
+    const nbr = document.getElementById('nb-req');
+    if (nbr) {
+      if (d.pendingRequests > 0) { nbr.style.display = 'inline'; nbr.textContent = d.pendingRequests; }
+      else nbr.style.display = 'none';
     }
 
     // Alerts
@@ -409,6 +415,12 @@ async function saveOutward() {
     toast('Outward saved ✓', 'ok');
     closeM('outward-modal');
     _stocks = [];
+    // Auto close pending request if came from fulfillRequest
+    if (window._pendingReqId) {
+      api('closeRequest', { id: window._pendingReqId, closedBy: document.getElementById('out-by').value || 'Ajay' })
+        .then(() => { window._pendingReqId = null; loadRequests(); })
+        .catch(() => {});
+    }
     loadOutward();
     loadDash();
   } catch(e) { toast(e.message, 'err'); }
@@ -1288,6 +1300,141 @@ document.querySelectorAll('.ni').forEach(n => {
 const _sp = showPage;
 showPage = function(id) {
   _sp(id);
-  if (id === 'opening') loadOpeningStock();
-  if (id === 'indent')  loadIndents();
+  if (id === 'opening')    loadOpeningStock();
+  if (id === 'indent')     loadIndents();
+  if (id === 'requests')   loadRequests();
+  if (id === 'newrequest') loadNewRequestPage();
 };
+
+
+// ============================================================
+// MATERIAL REQUESTS
+// ============================================================
+let _requests = [];
+
+async function loadRequests() {
+  document.getElementById('req-tb').innerHTML = `<tr class="lrow"><td colspan="10"><span class="loader"></span></td></tr>`;
+  const statusF = document.getElementById('req-status-f').value;
+  try {
+    const body = statusF ? { status: statusF } : {};
+    _requests = await api('getRequests', body);
+    renderRequests();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+function renderRequests() {
+  const tb = document.getElementById('req-tb');
+  const em = document.getElementById('req-empty');
+  if (!_requests.length) { tb.innerHTML = ''; em.style.display = 'block'; return; }
+  em.style.display = 'none';
+
+  tb.innerHTML = _requests.map(r => {
+    const stColor = r.status === 'Closed' ? 'b-ok' : r.status === 'Cancelled' ? 'b-ro' : 'b-dep';
+    const isPending = r.status === 'Pending';
+    return `<tr ${isPending ? 'style="background:#f0f7ff;"' : ''}>
+      <td style="font-size:12px;color:var(--muted);">${fmtD(r.date)}</td>
+      <td style="font-family:var(--mono);font-size:12px;color:var(--muted);">${r.time}</td>
+      <td style="font-weight:600;color:var(--navy);">${r.itemName}</td>
+      <td style="font-family:var(--mono);font-weight:700;font-size:16px;color:var(--accent);">${r.qty}</td>
+      <td style="color:var(--muted);font-size:12px;">${r.unit||'—'}</td>
+      <td>${depBadge(r.department)}</td>
+      <td style="font-size:12px;">${r.requestedBy||'—'}</td>
+      <td style="font-size:12px;color:var(--muted);">${r.remarks||'—'}</td>
+      <td><span class="badge ${stColor}">${r.status}</span></td>
+      <td style="white-space:nowrap;">
+        ${isPending ? `
+          <button class="btn bgn bsm" onclick="fulfillRequest('${r.id}','${r.itemName.replace(/'/g,"\\'")}',${r.qty},'${r.department||''}')">✓ Issue</button>
+          <button class="btn brd bsm" onclick="cancelRequest('${r.id}')">✕</button>
+        ` : `<span style="font-size:11px;color:var(--muted);">${r.closedBy||'—'}</span>`}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// Ajay fulfills request — opens outward modal prefilled
+function fulfillRequest(reqId, itemName, qty, department) {
+  // Pre-fill outward modal
+  populateItemSelect('out-item');
+  setTimeout(() => {
+    document.getElementById('out-item').value = itemName;
+    document.getElementById('out-qty').value = qty;
+    document.getElementById('out-date').value = today();
+    document.getElementById('out-dept').value = department || '';
+    document.getElementById('out-by').value = 'Ajay';
+    document.getElementById('out-remarks').value = 'Req: ' + reqId;
+    updOutwardInfo();
+    // Store reqId to close after outward saved
+    window._pendingReqId = reqId;
+    document.getElementById('outward-modal').classList.add('open');
+    showPage('outward');
+  }, 100);
+}
+
+async function cancelRequest(id) {
+  if (!confirm('Request cancel karna chahte ho?')) return;
+  try {
+    await api('cancelRequest', { id });
+    toast('Request cancelled', 'warn');
+    loadRequests();
+    loadDash();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+// ── REQUEST MATERIAL (Production Worker) ──
+async function loadNewRequestPage() {
+  if (!_items.length) {
+    try {
+      const d = await api('getDashboard');
+      _stocks = d.stocks || []; _items = _stocks;
+    } catch(e) {}
+  }
+  const sel = document.getElementById('nr-item');
+  if (sel) {
+    sel.innerHTML = '<option value="">Select Item</option>' + _items.map(i => `<option value="${i.name}">${i.name}</option>`).join('');
+    sel.onchange = function() {
+      const name = this.value;
+      const inf  = document.getElementById('nr-stock-info');
+      const av   = document.getElementById('nr-avail');
+      if (!name) { inf.style.display = 'none'; return; }
+      const s = _stocks.find(x => x.name === name);
+      if (s) {
+        av.textContent = s.currentStock + ' ' + (s.unit||'');
+        inf.style.display = 'block';
+      }
+    };
+  }
+}
+
+async function submitRequest() {
+  const itemName = document.getElementById('nr-item').value;
+  const qty      = Number(document.getElementById('nr-qty').value);
+  const dept     = document.getElementById('nr-dept').value;
+  const by       = document.getElementById('nr-by').value.trim();
+
+  if (!itemName)       { toast('Item select karo', 'err'); return; }
+  if (!qty || qty <= 0){ toast('Quantity daalo', 'err'); return; }
+  if (!dept)           { toast('Department select karo', 'err'); return; }
+  if (!by)             { toast('Apna naam daalo', 'err'); return; }
+
+  const btn = document.querySelector('#page-newrequest .btn.bp');
+  if (btn) { btn.disabled = true; btn.textContent = 'Bhej raha hai...'; }
+
+  try {
+    const r = await api('addRequest', {
+      itemName, qty,
+      department:  dept,
+      requestedBy: by,
+      remarks:     document.getElementById('nr-remarks').value,
+    });
+    toast('Request bheji ✓ — Ajay ko pata chal jaayega', 'ok');
+    // Reset form
+    document.getElementById('nr-item').value = '';
+    document.getElementById('nr-qty').value = '';
+    document.getElementById('nr-dept').value = '';
+    document.getElementById('nr-by').value = '';
+    document.getElementById('nr-remarks').value = '';
+    document.getElementById('nr-stock-info').style.display = 'none';
+    loadDash();
+  } catch(e) { toast(e.message, 'err'); }
+  finally { if (btn) { btn.disabled = false; btn.textContent = '📤 Request Bhejo'; } }
+}
