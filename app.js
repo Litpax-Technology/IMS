@@ -118,6 +118,14 @@ async function loadDash() {
     document.getElementById('s-ro').textContent    = d.reorderCount || 0;
     document.getElementById('s-in').textContent    = d.todayIn || 0;
     document.getElementById('s-out').textContent   = d.todayOut || 0;
+    document.getElementById('s-wip').textContent   = (d.wipItems||[]).length || 0;
+
+    // Alert badge on dashboard
+    const dab = document.getElementById('d-alert-badge');
+    if (dab) {
+      if (d.reorderCount > 0) { dab.style.display='inline'; dab.textContent=d.reorderCount; }
+      else dab.style.display='none';
+    }
 
     const nb = document.getElementById('nb');
     if (d.reorderCount > 0) { nb.style.display = 'inline'; nb.textContent = d.reorderCount; }
@@ -245,6 +253,9 @@ async function loadDash() {
           </div>`).join('');
       }
     }
+
+    // Render stock chart
+    renderStockChart(d.stocks || []);
 
     setDot('ok', 'Connected');
   } catch(e) {
@@ -1437,4 +1448,79 @@ async function submitRequest() {
     loadDash();
   } catch(e) { toast(e.message, 'err'); }
   finally { if (btn) { btn.disabled = false; btn.textContent = '📤 Request Bhejo'; } }
+}
+
+// ── STOCK LEVEL CHART ──
+let _stockChartInst = null;
+function renderStockChart(stocks) {
+  const canvas = document.getElementById('stockChart');
+  if (!canvas || !stocks.length) return;
+
+  // Top 8 items by current stock
+  const items = stocks.slice(0, 8);
+  const labels = items.map(s => s.name.length > 15 ? s.name.slice(0,15)+'…' : s.name);
+  const current = items.map(s => s.currentStock);
+  const rop     = items.map(s => s.reorderPoint);
+  const max     = items.map(s => s.maxL || s.reorderPoint * 2);
+
+  if (_stockChartInst) _stockChartInst.destroy();
+
+  _stockChartInst = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Current Stock',
+          data: current,
+          backgroundColor: items.map(s =>
+            s.status === 'Critical' ? 'rgba(220,38,38,.8)' :
+            s.status === 'Reorder'  ? 'rgba(234,88,12,.8)' :
+            'rgba(37,88,232,.75)'
+          ),
+          borderRadius: 6,
+          borderSkipped: false,
+        },
+        {
+          label: 'Reorder Point',
+          data: rop,
+          backgroundColor: 'rgba(217,119,6,.25)',
+          borderColor: 'rgba(217,119,6,.8)',
+          borderWidth: 1.5,
+          borderRadius: 4,
+          borderSkipped: false,
+          type: 'bar',
+        },
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: { font: { size: 11, family: 'DM Sans' }, boxWidth: 12, padding: 14 }
+        },
+        tooltip: {
+          callbacks: {
+            afterBody: (items) => {
+              const s = stocks[items[0].dataIndex];
+              return s ? [`Max Level: ${s.maxL||0}`, `Status: ${s.status}`] : [];
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { font: { size: 10, family: 'DM Sans' }, maxRotation: 30 }
+        },
+        y: {
+          grid: { color: 'rgba(0,0,0,.05)' },
+          ticks: { font: { size: 10, family: 'DM Sans' } },
+          beginAtZero: true,
+        }
+      }
+    }
+  });
 }
