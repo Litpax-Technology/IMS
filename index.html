@@ -34,7 +34,9 @@
       <div class="ng">
         <div class="ng-label">Masters</div>
         <div class="ni" onclick="showPage('items')"><span class="ic">📦</span><span>Items</span></div>
+        <div class="ni" onclick="showPage('opening')"><span class="ic">🏁</span><span>Opening Stock</span></div>
         <div class="ni" onclick="showPage('bom')"><span class="ic">🔧</span><span>BOM Manager</span></div>
+        <div class="ni" onclick="showPage('indent')"><span class="ic">📋</span><span>Indent / PO</span><span class="nbadge" id="nb-indent" style="display:none">0</span></div>
       </div>
       <div class="ng">
         <div class="ng-label">Reports</div>
@@ -293,6 +295,52 @@
       </div>
     </div>
 
+    <!-- OPENING STOCK -->
+    <div class="page" id="page-opening">
+      <div class="tb">
+        <div class="pt"><h1>Opening Stock</h1><p>Pehle se existing stock — ek baar enter karo</p></div>
+        <div class="ta">
+          <button class="btn bp" onclick="saveOpeningStock()">💾 Save Opening Stock</button>
+        </div>
+      </div>
+      <div style="background:var(--amber-l);border:1px solid #fde68a;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--amber);">
+        ⚠ Ye ek baar setup hota hai. Pehle se store mein jo material hai woh yahan enter karo. Baad mein Inward/Outward se automatically update hoga.
+      </div>
+      <div class="card">
+        <div class="tw">
+          <table>
+            <thead><tr><th>Item Name</th><th>SKU Code</th><th>Unit</th><th>Opening Qty</th><th>Remarks</th></tr></thead>
+            <tbody id="opening-tb"><tr class="lrow"><td colspan="5"><span class="loader"></span></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- INDENT / PO -->
+    <div class="page" id="page-indent">
+      <div class="tb">
+        <div class="pt"><h1>Indent / PO</h1><p>Purchase orders — supplier ko order diya, expected date, received status</p></div>
+        <div class="ta">
+          <select class="inp" id="indent-status-f" style="width:140px;" onchange="loadIndents()">
+            <option value="">All</option>
+            <option value="Pending">Pending</option>
+            <option value="Received">Received</option>
+            <option value="Cancelled">Cancelled</option>
+          </select>
+          <button class="btn bp" onclick="openIndentModal()">+ New Indent</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="tw">
+          <table>
+            <thead><tr><th>Indent ID</th><th>Date</th><th>Item</th><th>SKU</th><th>Qty</th><th>Supplier</th><th>Expected</th><th>Status</th><th>Remarks</th><th></th></tr></thead>
+            <tbody id="indent-tb"><tr class="lrow"><td colspan="10"><span class="loader"></span></td></tr></tbody>
+          </table>
+        </div>
+        <div id="indent-empty" class="empty" style="display:none"><div class="ei">📋</div><div class="et">No indents yet</div></div>
+      </div>
+    </div>
+
   </div><!-- /main -->
 </div><!-- /shell -->
 
@@ -456,6 +504,48 @@
     <div class="mf">
       <button class="btn bg" onclick="closeM('bom-edit-modal')">Cancel</button>
       <button class="btn bp" id="bom-edit-btn" onclick="saveBomItems()">Save BOM</button>
+    </div>
+  </div>
+</div>
+
+<!-- INDENT MODAL -->
+<div class="ov" id="indent-modal">
+  <div class="modal">
+    <div class="mh"><h2>📋 New Indent / PO</h2><button class="mclose" onclick="closeM('indent-modal')">✕</button></div>
+    <div class="mb">
+      <div class="fg">
+        <div class="fi full"><label class="inp-label">Item *</label><select class="inp" id="ind-item"></select></div>
+        <div class="fi"><label class="inp-label">Qty *</label><input class="inp" id="ind-qty" type="number" min="1" placeholder="0"></div>
+        <div class="fi"><label class="inp-label">Date *</label><input class="inp" id="ind-date" type="date"></div>
+        <div class="fi"><label class="inp-label">Supplier</label><input class="inp" id="ind-supplier" placeholder="Supplier name"></div>
+        <div class="fi"><label class="inp-label">Expected Date</label><input class="inp" id="ind-exp" type="date"></div>
+        <div class="fi full"><label class="inp-label">Remarks</label><input class="inp" id="ind-remarks" placeholder="Optional"></div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bg" onclick="closeM('indent-modal')">Cancel</button>
+      <button class="btn bp" id="ind-btn" onclick="saveIndent()">Save Indent</button>
+    </div>
+  </div>
+</div>
+
+<!-- RECEIVE INDENT MODAL -->
+<div class="ov" id="receive-modal">
+  <div class="modal">
+    <div class="mh"><h2>✅ Receive Material</h2><button class="mclose" onclick="closeM('receive-modal')">✕</button></div>
+    <div class="mb">
+      <div id="recv-info" style="background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:10px 14px;margin-bottom:14px;font-size:13px;"></div>
+      <div class="fg">
+        <div class="fi"><label class="inp-label">Received Qty *</label><input class="inp" id="recv-qty" type="number" min="1" placeholder="0"></div>
+        <div class="fi"><label class="inp-label">Received Date *</label><input class="inp" id="recv-date" type="date"></div>
+        <div class="fi full"><label class="inp-label">Invoice No.</label><input class="inp" id="recv-invoice" placeholder="INV-001"></div>
+        <div class="fi full"><label class="inp-label">Supplier / Party</label><input class="inp" id="recv-supplier" placeholder="Supplier name"></div>
+        <div class="fi full"><label class="inp-label">Recorded By</label><input class="inp" id="recv-by" placeholder="Ajay"></div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bg" onclick="closeM('receive-modal')">Cancel</button>
+      <button class="btn bgn" id="recv-btn" onclick="confirmReceive()">Receive & Add to Stock</button>
     </div>
   </div>
 </div>
