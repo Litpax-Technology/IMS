@@ -110,7 +110,12 @@ function depBadge(d) {
 
 // ── DASHBOARD ──
 async function loadDash() {
-  document.getElementById('dash-date').textContent = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const now = new Date();
+  const hr = now.getHours();
+  const greeting = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
+  const greetEl = document.getElementById('dash-greeting');
+  if (greetEl) greetEl.textContent = `${greeting}, Sahil / Sneha 👋`;
+  document.getElementById('dash-date').textContent = now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   try {
     const d = await api('getDashboard');
     _stocks = d.stocks || [];
