@@ -3,7 +3,7 @@
 // API URL: change here if redeployed
 // ============================================================
 
-const API = 'https://script.google.com/macros/s/AKfycbwQd40WksTsQttiQqY1fQP8eYlG1pMeBjtzGVPxW7F_tbmeI0V043wi7s98X7gJTqjM/exec';
+const API = 'https://script.google.com/macros/s/AKfycbxeYpyGqR2UnyIDPUTkR_2FUSQc8MNlBPQ1bvH6-7xyXG-2pi3oe0FVvHEBYERaObNp/exec';
 
 const DEPTS = ['Volt Wing','Ampere Wing','Volt x Ampere Wing','Mega Grid','Cathodic Wing','Future Cell','Phoenix Wing','Other'];
 
@@ -122,6 +122,13 @@ async function loadDash() {
     const nb = document.getElementById('nb');
     if (d.reorderCount > 0) { nb.style.display = 'inline'; nb.textContent = d.reorderCount; }
     else nb.style.display = 'none';
+
+    // Pending indents badge
+    const nbi = document.getElementById('nb-indent');
+    if (nbi) {
+      if (d.pendingIndents > 0) { nbi.style.display = 'inline'; nbi.textContent = d.pendingIndents; }
+      else nbi.style.display = 'none';
+    }
 
     // Alerts
     const al = document.getElementById('d-alerts');
@@ -1070,3 +1077,208 @@ document.querySelectorAll('.ov').forEach(el => {
     if (e.target === el) el.classList.remove('open');
   });
 });
+
+// ============================================================
+// OPENING STOCK
+// ============================================================
+let _openingData = [];
+
+async function loadOpeningStock() {
+  document.getElementById('opening-tb').innerHTML = `<tr class="lrow"><td colspan="5"><span class="loader"></span></td></tr>`;
+  try {
+    if (!_items.length) {
+      const d = await api('getDashboard');
+      _stocks = d.stocks || []; _items = _stocks;
+    }
+    _openingData = await api('getOpeningStock');
+    const openMap = {};
+    _openingData.forEach(o => { openMap[o.name] = o; });
+
+    const tb = document.getElementById('opening-tb');
+    if (!_items.length) { tb.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--muted);">Pehle Items add karo</td></tr>'; return; }
+
+    tb.innerHTML = _items.map(item => {
+      const existing = openMap[item.name] || {};
+      return `<tr>
+        <td style="font-weight:600;color:var(--navy);">${item.name} <span style="font-size:10px;color:var(--muted);">${item.unit||''}</span></td>
+        <td><input class="inp" id="sku-${item.name.replace(/\s/g,'_')}" value="${existing.sku||''}" placeholder="SKU001" style="width:100px;"></td>
+        <td style="color:var(--muted);font-size:12px;">${item.unit||'—'}</td>
+        <td><input class="inp" id="op-${item.name.replace(/\s/g,'_')}" type="number" min="0" value="${existing.qty||0}" style="width:110px;font-family:var(--mono);font-weight:600;"></td>
+        <td><input class="inp" id="rem-${item.name.replace(/\s/g,'_')}" value="${existing.remarks||''}" placeholder="Optional" style="width:150px;"></td>
+      </tr>`;
+    }).join('');
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+async function saveOpeningStock() {
+  if (!_items.length) { toast('Items load nahi hue', 'err'); return; }
+  const items = _items.map(item => {
+    const key = item.name.replace(/\s/g,'_');
+    return {
+      name: item.name,
+      sku:  (document.getElementById('sku-'+key)||{}).value || '',
+      qty:  Number((document.getElementById('op-'+key)||{}).value) || 0,
+      unit: item.unit || '',
+      remarks: (document.getElementById('rem-'+key)||{}).value || '',
+    };
+  }).filter(i => i.qty > 0 || i.sku);
+
+  if (!items.length) { toast('Kuch bhi enter nahi kiya', 'warn'); return; }
+  try {
+    await api('setOpeningStock', { items });
+    toast(`Opening stock saved ✓ — ${items.length} items`, 'ok');
+    _stocks = []; _items = [];
+    loadDash();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+// ============================================================
+// INDENT / PO
+// ============================================================
+let _indents = [];
+let _currentIndent = null;
+
+async function loadIndents() {
+  document.getElementById('indent-tb').innerHTML = `<tr class="lrow"><td colspan="10"><span class="loader"></span></td></tr>`;
+  const statusF = document.getElementById('indent-status-f').value;
+  try {
+    const body = statusF ? { status: statusF } : {};
+    _indents = await api('getIndents', body);
+    renderIndents();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+function renderIndents() {
+  const tb = document.getElementById('indent-tb');
+  const em = document.getElementById('indent-empty');
+  if (!_indents.length) { tb.innerHTML = ''; em.style.display = 'block'; return; }
+  em.style.display = 'none';
+  tb.innerHTML = _indents.map(ind => {
+    const stColor = ind.status === 'Received' ? 'b-ok' : ind.status === 'Cancelled' ? 'b-ro' : 'b-dep';
+    const isOverdue = ind.status === 'Pending' && ind.expectedDate && ind.expectedDate < today();
+    return `<tr ${isOverdue ? 'style="background:#fff8f0;"' : ''}>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--muted);">${ind.id}</td>
+      <td style="font-size:12px;color:var(--muted);">${fmtD(ind.date)}</td>
+      <td style="font-weight:600;">${ind.itemName} ${isOverdue ? '<span style="color:var(--red);font-size:10px;">⚠ Overdue</span>' : ''}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--accent);">${ind.sku||'—'}</td>
+      <td style="font-family:var(--mono);font-weight:700;">${ind.qty}</td>
+      <td>${ind.supplier||'—'}</td>
+      <td style="font-size:12px;color:${isOverdue?'var(--red)':'var(--muted)'};">${fmtD(ind.expectedDate)||'—'}</td>
+      <td><span class="badge ${stColor}">${ind.status}</span></td>
+      <td style="font-size:12px;color:var(--muted);">${ind.remarks||'—'}</td>
+      <td style="white-space:nowrap;">
+        ${ind.status === 'Pending' ? `
+          <button class="btn bgn bsm" onclick="openReceiveModal('${ind.id}','${ind.itemName.replace(/'/g,"\\'")}',${ind.qty},'${ind.supplier||''}')">✓ Receive</button>
+          <button class="btn brd bsm" onclick="cancelIndent('${ind.id}')">✕</button>
+        ` : '—'}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function openIndentModal() {
+  populateItemSelect('ind-item');
+  document.getElementById('ind-qty').value = '';
+  document.getElementById('ind-date').value = today();
+  document.getElementById('ind-supplier').value = '';
+  document.getElementById('ind-exp').value = '';
+  document.getElementById('ind-remarks').value = '';
+  document.getElementById('indent-modal').classList.add('open');
+}
+
+async function saveIndent() {
+  const itemName = document.getElementById('ind-item').value;
+  const qty      = Number(document.getElementById('ind-qty').value);
+  const date     = document.getElementById('ind-date').value;
+  if (!itemName) { toast('Item select karo', 'err'); return; }
+  if (!qty || qty <= 0) { toast('Valid quantity daalo', 'err'); return; }
+  const btn = document.getElementById('ind-btn');
+  btn.disabled = true; btn.textContent = 'Saving...';
+  try {
+    const r = await api('addIndent', {
+      itemName, qty, date,
+      supplier:     document.getElementById('ind-supplier').value,
+      expectedDate: document.getElementById('ind-exp').value,
+      remarks:      document.getElementById('ind-remarks').value,
+    });
+    toast('Indent saved ✓ — ' + r.id, 'ok');
+    closeM('indent-modal');
+    _stocks = [];
+    loadIndents();
+    loadDash();
+  } catch(e) { toast(e.message, 'err'); }
+  finally { btn.disabled = false; btn.textContent = 'Save Indent'; }
+}
+
+function openReceiveModal(id, itemName, qty, supplier) {
+  _currentIndent = { id, itemName, qty };
+  document.getElementById('recv-info').innerHTML = `
+    <div style="font-weight:600;font-size:14px;margin-bottom:6px;">${itemName}</div>
+    <div style="color:var(--muted);font-size:12px;">Ordered Qty: <b style="font-family:var(--mono);color:var(--navy);">${qty}</b></div>`;
+  document.getElementById('recv-qty').value = qty;
+  document.getElementById('recv-date').value = today();
+  document.getElementById('recv-invoice').value = '';
+  document.getElementById('recv-supplier').value = supplier || '';
+  document.getElementById('recv-by').value = 'Ajay';
+  document.getElementById('receive-modal').classList.add('open');
+}
+
+async function confirmReceive() {
+  if (!_currentIndent) return;
+  const qty     = Number(document.getElementById('recv-qty').value);
+  const date    = document.getElementById('recv-date').value;
+  const invoice = document.getElementById('recv-invoice').value;
+  const supplier= document.getElementById('recv-supplier').value;
+  const by      = document.getElementById('recv-by').value || 'Ajay';
+  if (!qty || qty <= 0) { toast('Valid quantity daalo', 'err'); return; }
+  const btn = document.getElementById('recv-btn');
+  btn.disabled = true; btn.textContent = 'Processing...';
+  try {
+    // Add inward entry
+    await api('addInward', {
+      itemName:  _currentIndent.itemName,
+      qty, date, supplier, invoice, by,
+      indentId:  _currentIndent.id,
+      remarks:   'Indent: ' + _currentIndent.id,
+    });
+    toast('Material received & stock updated ✓', 'ok');
+    closeM('receive-modal');
+    _stocks = [];
+    loadIndents();
+    loadInward();
+    loadDash();
+  } catch(e) { toast(e.message, 'err'); }
+  finally { btn.disabled = false; btn.textContent = 'Receive & Add to Stock'; }
+}
+
+async function cancelIndent(id) {
+  if (!confirm('Ye indent cancel karna chahte ho?')) return;
+  try {
+    await api('cancelIndent', { id });
+    toast('Indent cancelled', 'warn');
+    _stocks = [];
+    loadIndents();
+    loadDash();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+// ── UPDATE showPage for new pages ──
+const _origShowPage = showPage;
+// Override showPage to handle new pages
+const showPageOrig = showPage;
+window._showPageExtended = true;
+
+// Patch nav handler
+document.querySelectorAll('.ni').forEach(n => {
+  const oc = n.getAttribute('onclick');
+  if (oc && oc.includes("'opening'")) n.addEventListener('click', () => { loadOpeningStock(); });
+  if (oc && oc.includes("'indent'"))  n.addEventListener('click', () => { loadIndents(); });
+});
+
+// Also patch showPage to load these
+const _sp = showPage;
+showPage = function(id) {
+  _sp(id);
+  if (id === 'opening') loadOpeningStock();
+  if (id === 'indent')  loadIndents();
+};
