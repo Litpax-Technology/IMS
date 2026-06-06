@@ -32,10 +32,7 @@
         <div class="ni" onclick="showPage('dispatch')"><span class="ic">🚚</span><span>Dispatch</span></div>
         <div class="ni" onclick="showPage('requests')"><span class="ic">🔔</span><span>Material Requests</span><span class="nbadge" id="nb-req" style="display:none">0</span></div>
       </div>
-      <div class="ng">
-        <div class="ng-label">Production</div>
-        <div class="ni" onclick="showPage('newrequest')"><span class="ic">📝</span><span>Request Material</span></div>
-      </div>
+
       <div class="ng">
         <div class="ng-label">Masters</div>
         <div class="ni" onclick="showPage('items')"><span class="ic">📦</span><span>Items</span></div>
@@ -371,57 +368,7 @@
       </div>
     </div>
 
-    <!-- REQUEST MATERIAL (Production Worker view) -->
-    <div class="page" id="page-newrequest">
-      <div class="tb">
-        <div class="pt"><h1>Request Material</h1><p>Store se material mangwao — Ajay ko notification jaayegi</p></div>
-      </div>
-      <div class="card" style="max-width:560px;">
-        <div class="ch"><h2>📝 New Material Request</h2></div>
-        <div class="mb" style="padding:20px;">
-          <div class="fg">
-            <div class="fi full">
-              <label class="inp-label">Item *</label>
-              <select class="inp" id="nr-item"></select>
-            </div>
-            <div class="fi full" id="nr-stock-info" style="display:none;">
-              <div class="stock-info">
-                Store mein available: <strong id="nr-avail">—</strong>
-              </div>
-            </div>
-            <div class="fi">
-              <label class="inp-label">Qty Required *</label>
-              <input class="inp" id="nr-qty" type="number" min="1" placeholder="0">
-            </div>
-            <div class="fi">
-              <label class="inp-label">Department *</label>
-              <select class="inp" id="nr-dept">
-                <option value="">Select</option>
-                <option>Volt Wing</option>
-                <option>Ampere Wing</option>
-                <option>Volt x Ampere Wing</option>
-                <option>Mega Grid</option>
-                <option>Cathodic Wing</option>
-                <option>Future Cell</option>
-                <option>Phoenix Wing</option>
-                <option>Other</option>
-              </select>
-            </div>
-            <div class="fi full">
-              <label class="inp-label">Requested By *</label>
-              <input class="inp" id="nr-by" placeholder="Apna naam daalo">
-            </div>
-            <div class="fi full">
-              <label class="inp-label">Remarks</label>
-              <input class="inp" id="nr-remarks" placeholder="Koi khaas zaroorat ho toh likhein">
-            </div>
-          </div>
-          <div style="margin-top:18px;">
-            <button class="btn bp" style="width:100%;justify-content:center;padding:10px;" onclick="submitRequest()">📤 Request Bhejo</button>
-          </div>
-        </div>
-      </div>
-    </div>
+
 
   </div><!-- /main -->
 </div><!-- /shell -->
