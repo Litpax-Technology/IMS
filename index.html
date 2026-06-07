@@ -347,14 +347,17 @@
   </div>
 
   <!-- MAIN -->
-  <!-- TOP RIGHT LOGOUT -->
-  <div id="logout-btn" style="display:none;position:fixed;top:14px;right:20px;z-index:200;">
-    <button onclick="logout()" style="display:flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #dde3ef;border-radius:20px;padding:6px 14px 6px 10px;font-family:var(--sans);font-size:12px;font-weight:600;color:#374151;cursor:pointer;box-shadow:0 2px 8px rgba(15,29,53,.08);transition:all .15s;" onmouseover="this.style.borderColor='#dc2626';this.style.color='#dc2626'" onmouseout="this.style.borderColor='#dde3ef';this.style.color='#374151'">
-      <span id="logout-role-label" style="font-size:11px;color:#9ca3af;margin-right:2px;"></span>
-      <span>🚪</span><span>Logout</span>
-    </button>
-  </div>
   <div class="main">
+
+    <!-- GLOBAL TOPBAR -->
+    <div id="global-topbar" style="display:none;position:sticky;top:0;z-index:50;background:var(--bg);padding-bottom:12px;margin-bottom:-12px;">
+      <div style="display:flex;justify-content:flex-end;">
+        <button id="logout-btn" onclick="logout()" style="display:flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #dde3ef;border-radius:20px;padding:6px 14px 6px 10px;font-family:var(--sans);font-size:12px;font-weight:600;color:#374151;cursor:pointer;box-shadow:0 2px 8px rgba(15,29,53,.08);transition:all .15s;" onmouseover="this.style.borderColor='#dc2626';this.style.color='#dc2626'" onmouseout="this.style.borderColor='#dde3ef';this.style.color='#374151'">
+          <span id="logout-role-label" style="font-size:11px;color:#9ca3af;margin-right:2px;"></span>
+          <span>🚪</span><span>Logout</span>
+        </button>
+      </div>
+    </div>
 
     <!-- DASHBOARD -->
     <div class="page active" id="page-dashboard">
