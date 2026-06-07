@@ -3,7 +3,7 @@
 // API URL: change here if redeployed
 // ============================================================
 
-const API = 'https://script.google.com/macros/s/AKfycbwgE4ZMYVa0ceNk2PJMJrSC0askLM06-qaOuEIZZgjhXYGW2z6lqqOJtNI1H3QrunMR/exec';
+const API = 'https://script.google.com/macros/s/AKfycbyB-hy9Unu4ao_YC-RtIPe3BWeq6XEOLoIqQD5AJ_DzON4_mcAbqjojbP4S7BSUPcGe/exec';
 
 const DEPTS = ['Volt Wing','Ampere Wing','Volt x Ampere Wing','Mega Grid','Cathodic Wing','Future Cell','Phoenix Wing','Other'];
 
@@ -324,7 +324,7 @@ async function loadDash() {
     const wipWrap = document.getElementById('d-wip');
     if (wipWrap) {
       if (!d.wipItems || !d.wipItems.length) {
-        wipWrap.innerHTML = `<div class="empty"><div class="ei">🏭</div><div class="et">No WIP — Production mein kuch nahi</div></div>`;
+        wipWrap.innerHTML = `<div class="empty"><div class="ei">🏭</div><div class="et">No WIP — In Production kuch nahi</div></div>`;
       } else {
         wipWrap.innerHTML = d.wipItems.map(s => `
           <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);">
@@ -425,8 +425,8 @@ async function saveInward() {
   const itemName = document.getElementById('in-item').value;
   const qty      = Number(document.getElementById('in-qty').value);
   const date     = document.getElementById('in-date').value;
-  if (!itemName) { toast('Item select karo', 'err'); return; }
-  if (!qty || qty <= 0) { toast('Valid quantity daalo', 'err'); return; }
+  if (!itemName) { toast('Please select an item', 'err'); return; }
+  if (!qty || qty <= 0) { toast('Enter a valid quantity', 'err'); return; }
   const btn = document.getElementById('in-btn');
   btn.disabled = true; btn.textContent = 'Saving...';
   try {
@@ -517,9 +517,9 @@ async function saveOutward() {
   const qty        = Number(document.getElementById('out-qty').value);
   const date       = document.getElementById('out-date').value;
   const department = document.getElementById('out-dept').value;
-  if (!itemName)   { toast('Item select karo', 'err'); return; }
-  if (!qty || qty <= 0) { toast('Valid quantity daalo', 'err'); return; }
-  if (!department) { toast('Department select karo', 'err'); return; }
+  if (!itemName)   { toast('Please select an item', 'err'); return; }
+  if (!qty || qty <= 0) { toast('Enter a valid quantity', 'err'); return; }
+  if (!department) { toast('Please select a department', 'err'); return; }
   const btn = document.getElementById('out-btn');
   btn.disabled = true; btn.textContent = 'Saving...';
   try {
@@ -614,8 +614,8 @@ async function saveDispatch() {
   const bomModel    = document.getElementById('dis-bom').value;
   const qtyProduced = Number(document.getElementById('dis-qty').value);
   const date        = document.getElementById('dis-date').value;
-  if (!bomModel) { toast('BOM Model select karo', 'err'); return; }
-  if (!qtyProduced || qtyProduced <= 0) { toast('Valid quantity daalo', 'err'); return; }
+  if (!bomModel) { toast('Select a BOM model', 'err'); return; }
+  if (!qtyProduced || qtyProduced <= 0) { toast('Enter a valid quantity', 'err'); return; }
   const btn = document.getElementById('dis-btn');
   btn.disabled = true; btn.textContent = 'Processing...';
   try {
@@ -856,7 +856,7 @@ function updROP() {
 
 async function saveItem() {
   const name = (document.getElementById('f-name').value || '').trim();
-  if (!name) { toast('Pehle Category → Brand → Model select karo', 'err'); return; }
+  if (!name) { toast('Please select Category → Brand → Model first', 'err'); return; }
   const btn = document.getElementById('im-btn');
   btn.disabled = true; btn.textContent = 'Saving...';
   const adc = Number(document.getElementById('f-adc').value) || 0;
@@ -932,7 +932,7 @@ function openBomAddModal() {
 
 async function saveBomModel() {
   const bomName = document.getElementById('bm-name').value.trim();
-  if (!bomName) { toast('BOM Name required', 'err'); return; }
+  if (!bomName) { toast('BOM name is required', 'err'); return; }
   const btn = document.getElementById('bm-btn');
   btn.disabled = true; btn.textContent = 'Saving...';
   try {
@@ -1015,7 +1015,7 @@ function removeBomRow(i) {
 
 async function saveBomItems() {
   const valid = _bomRows.filter(r => r.component && r.qty > 0);
-  if (!valid.length) { toast('Kam se kam ek component daalo', 'err'); return; }
+  if (!valid.length) { toast('Add at least one component', 'err'); return; }
   const btn = document.getElementById('bom-edit-btn');
   btn.disabled = true; btn.textContent = 'Saving...';
   try {
@@ -1332,8 +1332,8 @@ let _historyData = [];
 async function genHistory() {
   const from = document.getElementById('cl-from').value;
   const to   = document.getElementById('cl-to').value;
-  if (!from || !to) { toast('Date range select karo', 'err'); return; }
-  if (from > to)    { toast('From date To se pehle honi chahiye', 'err'); return; }
+  if (!from || !to) { toast('Please select a date range', 'err'); return; }
+  if (from > to)    { toast('From date must be before To date', 'err'); return; }
 
   const wrap = document.getElementById('cl-history-content');
   wrap.innerHTML = `<div class="empty"><div class="ei">⏳</div><div class="et">Loading history...</div></div>`;
@@ -1415,7 +1415,7 @@ function toggleDay(id) {
 }
 
 function exportHistoryCSV() {
-  if (!_historyData.length) { toast('Pehle history load karo', 'warn'); return; }
+  if (!_historyData.length) { toast('Please load history first', 'warn'); return; }
   let csv = 'Date,Item Name,Category,Unit,Opening,Today IN,Today OUT,Closing,ROP,Status\n';
   _historyData.forEach(day => {
     day.rows.forEach(r => {
@@ -1497,7 +1497,7 @@ async function loadOpeningStock() {
     _openingData.forEach(o => { openMap[o.name] = o; });
 
     const tb = document.getElementById('opening-tb');
-    if (!_items.length) { tb.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--muted);">Pehle Items add karo</td></tr>'; return; }
+    if (!_items.length) { tb.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--muted);">Add items first</td></tr>'; return; }
 
     tb.innerHTML = _items.map(item => {
       const existing = openMap[item.name] || {};
@@ -1513,7 +1513,7 @@ async function loadOpeningStock() {
 }
 
 async function saveOpeningStock() {
-  if (!_items.length) { toast('Items load nahi hue', 'err'); return; }
+  if (!_items.length) { toast('Items not loaded', 'err'); return; }
   const items = _items.map(item => {
     const key = item.name.replace(/\s/g,'_');
     return {
@@ -1525,7 +1525,7 @@ async function saveOpeningStock() {
     };
   }).filter(i => i.qty > 0 || i.sku);
 
-  if (!items.length) { toast('Kuch bhi enter nahi kiya', 'warn'); return; }
+  if (!items.length) { toast('No data entered', 'warn'); return; }
   try {
     await api('setOpeningStock', { items });
     toast(`Opening stock saved ✓ — ${items.length} items`, 'ok');
@@ -1592,8 +1592,8 @@ async function saveIndent() {
   const itemName = document.getElementById('ind-item').value;
   const qty      = Number(document.getElementById('ind-qty').value);
   const date     = document.getElementById('ind-date').value;
-  if (!itemName) { toast('Item select karo', 'err'); return; }
-  if (!qty || qty <= 0) { toast('Valid quantity daalo', 'err'); return; }
+  if (!itemName) { toast('Please select an item', 'err'); return; }
+  if (!qty || qty <= 0) { toast('Enter a valid quantity', 'err'); return; }
   const btn = document.getElementById('ind-btn');
   btn.disabled = true; btn.textContent = 'Saving...';
   try {
@@ -1632,7 +1632,7 @@ async function confirmReceive() {
   const invoice = document.getElementById('recv-invoice').value;
   const supplier= document.getElementById('recv-supplier').value;
   const by      = document.getElementById('recv-by').value || 'Ajay';
-  if (!qty || qty <= 0) { toast('Valid quantity daalo', 'err'); return; }
+  if (!qty || qty <= 0) { toast('Enter a valid quantity', 'err'); return; }
   const btn = document.getElementById('recv-btn');
   btn.disabled = true; btn.textContent = 'Processing...';
   try {
@@ -1654,7 +1654,7 @@ async function confirmReceive() {
 }
 
 async function cancelIndent(id) {
-  if (!confirm('Ye indent cancel karna chahte ho?')) return;
+  if (!confirm('Cancel this indent?')) return;
   try {
     await api('cancelIndent', { id });
     toast('Indent cancelled', 'warn');
@@ -1754,7 +1754,7 @@ function fulfillRequest(reqId, itemName, qty, department) {
 }
 
 async function cancelRequest(id) {
-  if (!confirm('Request cancel karna chahte ho?')) return;
+  if (!confirm('Cancel this request?')) return;
   try {
     await api('cancelRequest', { id });
     toast('Request cancelled', 'warn');
@@ -1794,13 +1794,13 @@ async function submitRequest() {
   const dept     = document.getElementById('nr-dept').value;
   const by       = document.getElementById('nr-by').value.trim();
 
-  if (!itemName)       { toast('Item select karo', 'err'); return; }
+  if (!itemName)       { toast('Please select an item', 'err'); return; }
   if (!qty || qty <= 0){ toast('Quantity daalo', 'err'); return; }
-  if (!dept)           { toast('Department select karo', 'err'); return; }
-  if (!by)             { toast('Apna naam daalo', 'err'); return; }
+  if (!dept)           { toast('Please select a department', 'err'); return; }
+  if (!by)             { toast('Please enter your name', 'err'); return; }
 
   const btn = document.querySelector('#page-newrequest .btn.bp');
-  if (btn) { btn.disabled = true; btn.textContent = 'Bhej raha hai...'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
 
   try {
     const r = await api('addRequest', {
@@ -1809,7 +1809,7 @@ async function submitRequest() {
       requestedBy: by,
       remarks:     document.getElementById('nr-remarks').value,
     });
-    toast('Request bheji ✓ — Ajay ko pata chal jaayega', 'ok');
+    toast('Request submitted ✓ — Store manager will be notified', 'ok');
     // Reset form
     document.getElementById('nr-item').value = '';
     document.getElementById('nr-qty').value = '';
@@ -1819,7 +1819,7 @@ async function submitRequest() {
     document.getElementById('nr-stock-info').style.display = 'none';
     loadDash();
   } catch(e) { toast(e.message, 'err'); }
-  finally { if (btn) { btn.disabled = false; btn.textContent = '📤 Request Bhejo'; } }
+  finally { if (btn) { btn.disabled = false; btn.textContent = '📤 Submit Request'; } }
 }
 
 // ── AJAY DASHBOARD ──
@@ -1963,7 +1963,7 @@ async function loadSandeepDash() {
     if (todayOutW) {
       const outToday = (d.recentTxns||[]).filter(t => t.txnType==='OUT' && t.date === new Date().toISOString().slice(0,10));
       if (!outToday.length) {
-        todayOutW.innerHTML = `<div class="empty" style="padding:28px;"><div class="ei">📤</div><div class="et">Aaj kuch nahi mila abhi tak</div></div>`;
+        todayOutW.innerHTML = `<div class="empty" style="padding:28px;"><div class="ei">📤</div><div class="et">Nothing received today yet</div></div>`;
       } else {
         todayOutW.innerHTML = outToday.map(t => `
           <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);">
@@ -1980,7 +1980,7 @@ async function loadSandeepDash() {
     const wipW = document.getElementById('sd-wip-list');
     if (wipW) {
       if (!d.wipItems || !d.wipItems.length) {
-        wipW.innerHTML = `<div class="empty" style="padding:28px;"><div class="ei">🏭</div><div class="et">Production mein kuch nahi</div></div>`;
+        wipW.innerHTML = `<div class="empty" style="padding:28px;"><div class="ei">🏭</div><div class="et">In Production kuch nahi</div></div>`;
       } else {
         wipW.innerHTML = d.wipItems.map(s => `
           <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);">
@@ -1990,7 +1990,7 @@ async function loadSandeepDash() {
             </div>
             <div style="text-align:right;">
               <div style="font-family:var(--mono);font-size:20px;font-weight:700;color:var(--purple);">${s.wip}</div>
-              <div style="font-size:10px;color:var(--muted);">Production mein</div>
+              <div style="font-size:10px;color:var(--muted);">In Production</div>
             </div>
           </div>`).join('');
       }
@@ -2000,7 +2000,7 @@ async function loadSandeepDash() {
     const fgW = document.getElementById('sd-fg-list');
     if (fgW) {
       if (!d.fg || !d.fg.length) {
-        fgW.innerHTML = `<div class="empty" style="padding:28px;"><div class="ei">📦</div><div class="et">Koi FG nahi</div></div>`;
+        fgW.innerHTML = `<div class="empty" style="padding:28px;"><div class="ei">📦</div><div class="et">No finished goods</div></div>`;
       } else {
         fgW.innerHTML = d.fg.map(f => `
           <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);">
@@ -2010,7 +2010,7 @@ async function loadSandeepDash() {
             </div>
             <div style="text-align:right;">
               <div style="font-family:var(--mono);font-size:20px;font-weight:700;color:var(--green);">${f.totalProduced}</div>
-              <div style="font-size:10px;color:var(--muted);">Units total</div>
+              <div style="font-size:10px;color:var(--muted);">Units Total</div>
             </div>
           </div>`).join('');
       }
@@ -2022,7 +2022,7 @@ async function loadSandeepDash() {
       try {
         const dis = await api('getDispatch', {});
         if (!dis.length) {
-          disW.innerHTML = `<div class="empty" style="padding:28px;"><div class="ei">🚚</div><div class="et">Koi dispatch nahi</div></div>`;
+          disW.innerHTML = `<div class="empty" style="padding:28px;"><div class="ei">🚚</div><div class="et">No dispatches yet</div></div>`;
         } else {
           disW.innerHTML = dis.slice(0,8).map(r => `
             <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);">
