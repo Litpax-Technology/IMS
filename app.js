@@ -72,11 +72,11 @@ function applyRoleUI() {
     greetEl.textContent = `${g}, ${role.name} 👋`;
   }
 
-  // Show global topbar with logout
-  const tb = document.getElementById('global-topbar');
-  if (tb) tb.style.display = 'block';
+  // Show logout button
+  const lb = document.getElementById('logout-btn');
+  if (lb) lb.style.display = 'block';
   const rl = document.getElementById('logout-role-label');
-  if (rl) rl.textContent = role.name + ' ·';
+  if (rl) rl.textContent = role.name;
 }
 
 function logout() {
@@ -85,8 +85,8 @@ function logout() {
   _currentRole = null; _selectedRole = null;
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('app-shell').style.display = 'none';
-  const tb = document.getElementById('global-topbar');
-  if (tb) tb.style.display = 'none';
+  const lb2 = document.getElementById('logout-btn');
+  if (lb2) lb2.style.display = 'none';
   document.getElementById('login-pin').value = '';
   document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
 }
