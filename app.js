@@ -9,9 +9,9 @@ const DEPTS = ['Volt Wing','Ampere Wing','Volt x Ampere Wing','Mega Grid','Catho
 
 // ── ROLES & PINS ──
 const ROLES = {
-  admin:   { pin: '1234', name: 'Admin',   pages: ['dashboard','inward','outward','dispatch','requests','items','opening','bom','indent','stock','reorder','closing'] },
-  ajay:    { pin: '0001', name: 'Ajay',    pages: ['dashboard','inward','outward','requests','stock','reorder'] },
-  sandeep: { pin: '0002', name: 'Sandeep', pages: ['dashboard','dispatch','stock'] },
+  admin:   { pin: '1234', name: 'Admin',      homePage: 'dashboard',     pages: ['dashboard','inward','outward','dispatch','requests','items','opening','bom','indent','stock','reorder','closing'] },
+  ajay:    { pin: '0001', name: 'Ajay',       homePage: 'ajay-dash',     pages: ['ajay-dash','inward','outward','requests','stock','reorder'] },
+  sandeep: { pin: '0002', name: 'Sandeep',    homePage: 'sandeep-dash',  pages: ['sandeep-dash','dispatch','stock'] },
 };
 
 let _currentRole = null;
@@ -41,7 +41,8 @@ function showApp() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-shell').style.display = 'flex';
   applyRoleUI();
-  loadDash();
+  const role = ROLES[_currentRole];
+  showPage(role ? role.homePage : 'dashboard');
 }
 
 function applyRoleUI() {
@@ -171,15 +172,17 @@ function showPage(id) {
   document.querySelectorAll('.ni').forEach(n => {
     if (n.getAttribute('onclick') === `showPage('${id}')`) n.classList.add('active');
   });
-  if (id === 'dashboard') loadDash();
-  if (id === 'inward')    loadInward();
-  if (id === 'outward')   loadOutward();
-  if (id === 'dispatch')  loadDispatch();
-  if (id === 'items')     loadItems();
-  if (id === 'bom')       loadBom();
-  if (id === 'stock')     loadStock();
-  if (id === 'reorder')   loadReorder();
-  if (id === 'closing')   { document.getElementById('cl-date').value = today(); genClosing(); }
+  if (id === 'dashboard')    loadDash();
+  if (id === 'ajay-dash')    loadAjayDash();
+  if (id === 'sandeep-dash') loadSandeepDash();
+  if (id === 'inward')       loadInward();
+  if (id === 'outward')      loadOutward();
+  if (id === 'dispatch')     loadDispatch();
+  if (id === 'items')        loadItems();
+  if (id === 'bom')          loadBom();
+  if (id === 'stock')        loadStock();
+  if (id === 'reorder')      loadReorder();
+  if (id === 'closing')      { document.getElementById('cl-date').value = today(); genClosing(); }
 }
 
 // ── BADGES ──
@@ -207,7 +210,7 @@ async function loadDash() {
     greetEl.textContent = `${greeting}, ${rname} 👋`;
   }
   document.getElementById('dash-date').textContent = now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-  // Role based dashboard
+  // Admin only reaches here
   if (_currentRole === 'ajay') { await loadAjayDash(); return; }
   if (_currentRole === 'sandeep') { await loadSandeepDash(); return; }
   try {
@@ -1674,10 +1677,12 @@ document.querySelectorAll('.ni').forEach(n => {
 const _sp = showPage;
 showPage = function(id) {
   _sp(id);
-  if (id === 'opening')    loadOpeningStock();
-  if (id === 'indent')     loadIndents();
-  if (id === 'requests')   loadRequests();
-  if (id === 'newrequest') loadNewRequestPage();
+  if (id === 'opening')      loadOpeningStock();
+  if (id === 'indent')       loadIndents();
+  if (id === 'requests')     loadRequests();
+  if (id === 'newrequest')   loadNewRequestPage();
+  if (id === 'ajay-dash')    loadAjayDash();
+  if (id === 'sandeep-dash') loadSandeepDash();
 };
 
 
@@ -1814,44 +1819,63 @@ async function submitRequest() {
 }
 
 // ── AJAY DASHBOARD ──
+async function ajayFilterStock() {
+  const s = document.getElementById('aj-search').value.toLowerCase();
+  const rows = document.querySelectorAll('#aj-stock-table tbody tr');
+  rows.forEach(r => {
+    r.style.display = r.textContent.toLowerCase().includes(s) ? '' : 'none';
+  });
+}
+
 async function loadAjayDash() {
+  // Update greeting
+  const now = new Date();
+  const hr = now.getHours();
+  const g = hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
+  const grEl = document.getElementById('ajay-greeting');
+  if (grEl) grEl.textContent = `${g}, Ajay 👋`;
+  const dtEl = document.getElementById('ajay-date');
+  if (dtEl) dtEl.textContent = now.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   try {
     const d = await api('getDashboard');
     _stocks = d.stocks || [];
 
     // KPI
-    document.getElementById('s-total').textContent = d.totalItems || 0;
-    document.getElementById('s-ro').textContent    = d.reorderCount || 0;
-    document.getElementById('s-in').textContent    = d.todayIn || 0;
-    document.getElementById('s-out').textContent   = d.todayOut || 0;
-    document.getElementById('s-wip').textContent   = (d.wipItems||[]).length || 0;
+    document.getElementById('aj-total').textContent = d.totalItems || 0;
+    document.getElementById('aj-in').textContent    = d.todayIn || 0;
+    document.getElementById('aj-out').textContent   = d.todayOut || 0;
+    document.getElementById('aj-ro').textContent    = d.reorderCount || 0;
 
     // Badges
+    const ajab = document.getElementById('aj-alert-badge');
+    if (ajab) { ajab.style.display = d.reorderCount>0?'inline':'none'; ajab.textContent = d.reorderCount; }
+    const ajrb = document.getElementById('aj-req-badge');
+    if (ajrb) { ajrb.style.display = d.pendingRequests>0?'inline':'none'; ajrb.textContent = d.pendingRequests; }
+
+    // Also update sidebar badges
     const nb = document.getElementById('nb');
     if (nb) { nb.style.display = d.reorderCount>0?'inline':'none'; nb.textContent = d.reorderCount; }
     const nbr = document.getElementById('nb-req');
     if (nbr) { nbr.style.display = d.pendingRequests>0?'inline':'none'; nbr.textContent = d.pendingRequests; }
-    const dab = document.getElementById('d-alert-badge');
-    if (dab) { dab.style.display = d.reorderCount>0?'inline':'none'; dab.textContent = d.reorderCount; }
 
-    // Ajay sees: Store stock, Reorder alerts, Recent txns, Pending requests
-    const storeWrap = document.getElementById('d-store');
-    if (storeWrap) {
-      storeWrap.innerHTML = `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;">
+    // Live Stock Table
+    const st = document.getElementById('aj-stock-table');
+    if (st && d.stocks) {
+      st.innerHTML = `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;">
         <thead><tr>
-          <th style="text-align:left;padding:8px 14px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;border-bottom:1.5px solid var(--border);background:var(--s2);">Item</th>
-          <th style="text-align:left;padding:8px 14px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;border-bottom:1.5px solid var(--border);background:var(--s2);">Unit</th>
-          <th style="text-align:left;padding:8px 14px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;border-bottom:1.5px solid var(--border);background:var(--s2);">Store Stock</th>
-          <th style="text-align:left;padding:8px 14px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;border-bottom:1.5px solid var(--border);background:var(--s2);">ROP</th>
-          <th style="text-align:left;padding:8px 14px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;border-bottom:1.5px solid var(--border);background:var(--s2);">MIT</th>
-          <th style="text-align:left;padding:8px 14px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;border-bottom:1.5px solid var(--border);background:var(--s2);">Status</th>
+          <th style="text-align:left;padding:8px 14px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:1.5px solid var(--border);background:var(--s2);">Item</th>
+          <th style="text-align:left;padding:8px 14px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:1.5px solid var(--border);background:var(--s2);">Unit</th>
+          <th style="text-align:left;padding:8px 14px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:1.5px solid var(--border);background:var(--s2);">Store Stock</th>
+          <th style="text-align:left;padding:8px 14px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:1.5px solid var(--border);background:var(--s2);">ROP</th>
+          <th style="text-align:left;padding:8px 14px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:1.5px solid var(--border);background:var(--s2);">MIT</th>
+          <th style="text-align:left;padding:8px 14px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:1.5px solid var(--border);background:var(--s2);">Status</th>
         </tr></thead>
         <tbody>
           ${d.stocks.map(s => {
             const pct = s.maxL > 0 ? Math.min(100, Math.round(s.currentStock/s.maxL*100)) : 0;
             const bc = s.status==='OK'?'var(--green)':s.status==='Reorder'?'var(--orange)':'var(--red)';
             return `<tr>
-              <td style="padding:10px 14px;border-bottom:1px solid var(--border);font-weight:600;color:var(--navy);">${s.name}</td>
+              <td style="padding:10px 14px;border-bottom:1px solid var(--border);font-weight:600;color:var(--navy);font-size:13px;">${s.name}</td>
               <td style="padding:10px 14px;border-bottom:1px solid var(--border);color:var(--muted);font-size:12px;">${s.unit||'—'}</td>
               <td style="padding:10px 14px;border-bottom:1px solid var(--border);">
                 <span style="font-family:var(--mono);font-weight:700;font-size:15px;">${s.currentStock}</span>
@@ -1866,97 +1890,102 @@ async function loadAjayDash() {
       </table></div>`;
     }
 
-    // Alerts
-    const al = document.getElementById('d-alerts');
+    // Reorder alerts
+    const al = document.getElementById('aj-alerts');
     if (al) {
       if (!d.alerts || !d.alerts.length) {
-        al.innerHTML = `<div class="empty" style="padding:28px 20px;"><div class="ei">✅</div><div class="et">Sab OK hai!</div></div>`;
+        al.innerHTML = `<div class="empty" style="padding:28px;"><div class="ei">✅</div><div class="et">Sab OK hai!</div></div>`;
       } else {
         al.innerHTML = d.alerts.map(s => `
           <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);">
             <div><div style="font-weight:600;font-size:13px;">${s.name}</div>
-            <div style="font-size:11px;color:var(--muted);">ROP: <b>${s.reorderPoint}</b> | Stock: <b>${s.currentStock}</b></div></div>
+            <div style="font-size:11px;color:var(--muted);">ROP: <b>${s.reorderPoint}</b> | Stock: <b>${s.currentStock}</b> | MIT: <b>${s.mit||0}</b></div></div>
             ${stBadge(s.status)}
           </div>`).join('');
       }
     }
 
-    // Recent txns
-    const rt = document.getElementById('d-recent');
-    if (rt) {
-      if (!d.recentTxns || !d.recentTxns.length) {
-        rt.innerHTML = `<div class="empty" style="padding:28px 20px;"><div class="ei">📭</div><div class="et">Koi transaction nahi</div></div>`;
-      } else {
-        rt.innerHTML = d.recentTxns.map(t => `
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 16px;border-bottom:1px solid var(--border);">
-            <div><div style="font-weight:500;font-size:13px;">${t.itemName||'—'}</div>
-            <div style="font-size:11px;color:var(--muted);">${fmtDT(t.ts)}</div></div>
-            <span class="badge ${t.txnType==='IN'?'b-in':'b-out'}">${t.txnType==='IN'?'↑ IN':'↓ OUT'} ${t.qty||''}</span>
-          </div>`).join('');
-      }
+    // Pending requests
+    const reqW = document.getElementById('aj-requests');
+    if (reqW) {
+      try {
+        const reqs = await api('getRequests', { status: 'Pending' });
+        if (!reqs.length) {
+          reqW.innerHTML = `<div class="empty" style="padding:28px;"><div class="ei">✅</div><div class="et">Koi pending request nahi</div></div>`;
+        } else {
+          reqW.innerHTML = reqs.map(r => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);background:#f0f7ff;">
+              <div>
+                <div style="font-weight:600;font-size:13px;">${r.itemName}</div>
+                <div style="font-size:11px;color:var(--muted);">${r.department||'—'} · ${r.requestedBy||'—'} · ${r.time||''}</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-family:var(--mono);font-weight:700;font-size:15px;color:var(--accent);">${r.qty}</span>
+                <button class="btn bgn bsm" onclick="fulfillRequest('${r.id}','${r.itemName.replace(/'/g,"\'")}',${r.qty},'${r.department||''}')">Issue</button>
+              </div>
+            </div>`).join('');
+        }
+      } catch(e) {}
     }
 
-    // Hide WIP/FG for Ajay
-    const wipW = document.getElementById('d-wip');
-    const fgW  = document.getElementById('d-fg');
-    if (wipW) wipW.innerHTML = `<div style="padding:16px;text-align:center;color:var(--muted);font-size:12px;">Production data — Sandeep ke paas hai</div>`;
-    if (fgW)  fgW.innerHTML  = `<div style="padding:16px;text-align:center;color:var(--muted);font-size:12px;">Finished Goods — Sandeep ke paas hai</div>`;
-
-    renderStockChart(d.stocks || []);
     setDot('ok', 'Connected');
   } catch(e) { toast(e.message, 'err'); setDot('err', 'Error'); }
 }
 
 // ── SANDEEP DASHBOARD ──
 async function loadSandeepDash() {
+  // Update greeting
+  const now = new Date();
+  const hr = now.getHours();
+  const g = hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
+  const grEl = document.getElementById('sandeep-greeting');
+  if (grEl) grEl.textContent = `${g}, Sandeep 👋`;
+  const dtEl = document.getElementById('sandeep-date');
+  if (dtEl) dtEl.textContent = now.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
   try {
     const d = await api('getDashboard');
     _stocks = d.stocks || [];
 
-    // KPI — Sandeep relevant
-    document.getElementById('s-total').textContent = (d.wipItems||[]).length || 0;
-    document.getElementById('s-ro').textContent    = (d.fg||[]).length || 0;
-    document.getElementById('s-in').textContent    = d.todayOut || 0;  // outward = production mein aaya
-    document.getElementById('s-out').textContent   = '—';
-    document.getElementById('s-wip').textContent   = (d.wipItems||[]).length || 0;
+    // KPI
+    const totalDispatched = (d.fg||[]).reduce((s,f) => s+f.totalProduced, 0);
+    document.getElementById('sd-today-out').textContent = d.todayOut || 0;
+    document.getElementById('sd-wip').textContent       = (d.wipItems||[]).length || 0;
+    document.getElementById('sd-fg').textContent        = (d.fg||[]).length || 0;
+    document.getElementById('sd-dispatch').textContent  = totalDispatched;
 
-    // Update KPI labels for Sandeep
-    const labels = document.querySelectorAll('.kpi-label');
-    if (labels[0]) labels[0].textContent = 'Items in WIP';
-    if (labels[1]) labels[1].textContent = 'FG Models';
-    if (labels[2]) labels[2].textContent = 'Today Production In';
-    if (labels[3]) labels[3].textContent = '—';
-
-    // Store section — show outward (what came to production)
-    const storeWrap = document.getElementById('d-store');
-    if (storeWrap) {
-      storeWrap.innerHTML = d.recentTxns && d.recentTxns.filter(t=>t.txnType==='OUT').length ?
-        `<div>
-          <div style="padding:10px 16px;background:var(--s2);font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.7px;">
-            📤 Aaj Store Se Production Mein Aaya
-          </div>
-          ${d.recentTxns.filter(t=>t.txnType==='OUT').map(t=>`
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);">
-              <div><div style="font-weight:600;font-size:13px;">${t.itemName||'—'}</div>
-              <div style="font-size:11px;color:var(--muted);">${fmtDT(t.ts)} · ${t.department||'—'}</div></div>
-              <span style="font-family:var(--mono);font-weight:700;color:var(--orange);">-${t.qty}</span>
-            </div>`).join('')}
-        </div>` :
-        `<div class="empty" style="padding:28px;"><div class="ei">📤</div><div class="et">Aaj koi material nahi aaya</div></div>`;
+    // Today production mein kya aaya (outward entries)
+    const todayOutW = document.getElementById('sd-today-in-list');
+    if (todayOutW) {
+      const outToday = (d.recentTxns||[]).filter(t => t.txnType==='OUT' && t.date === new Date().toISOString().slice(0,10));
+      if (!outToday.length) {
+        todayOutW.innerHTML = `<div class="empty" style="padding:28px;"><div class="ei">📤</div><div class="et">Aaj kuch nahi mila abhi tak</div></div>`;
+      } else {
+        todayOutW.innerHTML = outToday.map(t => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);">
+            <div>
+              <div style="font-weight:600;font-size:13px;">${t.itemName||'—'}</div>
+              <div style="font-size:11px;color:var(--muted);">${fmtDT(t.ts)}</div>
+            </div>
+            <span style="font-family:var(--mono);font-weight:700;font-size:15px;color:var(--orange);">${t.qty} ${t.unit||''}</span>
+          </div>`).join('');
+      }
     }
 
     // WIP
-    const wipW = document.getElementById('d-wip');
+    const wipW = document.getElementById('sd-wip-list');
     if (wipW) {
       if (!d.wipItems || !d.wipItems.length) {
-        wipW.innerHTML = `<div class="empty" style="padding:28px 20px;"><div class="ei">🏭</div><div class="et">WIP mein kuch nahi</div></div>`;
+        wipW.innerHTML = `<div class="empty" style="padding:28px;"><div class="ei">🏭</div><div class="et">Production mein kuch nahi</div></div>`;
       } else {
-        wipW.innerHTML = d.wipItems.map(s=>`
+        wipW.innerHTML = d.wipItems.map(s => `
           <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);">
-            <div><div style="font-weight:600;font-size:13px;">${s.name}</div>
-            <div style="font-size:11px;color:var(--muted);">Store: ${s.currentStock} ${s.unit||''}</div></div>
+            <div>
+              <div style="font-weight:600;font-size:13px;">${s.name}</div>
+              <div style="font-size:11px;color:var(--muted);">Store mein: ${s.currentStock} ${s.unit||''}</div>
+            </div>
             <div style="text-align:right;">
-              <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--purple);">${s.wip}</div>
+              <div style="font-family:var(--mono);font-size:20px;font-weight:700;color:var(--purple);">${s.wip}</div>
               <div style="font-size:10px;color:var(--muted);">Production mein</div>
             </div>
           </div>`).join('');
@@ -1964,28 +1993,44 @@ async function loadSandeepDash() {
     }
 
     // FG
-    const fgW = document.getElementById('d-fg');
+    const fgW = document.getElementById('sd-fg-list');
     if (fgW) {
       if (!d.fg || !d.fg.length) {
-        fgW.innerHTML = `<div class="empty" style="padding:28px 20px;"><div class="ei">📦</div><div class="et">Koi FG nahi</div></div>`;
+        fgW.innerHTML = `<div class="empty" style="padding:28px;"><div class="ei">📦</div><div class="et">Koi FG nahi</div></div>`;
       } else {
-        fgW.innerHTML = d.fg.map(f=>`
+        fgW.innerHTML = d.fg.map(f => `
           <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);">
-            <div><div style="font-weight:600;font-size:13px;">${f.model}</div>
-            <div style="font-size:11px;color:var(--muted);">Last: ${fmtD(f.lastDate)}</div></div>
+            <div>
+              <div style="font-weight:600;font-size:13px;">${f.model}</div>
+              <div style="font-size:11px;color:var(--muted);">Last: ${fmtD(f.lastDate)}</div>
+            </div>
             <div style="text-align:right;">
-              <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--green);">${f.totalProduced}</div>
-              <div style="font-size:10px;color:var(--muted);">Units</div>
+              <div style="font-family:var(--mono);font-size:20px;font-weight:700;color:var(--green);">${f.totalProduced}</div>
+              <div style="font-size:10px;color:var(--muted);">Units total</div>
             </div>
           </div>`).join('');
       }
     }
 
-    // Hide reorder alerts for Sandeep
-    const al = document.getElementById('d-alerts');
-    if (al) al.innerHTML = `<div style="padding:16px;text-align:center;color:var(--muted);font-size:12px;">Reorder — Ajay ke paas hai</div>`;
-    const rt = document.getElementById('d-recent');
-    if (rt) rt.innerHTML = `<div style="padding:16px;text-align:center;color:var(--muted);font-size:12px;">Store transactions — Ajay ke paas hain</div>`;
+    // Recent Dispatch
+    const disW = document.getElementById('sd-dispatch-list');
+    if (disW) {
+      try {
+        const dis = await api('getDispatch', {});
+        if (!dis.length) {
+          disW.innerHTML = `<div class="empty" style="padding:28px;"><div class="ei">🚚</div><div class="et">Koi dispatch nahi</div></div>`;
+        } else {
+          disW.innerHTML = dis.slice(0,8).map(r => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);">
+              <div>
+                <div style="font-weight:600;font-size:13px;">${r.bomModel}</div>
+                <div style="font-size:11px;color:var(--muted);">${fmtD(r.date)} · ${r.dispatchTo||'—'}</div>
+              </div>
+              <span style="font-family:var(--mono);font-weight:700;font-size:15px;color:var(--accent);">×${r.qtyProduced}</span>
+            </div>`).join('');
+        }
+      } catch(e) {}
+    }
 
     setDot('ok', 'Connected');
   } catch(e) { toast(e.message, 'err'); setDot('err', 'Error'); }
