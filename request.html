@@ -202,15 +202,15 @@ select.inp { cursor: pointer; }
 <div class="card" id="form-card">
   <div class="card-header">
     <h1>📋 Material Requisition</h1>
-    <p>Jo material chahiye uski qty bharein — Store Manager ko turant pata chal jaayega</p>
+    <p>Fill required quantities — Store manager will be notified</p>
   </div>
   <div class="card-body">
 
     <!-- NAME + DEPARTMENT -->
     <div class="top-row">
       <div class="field">
-        <label>Aapka Naam <span>*</span></label>
-        <input class="inp" id="f-name" placeholder="Apna naam likhein">
+        <label>Your Name <span>*</span></label>
+        <input class="inp" id="f-name" placeholder="Enter your name">
       </div>
       <div class="field">
         <label>Department <span>*</span></label>
@@ -237,7 +237,7 @@ select.inp { cursor: pointer; }
       <div class="item-row"><span class="item-label">3.2V 150AH</span><input class="qty-inp" type="number" min="0" placeholder="0" id="cell-4"><span class="unit-label">Pcs</span></div>
       <div class="item-row"><span class="item-label">3.2V 314AH</span><input class="qty-inp" type="number" min="0" placeholder="0" id="cell-5"><span class="unit-label">Pcs</span></div>
       <div class="item-row"><span class="item-label">Other <span class="sub">Naam likhein</span></span><input class="qty-inp" type="number" min="0" placeholder="0" id="cell-other-qty"><span class="unit-label">Pcs</span></div>
-      <div class="other-row"><input class="other-inp" type="text" id="cell-other-name" placeholder="Other cell ka naam..."></div>
+      <div class="other-row"><input class="other-inp" type="text" id="cell-other-name" placeholder="Other cell name..."></div>
     </div>
 
     <!-- BMS -->
@@ -249,7 +249,7 @@ select.inp { cursor: pointer; }
       <div class="item-row"><span class="item-label">8S 100Amp</span><input class="qty-inp" type="number" min="0" placeholder="0" id="bms-4"><span class="unit-label">Pcs</span></div>
       <div class="item-row"><span class="item-label">16S 100Amp</span><input class="qty-inp" type="number" min="0" placeholder="0" id="bms-5"><span class="unit-label">Pcs</span></div>
       <div class="item-row"><span class="item-label">Other <span class="sub">Naam likhein</span></span><input class="qty-inp" type="number" min="0" placeholder="0" id="bms-other-qty"><span class="unit-label">Pcs</span></div>
-      <div class="other-row"><input class="other-inp" type="text" id="bms-other-name" placeholder="Other BMS ka naam..."></div>
+      <div class="other-row"><input class="other-inp" type="text" id="bms-other-name" placeholder="Other BMS name..."></div>
     </div>
 
     <!-- WIRE -->
@@ -297,12 +297,12 @@ select.inp { cursor: pointer; }
     <div class="remarks-section">
       <div class="field">
         <label>Remarks (Optional)</label>
-        <input class="inp" id="f-remarks" placeholder="Koi khaas baat ho toh likhein...">
+        <input class="inp" id="f-remarks" placeholder="Additional notes...">
       </div>
     </div>
 
     <button class="submit-btn" id="submit-btn" onclick="submitForm()">
-      <span>📤</span> Request Bhejo
+      <span>📤</span> Submit Request
     </button>
 
   </div>
@@ -311,10 +311,10 @@ select.inp { cursor: pointer; }
 <!-- SUCCESS -->
 <div class="success-card" id="success-card">
   <div class="success-icon">✅</div>
-  <div class="success-title">Request Bheji Gayi!</div>
-  <div class="success-sub">Aapki request Ajay (Store Manager) ke paas pahunch gayi hai.<br>Woh jald hi material issue karenge.</div>
+  <div class="success-title">Request Submitted!</div>
+  <div class="success-sub">Your request has been sent to the store manager.<br>Material will be issued shortly.</div>
   <div class="success-id" id="success-summary"></div>
-  <button class="new-btn" onclick="resetForm()">+ Nayi Request Bhejo</button>
+  <button class="new-btn" onclick="resetForm()">+ Nayi Submit Request</button>
 </div>
 
 <div class="footer">Litpax Technology Pvt. Ltd. &nbsp;·&nbsp; Designed by Darpan</div>
