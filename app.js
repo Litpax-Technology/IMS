@@ -72,9 +72,11 @@ function applyRoleUI() {
     greetEl.textContent = `${g}, ${role.name} 👋`;
   }
 
-  // Show logout btn
+  // Show logout btn with role label
   const lb = document.getElementById('logout-btn');
-  if (lb) lb.style.display = 'flex';
+  if (lb) lb.style.display = 'block';
+  const rl = document.getElementById('logout-role-label');
+  if (rl) rl.textContent = role.name + ' ·';
 }
 
 function logout() {
