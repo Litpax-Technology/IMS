@@ -833,8 +833,11 @@ function updROP() {
   const l   = Number(document.getElementById('f-lt').value)  || 0;
   const s   = Number(document.getElementById('f-sf').value)  || 1;
   const u   = document.getElementById('f-unit').value || 'units';
-  const max = Math.ceil(a * l * s);  // Max = ADC × LT × SF
-  const rop = Math.ceil(max / 2);    // ROP = Max / 2
+  const max = Math.ceil(a * l * s);
+  const rop = Math.ceil(max / 2);
+  // Store computed values in hidden fields
+  document.getElementById('f-max-val').value = max;
+  document.getElementById('f-rop-val').value = rop;
   document.getElementById('rop-prev').innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:4px;">
       <div>
@@ -859,12 +862,13 @@ async function saveItem() {
   if (!name) { toast('Please select Category → Brand → Model first', 'err'); return; }
   const btn = document.getElementById('im-btn');
   btn.disabled = true; btn.textContent = 'Saving...';
-  const adc = Number(document.getElementById('f-adc').value) || 0;
-  const lt  = Number(document.getElementById('f-lt').value)  || 0;
-  const sf  = Number(document.getElementById('f-sf').value)  || 1.2;
-  const maxL = Math.ceil(adc * lt * sf);
-  const rop  = Math.ceil(maxL / 2);
-  const moq  = Number((document.getElementById('f-moq')||{}).value) || rop;
+  const adc  = Number(document.getElementById('f-adc').value) || 0;
+  const lt   = Number(document.getElementById('f-lt').value)  || 0;
+  const sf   = Number(document.getElementById('f-sf').value)  || 1.2;
+  const maxL = Number(document.getElementById('f-max-val').value) || Math.ceil(adc * lt * sf);
+  const rop  = Number(document.getElementById('f-rop-val').value) || Math.ceil(maxL / 2);
+  const moqEl = document.getElementById('f-moq');
+  const moq  = moqEl && moqEl.value ? Number(moqEl.value) : rop;
   const payload = {
     name, cat: _selCat || _editItemName && (_items.find(i=>i.name===_editItemName)||{}).cat || 'Other',
     unit: document.getElementById('f-unit').value,
