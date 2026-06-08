@@ -1854,10 +1854,10 @@ async function loadAjayDash() {
     _stocks = d.stocks || [];
 
     // KPI
-    document.getElementById('aj-total').textContent = d.totalItems || 0;
-    document.getElementById('aj-in').textContent    = d.todayIn || 0;
-    document.getElementById('aj-out').textContent   = d.todayOut || 0;
-    document.getElementById('aj-ro').textContent    = d.reorderCount || 0;
+    setEl('aj-total', d.totalItems || 0);
+    setEl('aj-in',    d.todayIn || 0);
+    setEl('aj-out',   d.todayOut || 0);
+    setEl('aj-ro',    d.reorderCount || 0);
 
     // Badges
     const ajab = document.getElementById('aj-alert-badge');
