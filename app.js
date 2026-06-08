@@ -1473,12 +1473,7 @@ function toast(msg, type) {
   _tt = setTimeout(() => t.className = '', 3500);
 }
 
-// Close modal on backdrop click
-document.querySelectorAll('.ov').forEach(el => {
-  el.addEventListener('click', e => {
-    if (e.target === el) el.classList.remove('open');
-  });
-});
+// Modals only close via Save or Cancel buttons
 
 // ============================================================
 // OPENING STOCK
