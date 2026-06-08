@@ -1818,16 +1818,19 @@ async function submitRequest() {
 }
 
 // ── AJAY DASHBOARD ──
-async function ajayFilterStock() {
-  const s = document.getElementById('aj-search').value.toLowerCase();
-  const rows = document.querySelectorAll('#aj-stock-table tbody tr');
-  rows.forEach(r => {
-    r.style.display = r.textContent.toLowerCase().includes(s) ? '' : 'none';
-  });
+function toggleAjayOK() {
+  const list = document.getElementById('aj-ok-list');
+  const arrow = document.getElementById('aj-ok-arrow');
+  if (list.style.display === 'none') {
+    list.style.display = 'block';
+    arrow.textContent = '▲ Hide';
+  } else {
+    list.style.display = 'none';
+    arrow.textContent = '▼ Show';
+  }
 }
 
 async function loadAjayDash() {
-  // Update greeting
   const now = new Date();
   const hr = now.getHours();
   const g = hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
