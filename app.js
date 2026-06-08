@@ -3,7 +3,10 @@
 // API URL: change here if redeployed
 // ============================================================
 
-const API = 'https://script.google.com/macros/s/AKfycbzwoWnsBLNZTr2GWWpG3BwTClArfE2gjhUlS-p319FWLs3tfZtbOh9D5WY60LD9r45v/exec';
+const API = 'https://script.google.com/macros/s/AKfycbzJLg8QCNYXSExNRxFoz9p4pFkdKkBqJ5_idud41nQk1zbqsdTU9_gOB9tp9CRpspED/exec';
+
+function setEl(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
+function showEl(id, show) { const el = document.getElementById(id); if (el) el.style.display = show ? 'inline' : 'none'; }
 
 const DEPTS = ['Volt Wing','Ampere Wing','Volt x Ampere Wing','Mega Grid','Cathodic Wing','Future Cell','Phoenix Wing','Other'];
 
@@ -220,11 +223,11 @@ async function loadDash() {
   try {
     const d = await api('getDashboard');
     _stocks = d.stocks || [];
-    document.getElementById('s-total').textContent = d.totalItems || 0;
-    document.getElementById('s-ro').textContent    = d.reorderCount || 0;
-    document.getElementById('s-in').textContent    = d.todayIn || 0;
-    document.getElementById('s-out').textContent   = d.todayOut || 0;
-    document.getElementById('s-wip').textContent   = (d.wipItems||[]).length || 0;
+    setEl('s-total', d.totalItems || 0);
+    setEl('s-ro', d.reorderCount || 0);
+    setEl('s-in', d.todayIn || 0);
+    setEl('s-out', d.todayOut || 0);
+    setEl('s-wip', (d.wipItems||[]).length || 0);
 
     // Alert badge on dashboard
     const dab = document.getElementById('d-alert-badge');
@@ -1955,10 +1958,10 @@ async function loadSandeepDash() {
 
     // KPI
     const totalDispatched = (d.fg||[]).reduce((s,f) => s+f.totalProduced, 0);
-    document.getElementById('sd-today-out').textContent = d.todayOut || 0;
-    document.getElementById('sd-wip').textContent       = (d.wipItems||[]).length || 0;
-    document.getElementById('sd-fg').textContent        = (d.fg||[]).length || 0;
-    document.getElementById('sd-dispatch').textContent  = totalDispatched;
+    setEl('sd-today-out', d.todayOut || 0);
+    setEl('sd-wip', (d.wipItems||[]).length || 0);
+    setEl('sd-fg', (d.fg||[]).length || 0);
+    setEl('sd-dispatch', totalDispatched);
 
     // Today production mein kya aaya (outward entries)
     const todayOutW = document.getElementById('sd-today-in-list');
