@@ -5,84 +5,42 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Litpax IMS</title>
 <link rel="stylesheet" href="style.css?v=5">
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
 
 <!-- LOGIN SCREEN -->
-
-
 <div id="login-screen">
-  <!-- Bg shapes -->
   <div class="login-bg-shape" style="width:600px;height:600px;top:-200px;right:-100px;"></div>
   <div class="login-bg-shape" style="width:400px;height:400px;bottom:-150px;left:30%;"></div>
-
-  <!-- LEFT PANEL -->
   <div class="login-left">
     <div class="login-left-inner">
       <div class="login-logo-box">L</div>
       <div class="login-brand">Litpax IMS</div>
       <div class="login-tagline">Inventory Management System</div>
-
       <div class="login-stats">
-        <div class="login-stat">
-          <span class="login-stat-icon">🏪</span>
-          <div class="login-stat-text"><strong>Store Management</strong>Real-time inventory tracking</div>
-        </div>
-        <div class="login-stat">
-          <span class="login-stat-icon">🏭</span>
-          <div class="login-stat-text"><strong>Production Flow</strong>WIP & Finished Goods</div>
-        </div>
-        <div class="login-stat">
-          <span class="login-stat-icon">📊</span>
-          <div class="login-stat-text"><strong>Smart Reports</strong>Daily closing & analytics</div>
-        </div>
+        <div class="login-stat"><span class="login-stat-icon">🏪</span><div class="login-stat-text"><strong>Store Management</strong>Real-time inventory tracking</div></div>
+        <div class="login-stat"><span class="login-stat-icon">🏭</span><div class="login-stat-text"><strong>Production Flow</strong>WIP & Finished Goods</div></div>
+        <div class="login-stat"><span class="login-stat-icon">📊</span><div class="login-stat-text"><strong>Smart Reports</strong>Daily closing & analytics</div></div>
       </div>
     </div>
   </div>
-
-  <!-- RIGHT PANEL -->
   <div class="login-right">
     <div class="login-card">
       <div class="login-card-title">Welcome back 👋</div>
       <div class="login-card-sub">Select your role and enter your PIN</div>
-
-      <!-- ROLE SELECT -->
       <label class="login-field-label">Select Role</label>
       <div class="role-grid" id="role-grid">
-        <button class="role-btn" onclick="selectRole('admin')" id="role-admin">
-          <div class="role-icon">👑</div>
-          <div class="role-name">Admin</div>
-          <div class="role-sub">Full Access</div>
-        </button>
-        <button class="role-btn" onclick="selectRole('ajay')" id="role-ajay">
-          <div class="role-icon">📦</div>
-          <div class="role-name">Ajay</div>
-          <div class="role-sub">Store</div>
-        </button>
-        <button class="role-btn" onclick="selectRole('sandeep')" id="role-sandeep">
-          <div class="role-icon">🏭</div>
-          <div class="role-name">Sandeep</div>
-          <div class="role-sub">Production</div>
-        </button>
+        <button class="role-btn" onclick="selectRole('admin')" id="role-admin"><div class="role-icon">👑</div><div class="role-name">Admin</div><div class="role-sub">Full Access</div></button>
+        <button class="role-btn" onclick="selectRole('ajay')" id="role-ajay"><div class="role-icon">📦</div><div class="role-name">Ajay</div><div class="role-sub">Store</div></button>
+        <button class="role-btn" onclick="selectRole('sandeep')" id="role-sandeep"><div class="role-icon">🏭</div><div class="role-name">Sandeep</div><div class="role-sub">Production</div></button>
       </div>
-
-      <!-- PIN -->
       <label class="login-field-label">Enter PIN</label>
       <div class="pin-wrap">
-        <input type="password" class="pin-input" id="login-pin" maxlength="6" placeholder="• • • • • •"
-          onkeydown="if(event.key==='Enter') doLogin()">
+        <input type="password" class="pin-input" id="login-pin" maxlength="6" placeholder="• • • • • •" onkeydown="if(event.key==='Enter') doLogin()">
       </div>
-
-      <!-- ERROR -->
       <div class="login-err" id="login-err">❌ Galat PIN — dobara try karein</div>
-
-      <!-- LOGIN BTN -->
-      <button class="login-btn" onclick="doLogin()">
-        <span>Login</span><span>→</span>
-      </button>
-
+      <button class="login-btn" onclick="doLogin()"><span>Login</span><span>→</span></button>
       <div class="login-footer">Litpax Technology Pvt. Ltd. · Designed by Darpan</div>
     </div>
   </div>
@@ -94,10 +52,7 @@
     <div class="slogo">
       <div class="slogo-row">
         <div class="slogo-box">L</div>
-        <div class="slogo-text">
-          <div class="n">Litpax IMS</div>
-          <div class="s">Inventory</div>
-        </div>
+        <div class="slogo-text"><div class="n">Litpax IMS</div><div class="s">Inventory</div></div>
       </div>
     </div>
     <nav>
@@ -115,7 +70,6 @@
         <div class="ni" onclick="showPage('wip')" data-page="wip"><span class="ic">🏭</span><span>WIP Tracker</span></div>
         <div class="ni" onclick="showPage('requests')" data-page="requests"><span class="ic">🔔</span><span>Material Requests</span><span class="nbadge" id="nb-req" style="display:none">0</span></div>
       </div>
-
       <div class="ng">
         <div class="ng-label">Masters</div>
         <div class="ni" onclick="showPage('items')" data-page="items"><span class="ic">📦</span><span>Items</span></div>
@@ -137,9 +91,7 @@
       </div>
       <div id="logout-btn" style="display:none;margin-bottom:8px;">
         <button onclick="logout()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px;font-family:var(--sans);font-size:11px;font-weight:600;color:rgba(255,255,255,.5);cursor:pointer;transition:all .15s;" onmouseover="this.style.background='rgba(220,38,38,.2)';this.style.color='#fca5a5';this.style.borderColor='rgba(220,38,38,.3)'" onmouseout="this.style.background='rgba(255,255,255,.06)';this.style.color='rgba(255,255,255,.5)';this.style.borderColor='rgba(255,255,255,.12)'">
-          <span>🚪</span>
-          <span id="logout-role-label"></span>
-          <span>Logout</span>
+          <span>🚪</span><span id="logout-role-label"></span><span>Logout</span>
         </button>
       </div>
       <div class="foot-brand">Designed by Darpan</div>
@@ -149,10 +101,10 @@
   <!-- MAIN -->
   <div class="main">
 
-    <!-- DASHBOARD -->
+    <!-- ══════════════════════════════════════
+         ADMIN DASHBOARD
+    ══════════════════════════════════════ -->
     <div class="page active" id="page-dashboard">
-
-      <!-- TOP BAR -->
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
         <div>
           <div style="font-size:22px;font-weight:700;color:var(--navy);" id="dash-greeting">Good morning 👋</div>
@@ -162,99 +114,68 @@
       </div>
 
       <!-- KPI CARDS -->
-      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px;" id="kpi-grid">
-        <div class="kpi-card kpi-blue">
-          <div class="kpi-icon">📦</div>
-          <div class="kpi-val" id="s-total">—</div>
-          <div class="kpi-label">Total Items</div>
-        </div>
-        <div class="kpi-card kpi-green">
-          <div class="kpi-icon">📥</div>
-          <div class="kpi-val" id="s-in">—</div>
-          <div class="kpi-label">Today Inward</div>
-        </div>
-        <div class="kpi-card kpi-orange">
-          <div class="kpi-icon">📤</div>
-          <div class="kpi-val" id="s-out">—</div>
-          <div class="kpi-label">Today Outward</div>
-        </div>
-        <div class="kpi-card kpi-purple">
-          <div class="kpi-icon">🏭</div>
-          <div class="kpi-val" id="s-wip">—</div>
-          <div class="kpi-label">Items in WIP</div>
-        </div>
-        <div class="kpi-card kpi-red">
-          <div class="kpi-icon">⚠️</div>
-          <div class="kpi-val" id="s-ro">—</div>
-          <div class="kpi-label">Reorder Alerts</div>
-        </div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px;">
+        <div class="kpi-card kpi-blue"><div class="kpi-icon">📦</div><div class="kpi-val" id="s-total">—</div><div class="kpi-label">Total Items</div></div>
+        <div class="kpi-card kpi-green"><div class="kpi-icon">📥</div><div class="kpi-val" id="s-in">—</div><div class="kpi-label">Today Inward</div></div>
+        <div class="kpi-card kpi-orange"><div class="kpi-icon">📤</div><div class="kpi-val" id="s-out">—</div><div class="kpi-label">Today Outward</div></div>
+        <div class="kpi-card kpi-purple"><div class="kpi-icon">🏭</div><div class="kpi-val" id="s-wip">—</div><div class="kpi-label">Items in WIP</div></div>
+        <div class="kpi-card kpi-red"><div class="kpi-icon">⚠️</div><div class="kpi-val" id="s-ro">—</div><div class="kpi-label">Reorder Alerts</div></div>
       </div>
 
-      <!-- STORE LIVE STOCK + ALERTS -->
-      <div class="g2" style="margin-bottom:14px;">
-
-        <!-- STORE LIVE STOCK -->
-        <div class="card" style="grid-column:1/3;">
+      <!-- STORE LIVE STOCK -->
+      <div style="margin-bottom:14px;">
+        <div class="card">
           <div class="ch" style="background:linear-gradient(90deg,#f8faff,#f0f4ff);">
             <div style="display:flex;align-items:center;gap:8px;">
               <span style="font-size:16px;">🏪</span>
               <h2 style="font-size:12px;">Store Live Stock</h2>
               <span style="font-size:10px;color:var(--muted);font-weight:400;">Inward − Outward = Current balance</span>
             </div>
-            <button class="btn bg bsm" onclick="showPage('stock')" data-page="stock">View All →</button>
+            <button class="btn bg bsm" onclick="showPage('stock')">View All →</button>
           </div>
           <div id="d-store"><div class="empty"><div class="ei">⏳</div><div class="et">Loading...</div></div></div>
         </div>
       </div>
 
-      <!-- 3 COLUMN ROW -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px;">
-
-        <!-- REORDER ALERTS -->
+      <!-- CHARTS ROW 1: Reorder + WIP -->
+      <div class="g2" style="margin-bottom:14px;">
         <div class="card">
           <div class="ch" style="background:linear-gradient(90deg,#fff8f0,#fff3e8);">
             <div style="display:flex;align-items:center;gap:6px;">
               <span style="font-size:15px;">⚠️</span>
-              <h2>Reorder Alerts</h2>
+              <h2>Reorder / Critical Items</h2>
             </div>
-            <span class="nbadge" id="d-alert-badge" style="display:none;background:var(--red);">0</span>
+            <button class="btn bg bsm" onclick="showPage('reorder')">View All →</button>
           </div>
-          <div id="d-alerts"><div class="empty" style="padding:28px 20px;"><div class="ei">✅</div><div class="et">All OK</div></div></div>
+          <div style="padding:16px 18px;" id="reorder-chart-wrap">
+            <canvas id="reorderChart" height="220"></canvas>
+          </div>
         </div>
-
-        <!-- WIP -->
         <div class="card">
           <div class="ch" style="background:linear-gradient(90deg,#faf5ff,#f3eeff);">
             <div style="display:flex;align-items:center;gap:6px;">
               <span style="font-size:15px;">🏭</span>
-              <h2>WIP — Production Mein</h2>
+              <h2>WIP — In Production</h2>
             </div>
           </div>
-          <div id="d-wip"><div class="empty" style="padding:28px 20px;"><div class="ei">🏭</div><div class="et">Kuch nahi</div></div></div>
+          <div style="padding:16px 18px;" id="wip-chart-wrap">
+            <canvas id="wipChart" height="220"></canvas>
+          </div>
         </div>
+      </div>
 
-        <!-- FINISHED GOODS -->
+      <!-- CHARTS ROW 2: Category + Recent Txns -->
+      <div class="g2" style="margin-bottom:14px;">
         <div class="card">
           <div class="ch" style="background:linear-gradient(90deg,#f0fdf4,#e8faf0);">
             <div style="display:flex;align-items:center;gap:6px;">
-              <span style="font-size:15px;">✅</span>
-              <h2>Finished Goods</h2>
+              <span style="font-size:15px;">📦</span>
+              <h2>Items by Category</h2>
             </div>
+            <span style="font-size:10px;color:var(--muted);">Total item distribution</span>
           </div>
-          <div id="d-fg"><div class="empty" style="padding:28px 20px;"><div class="ei">📦</div><div class="et">No FG yet</div></div></div>
-        </div>
-
-      </div>
-
-      <!-- STOCK CHART + RECENT TXN -->
-      <div class="g2">
-        <div class="card">
-          <div class="ch">
-            <h2>📊 Stock Level Chart</h2>
-            <span style="font-size:10px;color:var(--muted);">Current vs ROP vs Max</span>
-          </div>
-          <div style="padding:16px 18px;">
-            <canvas id="stockChart" height="200"></canvas>
+          <div style="padding:16px 18px;display:flex;justify-content:center;" id="category-chart-wrap">
+            <canvas id="categoryChart" height="220" style="max-width:320px;"></canvas>
           </div>
         </div>
         <div class="card">
@@ -262,12 +183,12 @@
           <div id="d-recent"><div class="empty"><div class="ei">⏳</div><div class="et">Loading...</div></div></div>
         </div>
       </div>
-
     </div>
 
-    <!-- AJAY DASHBOARD -->
+    <!-- ══════════════════════════════════════
+         AJAY DASHBOARD
+    ══════════════════════════════════════ -->
     <div class="page" id="page-ajay-dash">
-      <!-- TOP BAR -->
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
         <div>
           <div style="font-size:20px;font-weight:700;color:var(--navy);" id="ajay-greeting">Good morning, Ajay 👋</div>
@@ -279,34 +200,13 @@
           <button class="btn bg bsm" onclick="loadAjayDash()">↻</button>
         </div>
       </div>
-
-      <!-- KPI CARDS -->
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;">
-        <div class="kpi-card kpi-blue" style="cursor:default;">
-          <div class="kpi-icon">📦</div>
-          <div class="kpi-val" id="aj-total">—</div>
-          <div class="kpi-label">Total Items</div>
-        </div>
-        <div class="kpi-card kpi-red" style="cursor:pointer;" onclick="showPage('reorder')" title="View Reorder Sheet">
-          <div class="kpi-icon">🔴</div>
-          <div class="kpi-val" id="aj-critical">—</div>
-          <div class="kpi-label">Critical</div>
-        </div>
-        <div class="kpi-card kpi-orange" style="cursor:pointer;" onclick="showPage('reorder')" title="View Reorder Sheet">
-          <div class="kpi-icon">⚠️</div>
-          <div class="kpi-val" id="aj-reorder">—</div>
-          <div class="kpi-label">Reorder</div>
-        </div>
-        <div class="kpi-card kpi-purple" style="cursor:pointer;" onclick="showPage('requests')" title="View Requests">
-          <div class="kpi-icon">🔔</div>
-          <div class="kpi-val" id="aj-req-count">—</div>
-          <div class="kpi-label">Pending Requests</div>
-        </div>
+        <div class="kpi-card kpi-blue" style="cursor:default;"><div class="kpi-icon">📦</div><div class="kpi-val" id="aj-total">—</div><div class="kpi-label">Total Items</div></div>
+        <div class="kpi-card kpi-red" style="cursor:pointer;" onclick="showPage('reorder')"><div class="kpi-icon">🔴</div><div class="kpi-val" id="aj-critical">—</div><div class="kpi-label">Critical</div></div>
+        <div class="kpi-card kpi-orange" style="cursor:pointer;" onclick="showPage('reorder')"><div class="kpi-icon">⚠️</div><div class="kpi-val" id="aj-reorder">—</div><div class="kpi-label">Reorder</div></div>
+        <div class="kpi-card kpi-purple" style="cursor:pointer;" onclick="showPage('requests')"><div class="kpi-icon">🔔</div><div class="kpi-val" id="aj-req-count">—</div><div class="kpi-label">Pending Requests</div></div>
       </div>
-
-      <!-- TODAY ACTIVITY -->
       <div class="g2" style="margin-bottom:14px;">
-        <!-- Today Inward -->
         <div class="card">
           <div class="ch" style="background:linear-gradient(90deg,#f0fdf4,#e8faf0);">
             <div style="display:flex;align-items:center;gap:6px;"><span>📥</span><h2>Today's Inward</h2></div>
@@ -314,7 +214,6 @@
           </div>
           <div id="aj-inward-list"><div class="empty" style="padding:20px;"><div class="ei">📥</div><div class="et">No inward today</div></div></div>
         </div>
-        <!-- Today Outward -->
         <div class="card">
           <div class="ch" style="background:linear-gradient(90deg,#fff7ed,#fff3e8);">
             <div style="display:flex;align-items:center;gap:6px;"><span>📤</span><h2>Today's Outward</h2></div>
@@ -323,8 +222,6 @@
           <div id="aj-outward-list"><div class="empty" style="padding:20px;"><div class="ei">📤</div><div class="et">No outward today</div></div></div>
         </div>
       </div>
-
-      <!-- PENDING REQUESTS PREVIEW -->
       <div class="card">
         <div class="ch" style="background:linear-gradient(90deg,#f0f4ff,#eef2ff);">
           <div style="display:flex;align-items:center;gap:6px;"><span>🔔</span><h2>Pending Material Requests</h2></div>
@@ -337,9 +234,10 @@
       </div>
     </div>
 
-    <!-- SANDEEP DASHBOARD -->
+    <!-- ══════════════════════════════════════
+         SANDEEP DASHBOARD
+    ══════════════════════════════════════ -->
     <div class="page" id="page-sandeep-dash">
-      <!-- TOP BAR -->
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
         <div>
           <div style="font-size:20px;font-weight:700;color:var(--navy);" id="sandeep-greeting">Good morning, Sandeep 👋</div>
@@ -350,8 +248,6 @@
           <button class="btn bg bsm" onclick="loadSandeepDash()">↻</button>
         </div>
       </div>
-
-      <!-- SECTION 1: STORE SE MILA -->
       <div class="card" style="margin-bottom:14px;">
         <div class="ch" style="background:linear-gradient(90deg,#fff7ed,#fff3e8);">
           <div style="display:flex;align-items:center;gap:6px;"><span>📤</span><h2>Today — Received from Store</h2></div>
@@ -359,8 +255,6 @@
         </div>
         <div id="sd-issue-section"><div class="empty" style="padding:24px;"><div class="ei">📤</div><div class="et">Nothing received today</div></div></div>
       </div>
-
-      <!-- SECTION 2: WIP -->
       <div class="card" style="margin-bottom:14px;">
         <div class="ch" style="background:linear-gradient(90deg,#faf5ff,#f3eeff);">
           <div style="display:flex;align-items:center;gap:6px;"><span>🏭</span><h2>WIP — In Production</h2></div>
@@ -368,8 +262,6 @@
         </div>
         <div id="sd-wip-section"><div class="empty" style="padding:24px;"><div class="ei">🏭</div><div class="et">Nothing in WIP</div></div></div>
       </div>
-
-      <!-- SECTION 3: TODAY DISPATCH -->
       <div class="card">
         <div class="ch" style="background:linear-gradient(90deg,#f0fdf4,#e8faf0);">
           <div style="display:flex;align-items:center;gap:6px;"><span>🚚</span><h2>Today — Dispatched</h2></div>
@@ -452,6 +344,23 @@
       </div>
     </div>
 
+    <!-- WIP TRACKER -->
+    <div class="page" id="page-wip">
+      <div class="tb">
+        <div class="pt"><h1>WIP Tracker</h1><p>Production mein kya kya hai — running balance</p></div>
+        <div class="ta"><button class="btn bg bsm" onclick="loadWip()">↻ Refresh</button></div>
+      </div>
+      <div class="card">
+        <div class="tw">
+          <table>
+            <thead><tr><th>Item</th><th>Category</th><th>Unit</th><th>Total Out (Store)</th><th>Dispatch Used</th><th>WIP Balance</th></tr></thead>
+            <tbody id="wip-tb"><tr class="lrow"><td colspan="6"><span class="loader"></span></td></tr></tbody>
+          </table>
+        </div>
+        <div id="wip-empty" class="empty" style="display:none"><div class="ei">🏭</div><div class="et">No WIP data</div></div>
+      </div>
+    </div>
+
     <!-- ITEMS -->
     <div class="page" id="page-items">
       <div class="tb">
@@ -460,14 +369,8 @@
           <input class="inp" id="item-search" placeholder="🔍 Search..." style="width:170px;" oninput="filterItems()">
           <select class="inp" id="item-cat-f" style="width:160px;" onchange="filterItems()">
             <option value="">All Categories</option>
-            <option>BMS</option>
-            <option>Cells</option>
-            <option>Charger</option>
-            <option>Wire</option>
-            <option>Nickel</option>
-            <option>Consumable</option>
-            <option>Packaging</option>
-            <option>Other</option>
+            <option>BMS</option><option>Cells</option><option>Charger</option><option>Wire</option>
+            <option>Nickel</option><option>Consumable</option><option>Packaging</option><option>Other</option>
           </select>
           <button class="btn bp" onclick="openItemModal()">+ Add Item</button>
         </div>
@@ -511,9 +414,8 @@
           <input class="inp" id="stock-search" placeholder="🔍 Search..." style="width:170px;" oninput="filterStock()">
           <select class="inp" id="stock-cat-f" style="width:140px;" onchange="filterStock()">
             <option value="">All Categories</option>
-            <option>BMS</option><option>Cells</option><option>Charger</option>
-            <option>Wire</option><option>Nickel</option><option>Consumable</option>
-            <option>Packaging</option><option>Other</option>
+            <option>BMS</option><option>Cells</option><option>Charger</option><option>Wire</option>
+            <option>Nickel</option><option>Consumable</option><option>Packaging</option><option>Other</option>
           </select>
           <select class="inp" id="stock-status-f" style="width:120px;" onchange="filterStock()">
             <option value="">All Status</option>
@@ -549,13 +451,10 @@
       <div class="tb">
         <div class="pt"><h1>Daily Closing</h1><p>End-of-day stock snapshot</p></div>
         <div class="ta">
-          <!-- Tab toggle -->
           <button class="btn bg bsm" id="cl-tab-single" onclick="switchClTab('single')" style="border-color:var(--accent);color:var(--accent);">Single Day</button>
           <button class="btn bg bsm" id="cl-tab-range" onclick="switchClTab('range')">Date Range</button>
         </div>
       </div>
-
-      <!-- Single Day -->
       <div id="cl-single-wrap">
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
           <input type="date" class="inp" id="cl-date" style="width:170px;">
@@ -564,8 +463,6 @@
         </div>
         <div id="cl-content"></div>
       </div>
-
-      <!-- Date Range History -->
       <div id="cl-range-wrap" style="display:none;">
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
           <div style="display:flex;align-items:center;gap:6px;">
@@ -587,9 +484,7 @@
     <div class="page" id="page-opening">
       <div class="tb">
         <div class="pt"><h1>Opening Stock</h1><p>Set opening stock — one time setup</p></div>
-        <div class="ta">
-          <button class="btn bp" onclick="saveOpeningStock()">💾 Save Opening Stock</button>
-        </div>
+        <div class="ta"><button class="btn bp" onclick="saveOpeningStock()">💾 Save Opening Stock</button></div>
       </div>
       <div style="background:var(--amber-l);border:1px solid #fde68a;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--amber);">
         ⚠ This is a one-time setup. Enter existing stock quantities. These will be the base for all future calculations.
@@ -629,7 +524,7 @@
       </div>
     </div>
 
-    <!-- MATERIAL REQUESTS (Ajay view) -->
+    <!-- MATERIAL REQUESTS -->
     <div class="page" id="page-requests">
       <div class="tb">
         <div class="pt"><h1>Material Requests</h1><p>Requests from production — review and issue material</p></div>
@@ -654,32 +549,6 @@
       </div>
     </div>
 
-
-
-    <!-- WIP TRACKER PAGE -->
-    <div class="page" id="page-wip">
-      <div class="tb">
-        <div class="pt"><h1>WIP Tracker</h1><p>Production mein kya kya hai — running balance</p></div>
-        <div class="ta"><button class="btn bg bsm" onclick="loadWip()">↻ Refresh</button></div>
-      </div>
-      <div class="card">
-        <div class="tw">
-          <table>
-            <thead><tr>
-              <th>Item</th>
-              <th>Category</th>
-              <th>Unit</th>
-              <th>Total Out (Store)</th>
-              <th>Dispatch Used</th>
-              <th>WIP Balance</th>
-            </tr></thead>
-            <tbody id="wip-tb"><tr class="lrow"><td colspan="6"><span class="loader"></span></td></tr></tbody>
-          </table>
-        </div>
-        <div id="wip-empty" class="empty" style="display:none"><div class="ei">🏭</div><div class="et">No WIP data</div></div>
-      </div>
-    </div>
-
   </div><!-- /main -->
 </div><!-- /shell -->
 
@@ -691,14 +560,9 @@
     <div class="mh"><h2>📥 New Inward Entry</h2><button class="mclose" onclick="closeM('inward-modal')">✕</button></div>
     <div class="mb">
       <div class="fg">
-        <div class="fi full">
-          <label class="inp-label">Item *</label>
-          <select class="inp" id="in-item" onchange="updInwardInfo()"></select>
-        </div>
+        <div class="fi full"><label class="inp-label">Item *</label><select class="inp" id="in-item" onchange="updInwardInfo()"></select></div>
         <div class="fi full" id="in-stock-info" style="display:none">
-          <div class="stock-info">
-            Stock: <strong id="in-cs">—</strong> &nbsp;|&nbsp; ROP: <strong id="in-rp">—</strong> &nbsp;|&nbsp; In Transit: <strong id="in-mit">—</strong>
-          </div>
+          <div class="stock-info">Stock: <strong id="in-cs">—</strong> &nbsp;|&nbsp; ROP: <strong id="in-rp">—</strong> &nbsp;|&nbsp; In Transit: <strong id="in-mit">—</strong></div>
         </div>
         <div class="fi"><label class="inp-label">Quantity *</label><input class="inp" id="in-qty" type="number" min="1" placeholder="0"></div>
         <div class="fi"><label class="inp-label">Date *</label><input class="inp" id="in-date" type="date"></div>
@@ -721,14 +585,9 @@
     <div class="mh"><h2>📤 New Outward Entry</h2><button class="mclose" onclick="closeM('outward-modal')">✕</button></div>
     <div class="mb">
       <div class="fg">
-        <div class="fi full">
-          <label class="inp-label">Item *</label>
-          <select class="inp" id="out-item" onchange="updOutwardInfo()"></select>
-        </div>
+        <div class="fi full"><label class="inp-label">Item *</label><select class="inp" id="out-item" onchange="updOutwardInfo()"></select></div>
         <div class="fi full" id="out-stock-info" style="display:none">
-          <div class="stock-info">
-            Available: <strong id="out-cs">—</strong> &nbsp;|&nbsp; ROP: <strong id="out-rp">—</strong>
-          </div>
+          <div class="stock-info">Available: <strong id="out-cs">—</strong> &nbsp;|&nbsp; ROP: <strong id="out-rp">—</strong></div>
         </div>
         <div class="fi"><label class="inp-label">Quantity *</label><input class="inp" id="out-qty" type="number" min="1" placeholder="0"></div>
         <div class="fi"><label class="inp-label">Date *</label><input class="inp" id="out-date" type="date"></div>
@@ -758,14 +617,8 @@
     <div class="mh"><h2>🚚 New Dispatch</h2><button class="mclose" onclick="closeM('dispatch-modal')">✕</button></div>
     <div class="mb">
       <div class="fg">
-        <div class="fi full">
-          <label class="inp-label">BOM Model *</label>
-          <select class="inp" id="dis-bom" onchange="updDispatchPreview()"></select>
-        </div>
-        <div class="fi">
-          <label class="inp-label">Qty to Produce *</label>
-          <input class="inp" id="dis-qty" type="number" min="1" placeholder="1" oninput="updDispatchPreview()">
-        </div>
+        <div class="fi full"><label class="inp-label">BOM Model *</label><select class="inp" id="dis-bom" onchange="updDispatchPreview()"></select></div>
+        <div class="fi"><label class="inp-label">Qty to Produce *</label><input class="inp" id="dis-qty" type="number" min="1" placeholder="1" oninput="updDispatchPreview()"></div>
         <div class="fi"><label class="inp-label">Date *</label><input class="inp" id="dis-date" type="date"></div>
         <div class="fi"><label class="inp-label">Dispatch To</label><input class="inp" id="dis-to" placeholder="Customer / Stock"></div>
         <div class="fi"><label class="inp-label">Order Ref</label><input class="inp" id="dis-ref" placeholder="ORD-001"></div>
@@ -786,8 +639,6 @@
   <div class="modal modal-lg">
     <div class="mh"><h2 id="im-title">Add Item</h2><button class="mclose" onclick="closeM('item-modal')">✕</button></div>
     <div class="mb">
-
-      <!-- STEP 1: Category -->
       <div style="margin-bottom:16px;">
         <label class="inp-label">Step 1 — Category *</label>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px;" id="cat-grid">
@@ -801,42 +652,31 @@
           <button type="button" class="cat-btn" onclick="selectCat('Other')">➕ Other</button>
         </div>
       </div>
-
-      <!-- STEP 2: Brand -->
       <div id="brand-section" style="display:none;margin-bottom:16px;">
         <label class="inp-label">Step 2 — Brand / Type *</label>
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;" id="brand-grid"></div>
         <input class="inp" id="f-brand-custom" placeholder="Or type custom..." style="margin-top:8px;display:none;" oninput="updItemName()">
       </div>
-
-      <!-- STEP 3: Model -->
       <div id="model-section" style="display:none;margin-bottom:16px;">
         <label class="inp-label">Step 3 — Model / Specification *</label>
         <input class="inp" id="f-model" placeholder="e.g. 24S 40Amp, 100AH, 12.8V 5A..." oninput="updItemName()" style="margin-top:6px;">
       </div>
-
-      <!-- AUTO NAME PREVIEW -->
       <div id="name-preview" style="display:none;margin-bottom:16px;">
         <div style="background:var(--accent-l);border:1px solid #c7d9ff;border-radius:8px;padding:10px 14px;">
           <div style="font-size:10px;color:var(--accent);font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;">Item Name (Auto)</div>
           <div style="font-size:15px;font-weight:700;color:var(--navy);" id="f-name-preview">—</div>
           <input type="hidden" id="f-name">
-        <input type="hidden" id="f-max-val" value="0">
-        <input type="hidden" id="f-rop-val" value="0">
+          <input type="hidden" id="f-max-val" value="0">
+          <input type="hidden" id="f-rop-val" value="0">
         </div>
       </div>
-
-      <!-- ITEM DETAILS -->
       <div id="item-details" style="display:none;">
         <div style="height:1px;background:var(--border);margin:16px 0;"></div>
         <div class="fg">
           <div class="fi"><label class="inp-label">Unit</label>
             <select class="inp" id="f-unit" oninput="updROP()">
-              <option value="Pcs">Pcs</option>
-              <option value="Kg">Kg</option>
-              <option value="Metres">Metres</option>
-              <option value="Roll">Roll</option>
-              <option value="Set">Set</option>
+              <option value="Pcs">Pcs</option><option value="Kg">Kg</option>
+              <option value="Metres">Metres</option><option value="Roll">Roll</option><option value="Set">Set</option>
             </select>
           </div>
           <div class="fi"><label class="inp-label">ADC <span style="font-weight:400;color:var(--muted);">(Daily use)</span></label><input class="inp" id="f-adc" type="number" min="0" placeholder="0" oninput="updROP()"></div>
@@ -850,7 +690,6 @@
           <div class="rv" id="rop-prev">—</div>
         </div>
       </div>
-
     </div>
     <div class="mf">
       <button class="btn bg" onclick="closeM('item-modal')">Cancel</button>
@@ -936,6 +775,6 @@
   </div>
 </div>
 
-<script src="app.js?v=45"></script>
+<script src="app.js?v=46"></script>
 </body>
 </html>
