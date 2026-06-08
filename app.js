@@ -94,6 +94,8 @@ let _editItemName = null;
 let _editBomName  = null;
 let _clRows  = [];
 let _clDate  = '';
+let _cachedRecentTxns = [];
+let _sbRecentOpen = false;
 
 // ── UTILS ──
 function today() { return new Date().toISOString().slice(0, 10); }
@@ -219,12 +221,8 @@ async function loadDash() {
     _stocks = d.stocks || [];
     setEl('s-total', d.totalItems || 0);
     setEl('s-ro',    d.reorderCount || 0);
-    setEl('s-in',    d.todayIn || 0);
-    setEl('s-out',   d.todayOut || 0);
     setEl('s-wip',   (d.wipItems||[]).length || 0);
 
-    const dab = document.getElementById('d-alert-badge');
-    if (dab) { dab.style.display = d.reorderCount > 0 ? 'inline' : 'none'; dab.textContent = d.reorderCount; }
     const nb = document.getElementById('nb');
     if (nb) { nb.style.display = d.reorderCount > 0 ? 'inline' : 'none'; nb.textContent = d.reorderCount; }
     const nbi = document.getElementById('nb-indent');
@@ -232,59 +230,11 @@ async function loadDash() {
     const nbr = document.getElementById('nb-req');
     if (nbr) { nbr.style.display = d.pendingRequests > 0 ? 'inline' : 'none'; nbr.textContent = d.pendingRequests; }
 
-    // Store Live Stock
-    const storeWrap = document.getElementById('d-store');
-    if (storeWrap) {
-      if (!d.stocks || !d.stocks.length) {
-        storeWrap.innerHTML = `<div class="empty"><div class="ei">📦</div><div class="et">No items</div></div>`;
-      } else {
-        storeWrap.innerHTML = `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;">
-          <thead><tr>
-            <th style="text-align:left;padding:8px 14px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;border-bottom:1.5px solid var(--border);background:var(--s2);">Item</th>
-            <th style="text-align:left;padding:8px 14px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;border-bottom:1.5px solid var(--border);background:var(--s2);">Unit</th>
-            <th style="text-align:left;padding:8px 14px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;border-bottom:1.5px solid var(--border);background:var(--s2);">Store Stock</th>
-            <th style="text-align:left;padding:8px 14px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;border-bottom:1.5px solid var(--border);background:var(--s2);">WIP</th>
-            <th style="text-align:left;padding:8px 14px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;border-bottom:1.5px solid var(--border);background:var(--s2);">ROP</th>
-            <th style="text-align:left;padding:8px 14px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;border-bottom:1.5px solid var(--border);background:var(--s2);">Status</th>
-          </tr></thead>
-          <tbody>
-            ${d.stocks.map(s => {
-              const pct = s.maxL > 0 ? Math.min(100, Math.round(s.currentStock / s.maxL * 100)) : 0;
-              const bc  = s.status === 'OK' ? 'var(--green)' : s.status === 'Reorder' ? 'var(--orange)' : 'var(--red)';
-              return `<tr>
-                <td style="padding:10px 14px;border-bottom:1px solid var(--border);font-weight:600;color:var(--navy);font-size:13px;">${s.name}</td>
-                <td style="padding:10px 14px;border-bottom:1px solid var(--border);color:var(--muted);font-size:12px;">${s.unit||'—'}</td>
-                <td style="padding:10px 14px;border-bottom:1px solid var(--border);">
-                  <span style="font-family:var(--mono);font-weight:700;font-size:15px;color:var(--navy);">${s.currentStock}</span>
-                  <div style="height:4px;background:var(--border);border-radius:2px;margin-top:4px;width:80px;"><div style="height:100%;width:${pct}%;background:${bc};border-radius:2px;"></div></div>
-                </td>
-                <td style="padding:10px 14px;border-bottom:1px solid var(--border);">
-                  ${s.wip > 0 ? `<span style="font-family:var(--mono);font-weight:700;font-size:15px;color:var(--purple);">${s.wip}</span>` : '<span style="color:var(--light);">—</span>'}
-                </td>
-                <td style="padding:10px 14px;border-bottom:1px solid var(--border);font-family:var(--mono);color:var(--orange);font-weight:600;">${s.reorderPoint}</td>
-                <td style="padding:10px 14px;border-bottom:1px solid var(--border);">${stBadge(s.status)}</td>
-              </tr>`;
-            }).join('')}
-          </tbody>
-        </table></div>`;
-      }
-    }
-
-    // Recent txns
-    const rt = document.getElementById('d-recent');
-    if (rt) {
-      if (!d.recentTxns || !d.recentTxns.length) {
-        rt.innerHTML = `<div class="empty"><div class="ei">📭</div><div class="et">No transactions today</div></div>`;
-      } else {
-        rt.innerHTML = d.recentTxns.map(t => `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 16px;border-bottom:1px solid var(--border);">
-          <div>
-            <div style="font-weight:500;font-size:13px;">${t.itemName || t.bomModel || '—'}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:1px;">${fmtDT(t.ts)}</div>
-          </div>
-          <span class="badge ${t.txnType === 'IN' ? 'b-in' : 'b-out'}">${t.txnType === 'IN' ? '↑ IN' : '↓ OUT'} ${t.qty || t.qtyProduced || ''}</span>
-        </div>`).join('');
-      }
+    // Sidebar recent txns (load silently, don't override if collapsed)
+    _cachedRecentTxns = d.recentTxns || [];
+    const sbList = document.getElementById('sb-recent-list');
+    if (sbList && sbList.style.display !== 'none') {
+      renderSbRecent(_cachedRecentTxns);
     }
 
     // ── 3 CHARTS ──
@@ -1972,4 +1922,46 @@ function renderCategoryChart(stocks) {
       }
     }
   });
+}
+
+// ── SIDEBAR RECENT TRANSACTIONS ──
+
+function toggleSbRecent() {
+  _sbRecentOpen = !_sbRecentOpen;
+  const list  = document.getElementById('sb-recent-list');
+  const arrow = document.getElementById('sb-recent-arrow');
+  if (!list) return;
+  if (_sbRecentOpen) {
+    list.style.display = 'block';
+    if (arrow) arrow.textContent = '▲';
+    if (_cachedRecentTxns.length) {
+      renderSbRecent(_cachedRecentTxns);
+    } else {
+      // fetch if no cache
+      api('getDashboard').then(d => {
+        _cachedRecentTxns = d.recentTxns || [];
+        renderSbRecent(_cachedRecentTxns);
+      }).catch(() => {});
+    }
+  } else {
+    list.style.display = 'none';
+    if (arrow) arrow.textContent = '▼';
+  }
+}
+
+function renderSbRecent(txns) {
+  const list = document.getElementById('sb-recent-list');
+  if (!list) return;
+  if (!txns || !txns.length) {
+    list.innerHTML = `<div style="padding:10px 4px;text-align:center;font-size:11px;color:rgba(255,255,255,.3);">No transactions</div>`;
+    return;
+  }
+  list.innerHTML = txns.slice(0, 10).map(t => `
+    <div style="padding:7px 6px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;justify-content:space-between;align-items:center;gap:6px;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${(t.itemName||t.bomModel||'—').length > 18 ? (t.itemName||t.bomModel||'—').slice(0,18)+'…' : (t.itemName||t.bomModel||'—')}</div>
+        <div style="font-size:9px;color:rgba(255,255,255,.3);margin-top:1px;">${fmtDT(t.ts)}</div>
+      </div>
+      <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;flex-shrink:0;background:${t.txnType==='IN'?'rgba(22,163,74,.3)':'rgba(220,38,38,.3)'};color:${t.txnType==='IN'?'#86efac':'#fca5a5'};">${t.txnType==='IN'?'↑':'↓'} ${t.qty||t.qtyProduced||''}</span>
+    </div>`).join('');
 }
