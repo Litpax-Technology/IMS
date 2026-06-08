@@ -1,5 +1,5 @@
 // ============================================================
-// LITPAX IMS — app.js v4.2
+// LITPAX IMS — app.js v4.3
 // API URL: change here if redeployed
 // ============================================================
 
@@ -258,10 +258,11 @@ async function loadDash() {
 
     // Alerts
     const al = document.getElementById('d-alerts');
-    if (al && (!d.alerts || !d.alerts.length)) {
-      al.innerHTML = `<div class="empty"><div class="ei">✅</div><div class="et">All stocks healthy!</div></div>`;
-    } else {
-      al.innerHTML = d.alerts.map(s => `
+    if (al) {
+      if (!d.alerts || !d.alerts.length) {
+        al.innerHTML = `<div class="empty"><div class="ei">✅</div><div class="et">All stocks healthy!</div></div>`;
+      } else {
+        al.innerHTML = d.alerts.map(s => `
         <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);">
           <div>
             <div style="font-weight:600;font-size:13px;">${s.name}</div>
@@ -269,14 +270,16 @@ async function loadDash() {
           </div>
           ${stBadge(s.status)}
         </div>`).join('');
+      }
     }
 
     // Recent txns
     const rt = document.getElementById('d-recent');
-    if (rt && (!d.recentTxns || !d.recentTxns.length)) {
-      rt.innerHTML = `<div class="empty"><div class="ei">📭</div><div class="et">No transactions today</div></div>`;
-    } else {
-      rt.innerHTML = d.recentTxns.map(t => `
+    if (rt) {
+      if (!d.recentTxns || !d.recentTxns.length) {
+        rt.innerHTML = `<div class="empty"><div class="ei">📭</div><div class="et">No transactions today</div></div>`;
+      } else {
+        rt.innerHTML = d.recentTxns.map(t => `
         <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 16px;border-bottom:1px solid var(--border);">
           <div>
             <div style="font-weight:500;font-size:13px;">${t.itemName || t.bomModel || '—'}</div>
@@ -284,6 +287,7 @@ async function loadDash() {
           </div>
           <span class="badge ${t.txnType === 'IN' ? 'b-in' : 'b-out'}">${t.txnType === 'IN' ? '↑ IN' : '↓ OUT'} ${t.qty || t.qtyProduced || ''}</span>
         </div>`).join('');
+      }
     }
 
     // Store Live Stock
