@@ -1945,7 +1945,6 @@ async function loadAjayDash() {
 
 // ── SANDEEP DASHBOARD ──
 async function loadSandeepDash() {
-  // Update greeting
   const now = new Date();
   const hr = now.getHours();
   const g = hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
@@ -1954,94 +1953,138 @@ async function loadSandeepDash() {
   const dtEl = document.getElementById('sandeep-date');
   if (dtEl) dtEl.textContent = now.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
 
+  // Helper: expandable category row
+  function catSection(id, cat, icon, items, renderDetail) {
+    const total = items.reduce((s,i) => s + (i.qty||i.wip||0), 0);
+    const unit  = items[0] ? (items[0].unit||'') : '';
+    return `<div style="border-bottom:1px solid var(--border);">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;cursor:pointer;background:var(--s2);"
+        onclick="const d=document.getElementById('${id}');const a=document.getElementById('arr-${id}');if(d.style.display==='none'){d.style.display='block';a.textContent='▲';}else{d.style.display='none';a.textContent='▼';}">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span>${icon}</span>
+          <span style="font-weight:700;font-size:13px;color:var(--navy);">${cat}</span>
+          <span style="font-size:11px;color:var(--muted);">${items.length} items</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-family:var(--mono);font-weight:700;font-size:15px;color:var(--navy);">${total} <span style="font-size:11px;font-weight:400;color:var(--muted);">${unit}</span></span>
+          <span id="arr-${id}" style="font-size:11px;color:var(--muted);">▼</span>
+        </div>
+      </div>
+      <div id="${id}" style="display:none;">
+        ${renderDetail(items)}
+      </div>
+    </div>`;
+  }
+
   try {
     const d = await api('getDashboard');
     _stocks = d.stocks || [];
 
-    // KPI
-    const totalDispatched = (d.fg||[]).reduce((s,f) => s+f.totalProduced, 0);
-    setEl('sd-today-out', d.todayOut || 0);
-    setEl('sd-wip', (d.wipItems||[]).length || 0);
-    setEl('sd-fg', (d.fg||[]).length || 0);
-    setEl('sd-dispatch', totalDispatched);
+    // ── SECTION 1: Today Received from Store ──
+    const issueEl = document.getElementById('sd-issue-section');
+    const issueSummEl = document.getElementById('sd-issue-summary');
+    try {
+      const outRows = await api('getOutward', { date: today() });
+      const issued = outRows.filter(r => !(r.remarks||'').startsWith('Dispatch:'));
 
-    // Today production mein kya aaya (outward entries)
-    const todayOutW = document.getElementById('sd-today-in-list');
-    if (todayOutW) {
-      const outToday = (d.recentTxns||[]).filter(t => t.txnType==='OUT' && t.date === new Date().toISOString().slice(0,10));
-      if (!outToday.length) {
-        todayOutW.innerHTML = `<div class="empty" style="padding:28px;"><div class="ei">📤</div><div class="et">Nothing received today yet</div></div>`;
+      // Group by category then item
+      const catMap = {};
+      issued.forEach(r => {
+        const s = _stocks.find(x => x.name === r.itemName);
+        const cat = s ? s.cat : 'Other';
+        if (!catMap[cat]) catMap[cat] = {};
+        if (!catMap[cat][r.itemName]) catMap[cat][r.itemName] = { qty: 0, unit: r.unit };
+        catMap[cat][r.itemName].qty += r.qty;
+      });
+
+      const cats = Object.keys(catMap).sort();
+      if (issueSummEl) issueSummEl.textContent = issued.length ? `${cats.length} categories, ${issued.length} entries` : '';
+
+      if (!cats.length) {
+        if (issueEl) issueEl.innerHTML = `<div class="empty" style="padding:24px;"><div class="ei">📤</div><div class="et">Nothing received today</div></div>`;
       } else {
-        todayOutW.innerHTML = outToday.map(t => `
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);">
-            <div>
-              <div style="font-weight:600;font-size:13px;">${t.itemName||'—'}</div>
-              <div style="font-size:11px;color:var(--muted);">${fmtDT(t.ts)}</div>
-            </div>
-            <span style="font-family:var(--mono);font-weight:700;font-size:15px;color:var(--orange);">${t.qty} ${t.unit||''}</span>
-          </div>`).join('');
+        const html = cats.map(cat => {
+          const items = Object.entries(catMap[cat]).sort((a,b)=>a[0].localeCompare(b[0])).map(([name,v])=>({name,qty:v.qty,unit:v.unit}));
+          return catSection(`sd-iss-${cat}`, cat, getCatIcon(cat), items, (items) =>
+            items.map(i => `
+              <div style="display:flex;justify-content:space-between;padding:8px 16px 8px 32px;border-bottom:1px solid var(--border);font-size:13px;">
+                <span style="color:var(--t2);">${i.name}</span>
+                <span style="font-family:var(--mono);font-weight:700;color:var(--orange);">${i.qty} <span style="font-size:11px;font-weight:400;color:var(--muted);">${i.unit||''}</span></span>
+              </div>`).join('')
+          );
+        }).join('');
+        if (issueEl) issueEl.innerHTML = html;
       }
+    } catch(e) {}
+
+    // ── SECTION 2: WIP ──
+    const wipEl  = document.getElementById('sd-wip-section');
+    const wipSummEl = document.getElementById('sd-wip-summary');
+    const wipItems = d.wipItems || [];
+
+    // Group WIP by category
+    const wipCatMap = {};
+    wipItems.forEach(s => {
+      const cat = s.cat || 'Other';
+      if (!wipCatMap[cat]) wipCatMap[cat] = [];
+      wipCatMap[cat].push({ name: s.name, qty: s.wip, unit: s.unit });
+    });
+
+    const wipCats = Object.keys(wipCatMap).sort();
+    if (wipSummEl) wipSummEl.textContent = wipItems.length ? `${wipItems.length} items in production` : 'Nothing in WIP';
+
+    if (!wipCats.length) {
+      if (wipEl) wipEl.innerHTML = `<div class="empty" style="padding:24px;"><div class="ei">🏭</div><div class="et">Nothing in WIP</div></div>`;
+    } else {
+      const html = wipCats.map(cat => {
+        const items = wipCatMap[cat];
+        return catSection(`sd-wip-${cat}`, cat, getCatIcon(cat), items, (items) =>
+          items.map(i => `
+            <div style="display:flex;justify-content:space-between;padding:8px 16px 8px 32px;border-bottom:1px solid var(--border);font-size:13px;">
+              <span style="color:var(--t2);">${i.name}</span>
+              <span style="font-family:var(--mono);font-weight:700;color:var(--purple);">${i.qty} <span style="font-size:11px;font-weight:400;color:var(--muted);">${i.unit||''}</span></span>
+            </div>`).join('')
+        );
+      }).join('');
+      if (wipEl) wipEl.innerHTML = html;
     }
 
-    // WIP
-    const wipW = document.getElementById('sd-wip-list');
-    if (wipW) {
-      if (!d.wipItems || !d.wipItems.length) {
-        wipW.innerHTML = `<div class="empty" style="padding:28px;"><div class="ei">🏭</div><div class="et">In Production kuch nahi</div></div>`;
+    // ── SECTION 3: Today Dispatch ──
+    const disEl  = document.getElementById('sd-dispatch-section');
+    const disSummEl = document.getElementById('sd-dispatch-summary');
+    try {
+      const disRows = await api('getDispatch', {});
+      const todayDis = disRows.filter(r => r.date === today());
+
+      if (disSummEl) disSummEl.textContent = todayDis.length ? `${todayDis.length} dispatched today` : 'No dispatch today';
+
+      if (!todayDis.length) {
+        if (disEl) disEl.innerHTML = `<div class="empty" style="padding:24px;"><div class="ei">🚚</div><div class="et">No dispatch today</div></div>`;
       } else {
-        wipW.innerHTML = d.wipItems.map(s => `
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);">
-            <div>
-              <div style="font-weight:600;font-size:13px;">${s.name}</div>
-              <div style="font-size:11px;color:var(--muted);">Store mein: ${s.currentStock} ${s.unit||''}</div>
-            </div>
-            <div style="text-align:right;">
-              <div style="font-family:var(--mono);font-size:20px;font-weight:700;color:var(--purple);">${s.wip}</div>
-              <div style="font-size:10px;color:var(--muted);">In Production</div>
-            </div>
-          </div>`).join('');
-      }
-    }
+        // Group by BOM model
+        const bomMap = {};
+        todayDis.forEach(r => {
+          if (!bomMap[r.bomModel]) bomMap[r.bomModel] = { qty: 0, entries: [] };
+          bomMap[r.bomModel].qty += r.qtyProduced;
+          bomMap[r.bomModel].entries.push(r);
+        });
 
-    // FG
-    const fgW = document.getElementById('sd-fg-list');
-    if (fgW) {
-      if (!d.fg || !d.fg.length) {
-        fgW.innerHTML = `<div class="empty" style="padding:28px;"><div class="ei">📦</div><div class="et">No finished goods</div></div>`;
-      } else {
-        fgW.innerHTML = d.fg.map(f => `
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);">
-            <div>
-              <div style="font-weight:600;font-size:13px;">${f.model}</div>
-              <div style="font-size:11px;color:var(--muted);">Last: ${fmtD(f.lastDate)}</div>
-            </div>
-            <div style="text-align:right;">
-              <div style="font-family:var(--mono);font-size:20px;font-weight:700;color:var(--green);">${f.totalProduced}</div>
-              <div style="font-size:10px;color:var(--muted);">Units Total</div>
-            </div>
-          </div>`).join('');
+        const html = Object.entries(bomMap).map(([model, v]) => {
+          const items = [{name: model, qty: v.qty, unit: 'units'}];
+          return catSection(`sd-dis-${model.replace(/\s/g,'_')}`, model, '🔋', items, () =>
+            v.entries.map(r => `
+              <div style="display:flex;justify-content:space-between;padding:8px 16px 8px 32px;border-bottom:1px solid var(--border);font-size:13px;">
+                <div>
+                  <div style="font-weight:600;color:var(--navy);">${r.bomModel}</div>
+                  <div style="font-size:11px;color:var(--muted);">${r.dispatchTo||'—'} · ${r.by||'—'}</div>
+                </div>
+                <span style="font-family:var(--mono);font-weight:700;color:var(--green);">×${r.qtyProduced}</span>
+              </div>`).join('')
+          );
+        }).join('');
+        if (disEl) disEl.innerHTML = html;
       }
-    }
-
-    // Recent Dispatch
-    const disW = document.getElementById('sd-dispatch-list');
-    if (disW) {
-      try {
-        const dis = await api('getDispatch', {});
-        if (!dis.length) {
-          disW.innerHTML = `<div class="empty" style="padding:28px;"><div class="ei">🚚</div><div class="et">No dispatches yet</div></div>`;
-        } else {
-          disW.innerHTML = dis.slice(0,8).map(r => `
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);">
-              <div>
-                <div style="font-weight:600;font-size:13px;">${r.bomModel}</div>
-                <div style="font-size:11px;color:var(--muted);">${fmtD(r.date)} · ${r.dispatchTo||'—'}</div>
-              </div>
-              <span style="font-family:var(--mono);font-weight:700;font-size:15px;color:var(--accent);">×${r.qtyProduced}</span>
-            </div>`).join('');
-        }
-      } catch(e) {}
-    }
+    } catch(e) {}
 
     setDot('ok', 'Connected');
   } catch(e) { toast(e.message, 'err'); setDot('err', 'Error'); }
