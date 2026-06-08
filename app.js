@@ -71,6 +71,9 @@ function applyRoleUI() {
   if (lb) lb.style.display = 'block';
   const rl = document.getElementById('logout-role-label');
   if (rl) rl.textContent = role.name;
+  // Sidebar today activity — admin only
+  const sbTxnNg = document.getElementById('sb-txn-ng');
+  if (sbTxnNg) sbTxnNg.style.display = _currentRole === 'admin' ? 'block' : 'none';
 }
 
 function logout() {
@@ -94,8 +97,6 @@ let _editItemName = null;
 let _editBomName  = null;
 let _clRows  = [];
 let _clDate  = '';
-let _cachedRecentTxns = [];
-let _sbRecentOpen = false;
 
 // ── UTILS ──
 function today() { return new Date().toISOString().slice(0, 10); }
@@ -230,12 +231,8 @@ async function loadDash() {
     const nbr = document.getElementById('nb-req');
     if (nbr) { nbr.style.display = d.pendingRequests > 0 ? 'inline' : 'none'; nbr.textContent = d.pendingRequests; }
 
-    // Sidebar recent txns (load silently, don't override if collapsed)
-    _cachedRecentTxns = d.recentTxns || [];
-    const sbList = document.getElementById('sb-recent-list');
-    if (sbList && sbList.style.display !== 'none') {
-      renderSbRecent(_cachedRecentTxns);
-    }
+    // Sidebar inward/outward (admin)
+    loadSbActivity();
 
     // ── 3 CHARTS ──
     renderReorderChart(d.stocks || []);
@@ -1924,44 +1921,83 @@ function renderCategoryChart(stocks) {
   });
 }
 
-// ── SIDEBAR RECENT TRANSACTIONS ──
+// ── SIDEBAR TODAY INWARD / OUTWARD (Admin) ──
+let _sbInOpen  = false;
+let _sbOutOpen = false;
+let _sbInData  = [];
+let _sbOutData = [];
 
-function toggleSbRecent() {
-  _sbRecentOpen = !_sbRecentOpen;
-  const list  = document.getElementById('sb-recent-list');
-  const arrow = document.getElementById('sb-recent-arrow');
-  if (!list) return;
-  if (_sbRecentOpen) {
-    list.style.display = 'block';
-    if (arrow) arrow.textContent = '▲';
-    if (_cachedRecentTxns.length) {
-      renderSbRecent(_cachedRecentTxns);
-    } else {
-      // fetch if no cache
-      api('getDashboard').then(d => {
-        _cachedRecentTxns = d.recentTxns || [];
-        renderSbRecent(_cachedRecentTxns);
-      }).catch(() => {});
-    }
-  } else {
-    list.style.display = 'none';
-    if (arrow) arrow.textContent = '▼';
-  }
+async function loadSbActivity() {
+  // Only for admin
+  if (_currentRole !== 'admin') return;
+  try {
+    const [inRows, outRows] = await Promise.all([
+      api('getInward', { date: today() }),
+      api('getOutward', { date: today() }),
+    ]);
+    // Group inward by item
+    const inMap = {};
+    inRows.forEach(r => {
+      if (!inMap[r.itemName]) inMap[r.itemName] = { qty: 0, unit: r.unit };
+      inMap[r.itemName].qty += r.qty;
+    });
+    _sbInData = Object.entries(inMap).sort((a,b) => a[0].localeCompare(b[0]));
+
+    // Group outward by item (exclude dispatch)
+    const outMap = {};
+    outRows.filter(r => !(r.remarks||'').startsWith('Dispatch:')).forEach(r => {
+      if (!outMap[r.itemName]) outMap[r.itemName] = { qty: 0, unit: r.unit };
+      outMap[r.itemName].qty += r.qty;
+    });
+    _sbOutData = Object.entries(outMap).sort((a,b) => a[0].localeCompare(b[0]));
+
+    // Update counts
+    const inC = document.getElementById('sb-in-count');
+    if (inC) inC.textContent = _sbInData.length ? _sbInData.length + ' items' : '';
+    const outC = document.getElementById('sb-out-count');
+    if (outC) outC.textContent = _sbOutData.length ? _sbOutData.length + ' items' : '';
+
+    // Re-render if open
+    if (_sbInOpen)  renderSbIn();
+    if (_sbOutOpen) renderSbOut();
+  } catch(e) {}
 }
 
-function renderSbRecent(txns) {
-  const list = document.getElementById('sb-recent-list');
+function toggleSbPanel(listId, arrowId) {
+  const list  = document.getElementById(listId);
+  const arrow = document.getElementById(arrowId);
   if (!list) return;
-  if (!txns || !txns.length) {
-    list.innerHTML = `<div style="padding:10px 4px;text-align:center;font-size:11px;color:rgba(255,255,255,.3);">No transactions</div>`;
+  const isOpen = list.style.display !== 'none';
+  list.style.display  = isOpen ? 'none' : 'block';
+  if (arrow) arrow.textContent = isOpen ? '▼' : '▲';
+  if (listId === 'sb-in-list')  { _sbInOpen  = !isOpen; if (!isOpen) renderSbIn(); }
+  if (listId === 'sb-out-list') { _sbOutOpen = !isOpen; if (!isOpen) renderSbOut(); }
+}
+
+function renderSbIn() {
+  const list = document.getElementById('sb-in-list');
+  if (!list) return;
+  if (!_sbInData.length) {
+    list.innerHTML = `<div style="padding:8px 4px;text-align:center;font-size:11px;color:rgba(255,255,255,.3);">No inward today</div>`;
     return;
   }
-  list.innerHTML = txns.slice(0, 10).map(t => `
-    <div style="padding:7px 6px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;justify-content:space-between;align-items:center;gap:6px;">
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${(t.itemName||t.bomModel||'—').length > 18 ? (t.itemName||t.bomModel||'—').slice(0,18)+'…' : (t.itemName||t.bomModel||'—')}</div>
-        <div style="font-size:9px;color:rgba(255,255,255,.3);margin-top:1px;">${fmtDT(t.ts)}</div>
-      </div>
-      <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;flex-shrink:0;background:${t.txnType==='IN'?'rgba(22,163,74,.3)':'rgba(220,38,38,.3)'};color:${t.txnType==='IN'?'#86efac':'#fca5a5'};">${t.txnType==='IN'?'↑':'↓'} ${t.qty||t.qtyProduced||''}</span>
+  list.innerHTML = _sbInData.map(([name, v]) => `
+    <div style="padding:6px 4px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;justify-content:space-between;align-items:center;gap:4px;">
+      <div style="font-size:11px;color:rgba(255,255,255,.7);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</div>
+      <span style="font-size:10px;font-weight:700;color:rgba(34,197,94,.9);flex-shrink:0;">+${v.qty} <span style="font-weight:400;opacity:.6;">${v.unit||''}</span></span>
+    </div>`).join('');
+}
+
+function renderSbOut() {
+  const list = document.getElementById('sb-out-list');
+  if (!list) return;
+  if (!_sbOutData.length) {
+    list.innerHTML = `<div style="padding:8px 4px;text-align:center;font-size:11px;color:rgba(255,255,255,.3);">No outward today</div>`;
+    return;
+  }
+  list.innerHTML = _sbOutData.map(([name, v]) => `
+    <div style="padding:6px 4px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;justify-content:space-between;align-items:center;gap:4px;">
+      <div style="font-size:11px;color:rgba(255,255,255,.7);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</div>
+      <span style="font-size:10px;font-weight:700;color:rgba(234,88,12,.9);flex-shrink:0;">-${v.qty} <span style="font-weight:400;opacity:.6;">${v.unit||''}</span></span>
     </div>`).join('');
 }
