@@ -144,12 +144,13 @@ async function api(action, body) {
 
 // ── INIT ──
 window.onload = async function() {
-  document.getElementById('cl-date').value = today();
-  document.getElementById('in-date').value = today();
-  document.getElementById('out-date').value = today();
-  document.getElementById('dis-date').value = today();
-  document.getElementById('in-date-f').value = today();
-  document.getElementById('out-date-f').value = today();
+  const setVal = (id, val) => { const el = document.getElementById(id); if(el) el.value = val; };
+  setVal('cl-date', today());
+  setVal('in-date', today());
+  setVal('out-date', today());
+  setVal('dis-date', today());
+  setVal('in-date-f', today());
+  setVal('out-date-f', today());
   setDot('loading', 'Connecting...');
 
   // Check saved role
