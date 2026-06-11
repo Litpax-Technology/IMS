@@ -2054,7 +2054,109 @@ function renderCategoryChart(stocks) {
   });
 }
 
-// ── SIDEBAR TODAY INWARD / OUTWARD (Admin) ──
+// ── CREATE PO FROM REORDER ──
+async function openCreatePO() {
+  const btn = document.getElementById('po-btn');
+  const list = document.getElementById('po-items-list');
+  list.innerHTML = `<div class="empty" style="padding:20px;"><div class="ei">⏳</div><div class="et">Loading reorder items...</div></div>`;
+  document.getElementById('po-supplier').value = '';
+  document.getElementById('po-exp-date').value = '';
+  document.getElementById('create-po-modal').classList.add('open');
+
+  try {
+    if (!_stocks.length) _stocks = await api('getStockSummary');
+    const reorderItems = _stocks.filter(s => s.status === 'Critical' || s.status === 'Reorder');
+
+    if (!reorderItems.length) {
+      list.innerHTML = `<div class="empty" style="padding:20px;"><div class="ei">✅</div><div class="et">Koi reorder item nahi hai!</div></div>`;
+      if (btn) btn.disabled = true;
+      return;
+    }
+    if (btn) btn.disabled = false;
+
+    list.innerHTML = `
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead><tr>
+            <th style="text-align:left;padding:8px 12px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;border-bottom:1.5px solid var(--border);background:var(--s2);">Item</th>
+            <th style="padding:8px 12px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;border-bottom:1.5px solid var(--border);background:var(--s2);text-align:center;">Status</th>
+            <th style="padding:8px 12px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;border-bottom:1.5px solid var(--border);background:var(--s2);text-align:center;">Current</th>
+            <th style="padding:8px 12px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;border-bottom:1.5px solid var(--border);background:var(--s2);text-align:center;">MOQ</th>
+            <th style="padding:8px 12px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;border-bottom:1.5px solid var(--border);background:var(--s2);text-align:center;">Order Qty</th>
+            <th style="padding:8px 12px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;border-bottom:1.5px solid var(--border);background:var(--s2);text-align:center;">Include</th>
+          </tr></thead>
+          <tbody>
+            ${reorderItems.map(s => {
+              const suggestedQty = s.stockToOrder > 0 ? s.stockToOrder : (s.moq || 0);
+              const isCr = s.status === 'Critical';
+              return `<tr>
+                <td style="padding:10px 12px;border-bottom:1px solid var(--border);">
+                  <div style="font-weight:600;color:var(--navy);font-size:13px;">${s.name}</div>
+                  <div style="font-size:11px;color:var(--muted);margin-top:2px;">ROP: ${s.reorderPoint} | Max: ${s.maxL || 0} ${s.unit}</div>
+                </td>
+                <td style="padding:10px 12px;border-bottom:1px solid var(--border);text-align:center;">${stBadge(s.status)}</td>
+                <td style="padding:10px 12px;border-bottom:1px solid var(--border);text-align:center;font-family:var(--mono);font-weight:700;color:${isCr?'var(--red)':'var(--orange)'};">${s.currentStock} ${s.unit}</td>
+                <td style="padding:10px 12px;border-bottom:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--muted);">${s.moq || '—'}</td>
+                <td style="padding:10px 12px;border-bottom:1px solid var(--border);text-align:center;">
+                  <input type="number" min="1" value="${suggestedQty}" id="po-qty-${s.name.replace(/\s/g,'_')}"
+                    style="width:80px;text-align:center;font-family:var(--mono);font-weight:600;font-size:13px;background:var(--s2);border:1.5px solid var(--border);border-radius:6px;padding:5px 8px;outline:none;">
+                </td>
+                <td style="padding:10px 12px;border-bottom:1px solid var(--border);text-align:center;">
+                  <input type="checkbox" id="po-chk-${s.name.replace(/\s/g,'_')}" checked
+                    style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent);">
+                </td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  } catch(e) { toast(e.message, 'err'); closeM('create-po-modal'); }
+}
+
+async function saveCreatePO() {
+  if (!_stocks.length) return;
+  const reorderItems = _stocks.filter(s => s.status === 'Critical' || s.status === 'Reorder');
+  const supplier  = document.getElementById('po-supplier').value;
+  const expDate   = document.getElementById('po-exp-date').value;
+
+  // Collect checked items
+  const toCreate = [];
+  reorderItems.forEach(s => {
+    const key = s.name.replace(/\s/g,'_');
+    const chk = document.getElementById('po-chk-'+key);
+    const qty = Number((document.getElementById('po-qty-'+key)||{}).value) || 0;
+    if (chk && chk.checked && qty > 0) {
+      toCreate.push({ itemName: s.name, qty, supplier, expectedDate: expDate });
+    }
+  });
+
+  if (!toCreate.length) { toast('Koi item select nahi hai', 'err'); return; }
+
+  const btn = document.getElementById('po-btn');
+  btn.disabled = true; btn.textContent = 'Creating...';
+
+  try {
+    let created = 0;
+    for (const item of toCreate) {
+      await api('addIndent', {
+        itemName: item.itemName,
+        qty: item.qty,
+        date: today(),
+        supplier: item.supplier,
+        expectedDate: item.expectedDate,
+        remarks: 'Auto PO from Reorder',
+      });
+      created++;
+    }
+    toast(`✓ ${created} PO entries created — Indent/PO mein dekho`, 'ok');
+    closeM('create-po-modal');
+    _stocks = [];
+    loadReorder();
+    // Navigate to indent page
+    setTimeout(() => showPage('indent'), 1000);
+  } catch(e) { toast(e.message, 'err'); }
+  finally { btn.disabled = false; btn.textContent = '✓ Create PO'; }
+}
 let _sbInOpen  = false;
 let _sbOutOpen = false;
 let _sbInData  = [];
