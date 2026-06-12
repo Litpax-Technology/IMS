@@ -1356,22 +1356,23 @@ async function loadHeatmapItems() { /* not needed anymore */ }
 
 async function genHeatmap() {
   const month = document.getElementById('hm-month').value;
+  const cat   = (document.getElementById('hm-cat') || {}).value || '';
   const wrap  = document.getElementById('hm-content');
 
   if (!month) { toast('Month select karo', 'err'); return; }
 
-  wrap.innerHTML = `<div class="empty"><div class="ei">⏳</div><div class="et">Calculating all items...</div></div>`;
+  wrap.innerHTML = `<div class="empty"><div class="ei">⏳</div><div class="et">Calculating${cat ? ' — '+cat : ' all items'}...</div></div>`;
 
   try {
-    // Get all items
     if (!_stocks.length) _stocks = await api('getStockSummary');
 
-    // Get monthly data for all items in one call
     const data = await api('getMonthlyStockAll', { month });
-    // data = { days: ['2026-06-01',...], items: [{name, unit, maxL, closings: [n,n,...]}] }
 
-    const days   = data.days;   // array of date strings
-    const items  = data.items;  // array of items with closings array
+    const days  = data.days;
+    // Apply category filter using _stocks cat info
+    const items = cat
+      ? data.items.filter(i => { const s = _stocks.find(x => x.name === i.name); return s ? s.cat === cat : false; })
+      : data.items;
 
     if (!days.length || !items.length) {
       wrap.innerHTML = `<div class="empty"><div class="ei">📭</div><div class="et">No data</div></div>`;
