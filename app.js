@@ -647,7 +647,10 @@ function selectCat(cat) {
   const brands = CAT_BRANDS[cat] || ['Other'];
   const brandGrid = document.getElementById('brand-grid');
   const brandCustom = document.getElementById('f-brand-custom');
-  if (brands.length === 1 && brands[0] === '—') {
+  const noBrandCats = ['Busbar', 'Packaging', 'Other'];
+
+  if (brands.length === 1 && brands[0] === '—' || noBrandCats.includes(cat)) {
+    // Skip brand step — go directly to model
     document.getElementById('brand-section').style.display = 'none';
     document.getElementById('model-section').style.display = 'block';
     document.getElementById('item-details').style.display = 'block';
