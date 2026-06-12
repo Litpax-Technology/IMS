@@ -514,7 +514,21 @@
     <div class="mh"><h2>📥 New Inward Entry</h2><button class="mclose" onclick="closeM('inward-modal')">✕</button></div>
     <div class="mb">
       <div class="fg">
-        <div class="fi full"><label class="inp-label">Item *</label><select class="inp" id="in-item" onchange="updInwardInfo()"></select></div>
+        <div class="fi full">
+          <label class="inp-label">Category *</label>
+          <select class="inp" id="in-cat" onchange="filterInwardItems()">
+            <option value="">-- Select Category --</option>
+            <option>BMS</option><option>Cells</option><option>Charger</option>
+            <option>Wire</option><option>Nickel</option><option>Box</option>
+            <option>Consumable</option><option>Packaging</option><option>Other</option>
+          </select>
+        </div>
+        <div class="fi full">
+          <label class="inp-label">Item *</label>
+          <select class="inp" id="in-item" onchange="updInwardInfo()">
+            <option value="">-- Select Category first --</option>
+          </select>
+        </div>
         <div class="fi full" id="in-stock-info" style="display:none"><div class="stock-info">Stock: <strong id="in-cs">—</strong> &nbsp;|&nbsp; ROP: <strong id="in-rp">—</strong> &nbsp;|&nbsp; In Transit: <strong id="in-mit">—</strong></div></div>
         <div class="fi"><label class="inp-label">Quantity *</label><input class="inp" id="in-qty" type="number" min="1" placeholder="0"></div>
         <div class="fi"><label class="inp-label">Date *</label><input class="inp" id="in-date" type="date"></div>
@@ -534,7 +548,21 @@
     <div class="mh"><h2>📤 New Outward Entry</h2><button class="mclose" onclick="closeM('outward-modal')">✕</button></div>
     <div class="mb">
       <div class="fg">
-        <div class="fi full"><label class="inp-label">Item *</label><select class="inp" id="out-item" onchange="updOutwardInfo()"></select></div>
+        <div class="fi full">
+          <label class="inp-label">Category *</label>
+          <select class="inp" id="out-cat" onchange="filterOutwardItems()">
+            <option value="">-- Select Category --</option>
+            <option>BMS</option><option>Cells</option><option>Charger</option>
+            <option>Wire</option><option>Nickel</option><option>Box</option>
+            <option>Consumable</option><option>Packaging</option><option>Other</option>
+          </select>
+        </div>
+        <div class="fi full">
+          <label class="inp-label">Item *</label>
+          <select class="inp" id="out-item" onchange="updOutwardInfo()">
+            <option value="">-- Select Category first --</option>
+          </select>
+        </div>
         <div class="fi full" id="out-stock-info" style="display:none"><div class="stock-info">Available: <strong id="out-cs">—</strong> &nbsp;|&nbsp; ROP: <strong id="out-rp">—</strong></div></div>
         <div class="fi"><label class="inp-label">Quantity *</label><input class="inp" id="out-qty" type="number" min="1" placeholder="0"></div>
         <div class="fi"><label class="inp-label">Date *</label><input class="inp" id="out-date" type="date"></div>
