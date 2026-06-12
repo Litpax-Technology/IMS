@@ -1528,8 +1528,9 @@ function filterOpeningStock() {
 
 async function saveOpeningStock() {
   if (!_items.length) { toast('Items not loaded', 'err'); return; }
+  const safeId = (name) => name.replace(/[^a-zA-Z0-9]/g, '_');
   const items = _items.map(item => {
-    const key = item.name.replace(/\s/g,'_');
+    const key = safeId(item.name);
     return {
       name: item.name,
       sku:  (document.getElementById('sku-'+key)||{}).value || '',
