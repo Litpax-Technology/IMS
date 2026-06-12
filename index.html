@@ -430,6 +430,15 @@
             <label style="font-size:12px;color:var(--muted);font-weight:600;">Month</label>
             <input type="month" class="inp" id="hm-month" style="width:170px;">
           </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <label style="font-size:12px;color:var(--muted);font-weight:600;">Category</label>
+            <select class="inp" id="hm-cat" style="width:160px;">
+              <option value="">All Categories</option>
+              <option>BMS</option><option>Cells</option><option>Charger</option>
+              <option>Wire</option><option>Nickel</option><option>Box</option>
+              <option>Busbar</option><option>Packaging</option><option>Other</option>
+            </select>
+          </div>
           <button class="btn bp" onclick="genHeatmap()">Generate</button>
         </div>
         <!-- Legend -->
