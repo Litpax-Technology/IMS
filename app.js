@@ -630,21 +630,20 @@ function filterItems() {
 
 // ── CATEGORY / BRAND CONFIG ──
 const CAT_BRANDS = {
-  'BMS':        ['JK', 'JBD', 'Daly', 'Solar', 'Other'],
-  'Cells':      ['DMEGC', 'EVE', 'BAK', 'LG', 'HLY', 'CATL', 'Other'],
-  'Charger':    ['Charge Q', 'Litpax', 'AXIOM', 'SHAKTI', 'XSTRONG POWER', 'Other'],
-  'Wire':       ['Copper', 'Silicon', 'Other'],
-  'Nickel':     ['Pure', 'Coated', 'Other'],
-  
-  'Packaging':  ['—'],
-  'Box':        ['Prismatic', 'Cylindrical', 'Other'],
-  'Tools':       ['—'],
-  'Consumables': ['—'],
+  'Cells':        ['DMEGC', 'EVE', 'BAK', 'LG', 'HLY', 'CATL', 'Other'],
+  'BMS':          ['JK', 'JBD', 'Daly', 'Solar', 'Other'],
+  'Charger':      ['Charge Q', 'Litpax', 'AXIOM', 'SHAKTI', 'XSTRONG POWER', 'Other'],
+  'Nickel/Busbar':['Nickel', 'Busbar'],
+  'Box':          ['Prismatic', 'Cylindrical', 'Other'],
+  'Wire':         ['—'],
+  'Consumables':  ['—'],
+  'Tools':        ['—'],
+  'Packaging':    ['—'],
 };
 const CAT_UNITS = {
-  'BMS': 'Pcs', 'Cells': 'Pcs', 'Charger': 'Pcs',
-  'Wire': 'Metres', 'Nickel': 'Kg',
-  'Box': 'Pcs', 'Nickel/Busbar': 'Kg', 'Tools': 'Pcs', 'Consumables': 'Pcs', 'Packaging': 'Pcs',
+  'Cells': 'Pcs', 'BMS': 'Pcs', 'Charger': 'Pcs',
+  'Nickel/Busbar': 'Kg', 'Box': 'Pcs', 'Wire': 'm',
+  'Consumables': 'Pcs', 'Tools': 'Pcs', 'Packaging': 'Pcs',
 };
 
 let _selCat = '', _selBrand = '';
@@ -656,7 +655,7 @@ function selectCat(cat) {
   const brands = CAT_BRANDS[cat] || ['Other'];
   const brandGrid = document.getElementById('brand-grid');
   const brandCustom = document.getElementById('f-brand-custom');
-  const noBrandCats = ['Busbar', 'Packaging', 'Other'];
+  const noBrandCats = ['Wire', 'Consumables', 'Tools', 'Packaging'];
 
   if (brands.length === 1 && brands[0] === '—' || noBrandCats.includes(cat)) {
     // Skip brand step — go directly to model
@@ -700,7 +699,7 @@ function updItemName() {
     : _selBrand;
   const model = (document.getElementById('f-model').value || '').trim();
   let name = '';
-  if (['Tools','Consumables','Packaging'].includes(_selCat)) {
+  if (['Wire','Consumables','Tools','Packaging'].includes(_selCat)) {
     name = model || _selCat;
   } else {
     name = [_selCat, brand, model].filter(Boolean).join(' ');
@@ -974,7 +973,7 @@ function toggleStockView() {
 
 function parseBrand(item) {
   // Categories without brands — use item name directly
-  if (['Consumables', 'Tools', 'Packaging'].includes(item.cat)) return item.name;
+  if (['Wire','Consumables','Tools','Packaging'].includes(item.cat)) return item.name;
   // For branded categories — second word is brand
   const parts = item.name.split(' ');
   if (parts.length >= 2) return parts[1];
@@ -991,14 +990,21 @@ function renderStockTree(stocks) {
   stocks.forEach(s => {
     const cat   = s.cat || 'Other';
     // No brand grouping for these categories
-    const noBrandCats = ['Consumables', 'Tools', 'Packaging'];
+    const noBrandCats = ['Wire','Consumables','Tools','Packaging'];
     const brand = noBrandCats.includes(cat) ? '__direct__' : parseBrand(s);
     if (!tree[cat]) tree[cat] = {};
     if (!tree[cat][brand]) tree[cat][brand] = [];
     tree[cat][brand].push(s);
   });
   let html = '';
-  Object.keys(tree).sort().forEach(cat => {
+  const CAT_ORDER = ['Cells','BMS','Charger','Nickel/Busbar','Box','Wire','Consumables','Tools','Packaging'];
+  const sortedCats = [...Object.keys(tree)].sort((a,b) => {
+    const ai = CAT_ORDER.indexOf(a); const bi = CAT_ORDER.indexOf(b);
+    if (ai === -1 && bi === -1) return a.localeCompare(b);
+    if (ai === -1) return 1; if (bi === -1) return -1;
+    return ai - bi;
+  });
+  sortedCats.forEach(cat => {
     const brands = tree[cat];
     const catTotal  = Object.values(brands).flat().reduce((s,i) => s + i.currentStock, 0);
     const catAlerts = Object.values(brands).flat().filter(i => i.status !== 'OK').length;
@@ -1111,7 +1117,7 @@ function toggleTree(id) {
 }
 
 function getCatIcon(cat) {
-  const icons = { 'BMS':'⚡', 'Cells':'🔋', 'Charger':'🔌', 'Wire':'🔩', 'Nickel/Busbar':'🪙', 'Box':'📦', 'Tools':'🔧', 'Consumables':'🧰', 'Packaging':'📦' };
+  const icons = {'Cells':'🔋','BMS':'⚡','Charger':'🔌','Nickel/Busbar':'🪙','Box':'📦','Wire':'🔩','Consumables':'🧰','Tools':'🔧','Packaging':'📦'};
   return icons[cat] || '📦';
 }
 
