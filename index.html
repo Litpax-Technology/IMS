@@ -319,8 +319,9 @@
           <input class="inp" id="item-search" placeholder="🔍 Search..." style="width:170px;" oninput="filterItems()">
           <select class="inp" id="item-cat-f" style="width:160px;" onchange="filterItems()">
             <option value="">All Categories</option>
-            <option>BMS</option><option>Cells</option><option>Charger</option><option>Wire</option>
-            <option>Nickel</option><option>Busbar</option><option>Packaging</option><option>Other</option>
+            <option>Cells</option><option>BMS</option><option>Charger</option>
+            <option>Nickel/Busbar</option><option>Box</option><option>Wire</option>
+            <option>Consumables</option><option>Tools</option><option>Packaging</option>
           </select>
           <button class="btn bp" onclick="openItemModal()">+ Add Item</button>
         </div>
@@ -360,8 +361,9 @@
           <input class="inp" id="stock-search" placeholder="🔍 Search..." style="width:170px;" oninput="filterStock()">
           <select class="inp" id="stock-cat-f" style="width:140px;" onchange="filterStock()">
             <option value="">All Categories</option>
-            <option>BMS</option><option>Cells</option><option>Charger</option><option>Wire</option>
-            <option>Nickel</option><option>Busbar</option><option>Packaging</option><option>Other</option>
+            <option>Cells</option><option>BMS</option><option>Charger</option>
+            <option>Nickel/Busbar</option><option>Box</option><option>Wire</option>
+            <option>Consumables</option><option>Tools</option><option>Packaging</option>
           </select>
           <select class="inp" id="stock-status-f" style="width:120px;" onchange="filterStock()">
             <option value="">All Status</option><option>Critical</option><option>Reorder</option><option>OK</option>
@@ -438,8 +440,8 @@
             <select class="inp" id="hm-cat" style="width:160px;">
               <option value="">All Categories</option>
               <option>Cells</option><option>BMS</option><option>Charger</option>
-              <option>Nickel/Busbar</option><option>Box</option><option>Wire</option>
-              <option>Consumables</option><option>Tools</option><option>Packaging</option>
+            <option>Nickel/Busbar</option><option>Box</option><option>Wire</option>
+            <option>Consumables</option><option>Tools</option><option>Packaging</option>
             </select>
           </div>
           <button class="btn bp" onclick="genHeatmap()">Generate</button>
@@ -471,8 +473,8 @@
         <select class="inp" id="opening-cat-f" style="width:180px;" onchange="filterOpeningStock()">
           <option value="">All Categories</option>
           <option>Cells</option><option>BMS</option><option>Charger</option>
-          <option>Nickel/Busbar</option><option>Box</option><option>Wire</option>
-          <option>Consumables</option><option>Tools</option><option>Packaging</option>
+            <option>Nickel/Busbar</option><option>Box</option><option>Wire</option>
+            <option>Consumables</option><option>Tools</option><option>Packaging</option>
         </select>
         <span id="opening-count" style="font-size:12px;color:var(--muted);"></span>
       </div>
@@ -643,7 +645,7 @@
           <button type="button" class="cat-btn" onclick="selectCat('Consumables')">🧰 Consumables</button>
           <button type="button" class="cat-btn" onclick="selectCat('Tools')">🔧 Tools</button>
           <button type="button" class="cat-btn" onclick="selectCat('Packaging')">📦 Packaging</button>
-        </div>
+          </div>
       </div>
       <div id="brand-section" style="display:none;margin-bottom:16px;">
         <label class="inp-label">Step 2 — Brand / Type *</label>
@@ -668,8 +670,9 @@
         <div class="fg">
           <div class="fi"><label class="inp-label">Unit</label>
             <select class="inp" id="f-unit" oninput="updROP()">
-              <option value="Pcs">Pcs</option><option value="Kg">Kg</option>
-              <option value="Metres">Metres</option><option value="Roll">Roll</option><option value="Set">Set</option>
+              <option value="Pcs">Pcs</option><option value="Kg">Kg</option><option value="g">g</option>
+              <option value="L">L</option><option value="ml">ml</option><option value="Roll">Roll</option>
+              <option value="Set">Set</option><option value="m">m</option><option value="Bucket">Bucket</option><option value="Meter">Meter</option>
             </select>
           </div>
           <div class="fi"><label class="inp-label">ADC (Daily use)</label><input class="inp" id="f-adc" type="number" min="0" placeholder="0" oninput="updROP()"></div>
