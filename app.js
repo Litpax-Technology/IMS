@@ -627,15 +627,16 @@ const CAT_BRANDS = {
   'Charger':    ['Charge Q', 'Litpax', 'AXIOM', 'SHAKTI', 'XSTRONG POWER', 'Other'],
   'Wire':       ['Copper', 'Silicon', 'Other'],
   'Nickel':     ['Pure', 'Coated', 'Other'],
-  'Busbar':     ['1.5*80mm', 'Other'],
+  
   'Packaging':  ['—'],
   'Box':        ['Prismatic', 'Cylindrical', 'Other'],
-  'Other':      ['—'],
+  'Tools':       ['—'],
+  'Consumables': ['—'],
 };
 const CAT_UNITS = {
   'BMS': 'Pcs', 'Cells': 'Pcs', 'Charger': 'Pcs',
   'Wire': 'Metres', 'Nickel': 'Kg',
-  'Box': 'Pcs', 'Busbar': 'Pcs', 'Packaging': 'Pcs', 'Other': 'Pcs',
+  'Box': 'Pcs', 'Nickel/Busbar': 'Kg', 'Tools': 'Pcs', 'Consumables': 'Pcs', 'Packaging': 'Pcs',
 };
 
 let _selCat = '', _selBrand = '';
@@ -691,7 +692,7 @@ function updItemName() {
     : _selBrand;
   const model = (document.getElementById('f-model').value || '').trim();
   let name = '';
-  if (['Busbar','Packaging','Other'].includes(_selCat)) {
+  if (['Nickel/Busbar','Tools','Consumables','Packaging'].includes(_selCat)) {
     name = model || _selCat;
   } else {
     name = [_selCat, brand, model].filter(Boolean).join(' ');
@@ -965,7 +966,7 @@ function toggleStockView() {
 
 function parseBrand(item) {
   // Categories without brands — use item name directly
-  if (['Other', 'Busbar', 'Packaging'].includes(item.cat)) return item.name;
+  if (['Consumables', 'Tools', 'Nickel/Busbar', 'Packaging'].includes(item.cat)) return item.name;
   // For branded categories — second word is brand
   const parts = item.name.split(' ');
   if (parts.length >= 2) return parts[1];
@@ -982,7 +983,7 @@ function renderStockTree(stocks) {
   stocks.forEach(s => {
     const cat   = s.cat || 'Other';
     // No brand grouping for these categories
-    const noBrandCats = ['Other', 'Busbar', 'Packaging'];
+    const noBrandCats = ['Consumables', 'Tools', 'Nickel/Busbar', 'Packaging'];
     const brand = noBrandCats.includes(cat) ? '__direct__' : parseBrand(s);
     if (!tree[cat]) tree[cat] = {};
     if (!tree[cat][brand]) tree[cat][brand] = [];
@@ -1102,7 +1103,7 @@ function toggleTree(id) {
 }
 
 function getCatIcon(cat) {
-  const icons = { 'BMS':'⚡', 'Cells':'🔋', 'Charger':'🔌', 'Wire':'🔩', 'Nickel':'🪙', 'Busbar':'⚡', 'Box':'📦', 'Packaging':'📦', 'Other':'➕' };
+  const icons = { 'BMS':'⚡', 'Cells':'🔋', 'Charger':'🔌', 'Wire':'🔩', 'Nickel/Busbar':'🪙', 'Box':'📦', 'Tools':'🔧', 'Consumables':'🧰', 'Packaging':'📦' };
   return icons[cat] || '📦';
 }
 
