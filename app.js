@@ -3,7 +3,7 @@
 // API URL: change here if redeployed
 // ============================================================
 
-const API = 'https://script.google.com/macros/s/AKfycbyzAS4JKfFnpDbLzCwbEHgimZMvay9JOLIZBhKX9-Y75U5VD_8W5SnSKZe7hsmJBuL5/exec';
+const API = 'https://script.google.com/macros/s/AKfycbzU2tdsX08VNDp5JcOaOw577C7BUViM4p3wM6TUwBIORYgFMXMLjDBpz1_Km_WxEV8/exec';
 
 function setEl(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
 function showEl(id, show) { const el = document.getElementById(id); if (el) el.style.display = show ? 'inline' : 'none'; }
@@ -492,20 +492,139 @@ function renderDispatch(rows) {
 }
 
 async function openDispatchModal() {
-  document.getElementById('dis-qty').value = '1';
-  document.getElementById('dis-date').value = today();
-  document.getElementById('dis-to').value = '';
-  document.getElementById('dis-ref').value = '';
-  document.getElementById('dis-by').value = 'Sandeep';
-  document.getElementById('dis-remarks').value = '';
-  document.getElementById('dis-preview').innerHTML = '';
-  try {
-    const d = await api('getDashboard');
-    _stocks = d.stocks || [];
-    _items  = _stocks;
-  } catch(e) {}
-  await populateBomSelect('dis-bom');
+  resetDispatchType();
+  if (!_stocks.length) {
+    try { const d = await api('getDashboard'); _stocks = d.stocks || []; _items = _stocks; } catch(e) {}
+  }
   document.getElementById('dispatch-modal').classList.add('open');
+}
+
+function resetDispatchType() {
+  document.getElementById('dis-type-step').style.display    = 'block';
+  document.getElementById('dis-battery-step').style.display = 'none';
+  document.getElementById('dis-charger-step').style.display = 'none';
+  document.getElementById('dis-btn').style.display = 'none';
+  document.getElementById('dd-btn').style.display  = 'none';
+}
+
+async function selectDispatchType(type) {
+  document.getElementById('dis-type-step').style.display = 'none';
+
+  if (type === 'battery') {
+    document.getElementById('dis-battery-step').style.display = 'block';
+    document.getElementById('dis-btn').style.display = 'block';
+    document.getElementById('dd-btn').style.display  = 'none';
+    await populateBomSelect('dis-bom');
+    document.getElementById('dis-qty').value  = 1;
+    document.getElementById('dis-date').value = today();
+    document.getElementById('dis-by').value   = 'Sandeep';
+    document.getElementById('dis-to').value   = '';
+    document.getElementById('dis-ref').value  = '';
+    document.getElementById('dis-remarks').value = '';
+    document.getElementById('dis-preview').innerHTML = '';
+
+  } else {
+    document.getElementById('dis-charger-step').style.display = 'block';
+    document.getElementById('dd-btn').style.display  = 'block';
+    document.getElementById('dis-btn').style.display = 'none';
+    document.getElementById('dd-date').value = today();
+    document.getElementById('dd-by').value   = 'Sandeep';
+    document.getElementById('dd-qty').value  = '';
+    document.getElementById('dd-to').value   = '';
+    document.getElementById('dd-invoice').value = '';
+    document.getElementById('dd-ref').value  = '';
+    document.getElementById('dd-remarks').value = '';
+    document.getElementById('dd-wip-info').style.display = 'none';
+    document.getElementById('dd-summary').style.display  = 'none';
+    document.getElementById('dd-error').style.display    = 'none';
+    document.getElementById('dd-btn').disabled = true;
+
+    // Load only Charger items with WIP > 0
+    const chargerWip = _stocks.filter(s => s.cat === 'Charger' && (s.wip || 0) > 0);
+    const sel = document.getElementById('dd-item');
+    if (chargerWip.length) {
+      sel.innerHTML = '<option value="">-- Select Charger --</option>' +
+        chargerWip.map(s => `<option value="${s.name}">${s.name} (WIP: ${s.wip} ${s.unit})</option>`).join('');
+    } else {
+      sel.innerHTML = '<option value="">-- No chargers in WIP --</option>';
+      const errEl = document.getElementById('dd-error');
+      errEl.style.display = 'block';
+      errEl.textContent = '⚠ Koi charger WIP mein nahi hai — pehle Ajay se outward karwao';
+    }
+  }
+}
+
+function updDirectDispatchInfo() {
+  const itemName = document.getElementById('dd-item').value;
+  const wip = document.getElementById('dd-wip-info');
+  const btn = document.getElementById('dd-btn');
+  const err = document.getElementById('dd-error');
+  const sum = document.getElementById('dd-summary');
+  err.style.display = 'none'; sum.style.display = 'none';
+  if (!itemName) { wip.style.display = 'none'; btn.disabled = true; return; }
+  const stock = _stocks.find(s => s.name === itemName);
+  if (stock) {
+    document.getElementById('dd-wip-qty').textContent  = stock.wip || 0;
+    document.getElementById('dd-wip-unit').textContent = stock.unit || 'Pcs';
+    wip.style.display = 'block';
+    btn.disabled = false;
+  }
+  updDirectDispatchQty();
+}
+
+function updDirectDispatchQty() {
+  const itemName = document.getElementById('dd-item').value;
+  const qty      = Number(document.getElementById('dd-qty').value) || 0;
+  const btn      = document.getElementById('dd-btn');
+  const sum      = document.getElementById('dd-summary');
+  const err      = document.getElementById('dd-error');
+  if (!itemName || !qty) { sum.style.display = 'none'; return; }
+  const stock = _stocks.find(s => s.name === itemName);
+  if (!stock) return;
+  const wipQty = stock.wip || 0;
+  if (qty > wipQty) {
+    err.style.display = 'block';
+    err.textContent = `⛔ WIP mein sirf ${wipQty} ${stock.unit} hai — ${qty} dispatch nahi ho sakta`;
+    sum.style.display = 'none';
+    btn.disabled = true;
+  } else {
+    err.style.display = 'none';
+    sum.style.display = 'block';
+    sum.innerHTML = `✓ <b>${qty} ${stock.unit}</b> dispatch hogi &nbsp;|&nbsp; WIP mein bachega: <b>${wipQty - qty} ${stock.unit}</b>`;
+    btn.disabled = false;
+  }
+}
+
+async function saveDirectDispatch() {
+  const itemName   = document.getElementById('dd-item').value;
+  const qty        = Number(document.getElementById('dd-qty').value);
+  const dispatchTo = document.getElementById('dd-to').value.trim();
+  const date       = document.getElementById('dd-date').value;
+  if (!itemName)       { toast('Item select karo', 'err'); return; }
+  if (!qty || qty <= 0){ toast('Qty daalo', 'err'); return; }
+  if (!dispatchTo)     { toast('Dispatch To mandatory hai', 'err'); return; }
+  if (!date)           { toast('Date daalo', 'err'); return; }
+  const btn = document.getElementById('dd-btn');
+  btn.disabled = true; btn.textContent = 'Processing...';
+  try {
+    const r = await api('addDirectDispatch', {
+      itemName, qty, date, dispatchTo,
+      invoiceNo: document.getElementById('dd-invoice').value,
+      orderRef:  document.getElementById('dd-ref').value,
+      by:        document.getElementById('dd-by').value || 'Sandeep',
+      remarks:   document.getElementById('dd-remarks').value,
+    });
+    toast(`✓ ${r.itemName} — ${r.qty} dispatched | WIP remaining: ${r.remaining}`, 'ok');
+    closeM('dispatch-modal');
+    _stocks = [];
+    loadDispatch();
+    loadDash();
+  } catch(e) {
+    toast('⛔ ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Confirm Charger Dispatch';
+  }
 }
 
 async function updDispatchPreview() {
