@@ -1997,16 +1997,26 @@ async function loadAjayDash() {
 // ── RECEIVED FROM STORE (Sandeep) ──
 async function loadReceived() {
   const dateEl = document.getElementById('recv-date');
+  const catEl  = document.getElementById('recv-cat');
   if (!dateEl.value) dateEl.value = today();
-  const date = dateEl.value;
+  const date    = dateEl.value;
+  const catFilter = catEl ? catEl.value : '';
   const wrap = document.getElementById('recv-content');
   wrap.innerHTML = `<div class="empty"><div class="ei">⏳</div><div class="et">Loading...</div></div>`;
 
   try {
-    // Get outward entries for this date (store to production)
+    if (!_stocks.length) _stocks = await api('getStockSummary');
     const rows = await api('getOutward', { date });
-    // Exclude dispatch-generated entries
-    const received = rows.filter(r => !String(r.remarks||'').startsWith('Dispatch:') && !String(r.remarks||'').startsWith('Direct Dispatch:'));
+    // Exclude dispatch entries
+    let received = rows.filter(r => !String(r.remarks||'').startsWith('Dispatch:') && !String(r.remarks||'').startsWith('Direct Dispatch:'));
+
+    // Apply category filter
+    if (catFilter) {
+      received = received.filter(r => {
+        const stock = _stocks.find(s => s.name === r.itemName);
+        return stock ? stock.cat === catFilter : false;
+      });
+    }
 
     if (!received.length) {
       wrap.innerHTML = `<div class="empty"><div class="ei">📭</div><div class="et">Is date koi material nahi aaya</div></div>`;
