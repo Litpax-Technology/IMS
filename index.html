@@ -307,7 +307,7 @@
         <div class="pt"><h1>📥 Received from Store</h1><p>Store se production mein aaya material</p></div>
         <div class="ta" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <input type="date" class="inp" id="recv-date" style="width:160px;" onchange="loadReceived()">
-          <select class="inp" id="recv-cat" style="width:170px;" onchange="loadReceived()">
+          <select class="inp cat-filter-select" id="recv-cat" style="width:170px;" onchange="loadReceived()">
             <option value="">All Categories</option>
             <option>Cells</option><option>BMS</option><option>Charger</option>
             <option>Nickel/Busbar</option><option>Box</option><option>Wire</option>
@@ -458,7 +458,7 @@
           </div>
           <div style="display:flex;align-items:center;gap:6px;">
             <label style="font-size:12px;color:var(--muted);font-weight:600;">Category</label>
-            <select class="inp" id="hm-cat" style="width:160px;">
+            <select class="inp cat-filter-select" id="hm-cat" style="width:160px;">
               <option value="">All Categories</option>
               <option>Cells</option><option>BMS</option><option>Charger</option>
             <option>Nickel/Busbar</option><option>Box</option><option>Wire</option>
@@ -491,7 +491,7 @@
       <!-- Category Filter -->
       <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;">
         <label style="font-size:12px;font-weight:600;color:var(--muted);">Category:</label>
-        <select class="inp" id="opening-cat-f" style="width:180px;" onchange="filterOpeningStock()">
+        <select class="inp cat-filter-select" id="opening-cat-f" style="width:180px;" onchange="filterOpeningStock()">
           <option value="">All Categories</option>
           <option>Cells</option><option>BMS</option><option>Charger</option>
             <option>Nickel/Busbar</option><option>Box</option><option>Wire</option>
@@ -562,7 +562,7 @@
       <div class="fg">
         <div class="fi full">
           <label class="inp-label">Category *</label>
-          <select class="inp" id="in-cat" onchange="filterInwardItems()">
+          <select class="inp cat-select" id="in-cat" onchange="filterInwardItems()">
             <option value="">-- Select Category --</option>
             <option>Cells</option><option>BMS</option><option>Charger</option>
             <option>Nickel/Busbar</option><option>Box</option><option>Wire</option>
@@ -596,7 +596,7 @@
       <div class="fg">
         <div class="fi full">
           <label class="inp-label">Category *</label>
-          <select class="inp" id="out-cat" onchange="filterOutwardItems()">
+          <select class="inp cat-select" id="out-cat" onchange="filterOutwardItems()">
             <option value="">-- Select Category --</option>
             <option>Cells</option><option>BMS</option><option>Charger</option>
             <option>Nickel/Busbar</option><option>Box</option><option>Wire</option>
@@ -749,7 +749,7 @@
         <div style="height:1px;background:var(--border);margin:16px 0;"></div>
         <div class="fg">
           <div class="fi"><label class="inp-label">Unit</label>
-            <select class="inp" id="f-unit" oninput="updROP()">
+            <select class="inp unit-select" id="f-unit" oninput="updROP()">
               <option value="Pcs">Pcs</option><option value="Kg">Kg</option><option value="g">g</option>
               <option value="L">L</option><option value="ml">ml</option><option value="Roll">Roll</option>
               <option value="Set">Set</option><option value="m">m</option><option value="Bucket">Bucket</option><option value="Meter">Meter</option>
