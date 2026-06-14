@@ -286,12 +286,16 @@
     <div class="page" id="page-dispatch">
       <div class="tb">
         <div class="pt"><h1>Dispatch</h1><p>Production → Finished Goods — BOM se auto deduction</p></div>
-        <div class="ta"><button class="btn bp" onclick="openDispatchModal()">+ New Dispatch</button></div>
+        <div class="ta" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input type="date" class="inp" id="dis-filter-date" style="width:160px;" onchange="loadDispatch()">
+          <button class="btn bg bsm" onclick="document.getElementById('dis-filter-date').value='';loadDispatch()">All Dates</button>
+          <button class="btn bp" onclick="openDispatchModal()">+ New Dispatch</button>
+        </div>
       </div>
       <div class="card">
         <div class="tw"><table>
-            <thead><tr><th>Date</th><th>BOM Model</th><th>Qty Produced</th><th>Dispatch To</th><th>Order Ref</th><th>By</th><th>BOM OK</th><th>Remarks</th></tr></thead>
-            <tbody id="dis-tb"><tr class="lrow"><td colspan="8"><span class="loader"></span></td></tr></tbody>
+            <thead><tr><th>Date</th><th>BOM Model</th><th>Qty</th><th>Dispatch To</th><th>Order Ref</th><th>By</th><th>BOM OK</th><th>Remarks</th><th>Actions</th></tr></thead>
+            <tbody id="dis-tb"><tr class="lrow"><td colspan="9"><span class="loader"></span></td></tr></tbody>
         </table></div>
         <div id="dis-empty" class="empty" style="display:none"><div class="ei">🚚</div><div class="et">No dispatch records</div></div>
       </div>
@@ -850,6 +854,28 @@
     <div class="mf">
       <button class="btn bg" onclick="closeM('create-po-modal')">Cancel</button>
       <button class="btn bp" id="po-btn" onclick="saveCreatePO()">✓ Create PO</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT DISPATCH MODAL -->
+<div class="ov" id="edit-dispatch-modal">
+  <div class="modal">
+    <div class="mh"><h2>✏️ Edit Dispatch</h2><button class="mclose" onclick="closeM('edit-dispatch-modal')">✕</button></div>
+    <div class="mb">
+      <input type="hidden" id="edit-dis-id">
+      <div class="fg">
+        <div class="fi full"><label class="inp-label">BOM Model / Item</label><input class="inp" id="edit-dis-model" readonly style="background:var(--s2);color:var(--muted);"></div>
+        <div class="fi"><label class="inp-label">Qty *</label><input class="inp" id="edit-dis-qty" type="number" min="1"></div>
+        <div class="fi"><label class="inp-label">Date *</label><input class="inp" id="edit-dis-date" type="date"></div>
+        <div class="fi"><label class="inp-label">Dispatch To</label><input class="inp" id="edit-dis-to" placeholder="Customer / Stock"></div>
+        <div class="fi"><label class="inp-label">Order Ref</label><input class="inp" id="edit-dis-ref" placeholder="ORD-001"></div>
+        <div class="fi"><label class="inp-label">Remarks</label><input class="inp" id="edit-dis-remarks" placeholder="Optional"></div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bg" onclick="closeM('edit-dispatch-modal')">Cancel</button>
+      <button class="btn bp" onclick="saveEditDispatch()">Save Changes</button>
     </div>
   </div>
 </div>
