@@ -3,7 +3,7 @@
 // API URL: change here if redeployed
 // ============================================================
 
-const API = 'https://script.google.com/macros/s/AKfycbxlqAnEQ8qBMarYVY3t-wrVde1LAsxoQCPbhje1pTBqLvf-EKafSZ-UbqZ7VVuc9nla/exec';
+const API = 'https://script.google.com/macros/s/AKfycbzObqHKz55CCSwHSu0bjdoRIcHL2Sy4fFKHsJigfGAfxcVgPePJpD3UfnXW5EMjanBe/exec';
 
 function setEl(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
 function showEl(id, show) { const el = document.getElementById(id); if (el) el.style.display = show ? 'inline' : 'none'; }
@@ -144,6 +144,8 @@ window.onload = async function() {
   setVal('in-date-f', today());
   setVal('out-date-f', today());
   setDot('loading', 'Connecting...');
+  // Load config first (categories, brands, units etc.)
+  await loadConfig();
   const savedRole = localStorage.getItem('lpx_role');
   if (savedRole && ROLES[savedRole]) {
     _currentRole = savedRole;
@@ -794,23 +796,79 @@ function filterItems() {
   }).join('');
 }
 
-// ── CATEGORY / BRAND CONFIG ──
-const CAT_BRANDS = {
-  'Cells':        ['DMEGC', 'EVE', 'BAK', 'LG', 'HLY', 'CATL', 'Other'],
-  'BMS':          ['JK', 'JBD', 'Daly', 'Solar', 'Other'],
-  'Charger':      ['Charge Q', 'Litpax', 'AXIOM', 'SHAKTI', 'XSTRONG POWER', 'Other'],
-  'Nickel/Busbar':['Nickel', 'Busbar'],
-  'Box':          ['Prismatic', 'Cylindrical', 'Other'],
-  'Wire':         ['—'],
-  'Consumables':  ['—'],
-  'Tools':        ['—'],
-  'Packaging':    ['—'],
+// ── CATEGORY / BRAND CONFIG — Dynamic from Config sheet ──
+let _config = {
+  categories:  ['Cells','BMS','Charger','Nickel/Busbar','Box','Wire','Consumables','Tools','Packaging'],
+  brands:      { 'Cells':['DMEGC','EVE','CATL','Other'], 'BMS':['JK','JBD','Daly','Solar','Other'], 'Charger':['Charge Q','Litpax','Indian','AXIOM','SHAKTI','XSTRONG POWER','Other'], 'Nickel/Busbar':['Nickel','Busbar'], 'Box':['Prismatic','Cylindrical','Other'], 'Wire':['—'], 'Consumables':['—'], 'Tools':['—'], 'Packaging':['—'] },
+  units:       ['Pcs','Kg','g','L','ml','Roll','Set','m','Bucket','Meter'],
+  departments: ['Volt Wing','Ampere Wing','Volt x Ampere Wing','Mega Grid','Cathodic Wing','Future Cell','Phoenix Wing','Other'],
+  catUnits:    { 'Cells':'Pcs','BMS':'Pcs','Charger':'Pcs','Nickel/Busbar':'Kg','Box':'Pcs','Wire':'m','Consumables':'Pcs','Tools':'Pcs','Packaging':'Pcs' },
+  catOrder:    ['Cells','BMS','Charger','Nickel/Busbar','Box','Wire','Consumables','Tools','Packaging'],
+  noBrandCats: ['Wire','Consumables','Tools','Packaging'],
 };
-const CAT_UNITS = {
-  'Cells': 'Pcs', 'BMS': 'Pcs', 'Charger': 'Pcs',
-  'Nickel/Busbar': 'Kg', 'Box': 'Pcs', 'Wire': 'm',
-  'Consumables': 'Pcs', 'Tools': 'Pcs', 'Packaging': 'Pcs',
-};
+
+// Keep backward compat
+const CAT_BRANDS = new Proxy({}, { get: (_, k) => _config.brands[k] });
+const CAT_UNITS  = new Proxy({}, { get: (_, k) => _config.catUnits[k] });
+
+async function loadConfig() {
+  try {
+    const cfg = await api('getConfig');
+    if (cfg && cfg.categories && cfg.categories.length) {
+      _config = cfg;
+    }
+    applyConfigToUI();
+  } catch(e) {
+    // Fallback to defaults already set
+    applyConfigToUI();
+  }
+}
+
+function applyConfigToUI() {
+  // 1. Cat grid in Add Item modal
+  const catGrid = document.getElementById('cat-grid');
+  if (catGrid) {
+    const icons = { 'BMS':'⚡','Cells':'🔋','Charger':'🔌','Wire':'🔩','Nickel/Busbar':'🪙','Box':'📦','Consumables':'🧰','Tools':'🔧','Packaging':'📦' };
+    catGrid.innerHTML = _config.catOrder.map(cat =>
+      `<button type="button" class="cat-btn" onclick="selectCat('${cat}')">${icons[cat]||'📦'} ${cat}</button>`
+    ).join('');
+  }
+
+  // 2. Unit dropdowns
+  document.querySelectorAll('.unit-select').forEach(sel => {
+    const cur = sel.value;
+    sel.innerHTML = _config.units.map(u => `<option value="${u}">${u}</option>`).join('');
+    if (cur) sel.value = cur;
+  });
+
+  // 3. Category filter dropdowns
+  const catOpts = `<option value="">All Categories</option>` +
+    _config.catOrder.map(c => `<option>${c}</option>`).join('');
+  document.querySelectorAll('.cat-filter-select').forEach(sel => {
+    const cur = sel.value;
+    sel.innerHTML = catOpts;
+    if (cur) sel.value = cur;
+  });
+
+  // 4. Inward/Outward category dropdowns
+  const catOptsNoAll = _config.catOrder.map(c => `<option>${c}</option>`).join('');
+  document.querySelectorAll('.cat-select').forEach(sel => {
+    const cur = sel.value;
+    sel.innerHTML = `<option value="">-- Select Category --</option>` + catOptsNoAll;
+    if (cur) sel.value = cur;
+  });
+
+  // 5. Department dropdowns
+  const deptOpts = `<option value="">-- Select --</option>` +
+    _config.departments.map(d => `<option>${d}</option>`).join('');
+  document.querySelectorAll('.dept-select').forEach(sel => {
+    const cur = sel.value;
+    sel.innerHTML = deptOpts;
+    if (cur) sel.value = cur;
+  });
+}
+
+
 
 let _selCat = '', _selBrand = '';
 
@@ -818,10 +876,10 @@ function selectCat(cat) {
   _selCat = cat; _selBrand = '';
   document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
   event.target.classList.add('active');
-  const brands = CAT_BRANDS[cat] || ['Other'];
+  const brands = (_config.brands[cat] || ['Other']);
   const brandGrid = document.getElementById('brand-grid');
   const brandCustom = document.getElementById('f-brand-custom');
-  const noBrandCats = ['Wire', 'Consumables', 'Tools', 'Packaging'];
+  const noBrandCats = _config.noBrandCats || ['Wire','Consumables','Tools','Packaging'];
 
   if (brands.length === 1 && brands[0] === '—' || noBrandCats.includes(cat)) {
     // Skip brand step — go directly to model
@@ -865,7 +923,7 @@ function updItemName() {
     : _selBrand;
   const model = (document.getElementById('f-model').value || '').trim();
   let name = '';
-  if (['Wire','Consumables','Tools','Packaging'].includes(_selCat)) {
+  if ((_config.noBrandCats || ['Wire','Consumables','Tools','Packaging']).includes(_selCat)) {
     name = model || _selCat;
   } else {
     name = [_selCat, brand, model].filter(Boolean).join(' ');
@@ -1138,9 +1196,8 @@ function toggleStockView() {
 }
 
 function parseBrand(item) {
-  // Categories without brands — use item name directly
-  if (['Wire','Consumables','Tools','Packaging'].includes(item.cat)) return item.name;
-  // For branded categories — second word is brand
+  const noBrandCats = _config.noBrandCats || ['Wire','Consumables','Tools','Packaging'];
+  if (noBrandCats.includes(item.cat)) return item.name;
   const parts = item.name.split(' ');
   if (parts.length >= 2) return parts[1];
   return item.cat || 'Other';
@@ -1163,7 +1220,7 @@ function renderStockTree(stocks) {
     tree[cat][brand].push(s);
   });
   let html = '';
-  const CAT_ORDER = ['Cells','BMS','Charger','Nickel/Busbar','Box','Wire','Consumables','Tools','Packaging'];
+  const CAT_ORDER = _config.catOrder || ['Cells','BMS','Charger','Nickel/Busbar','Box','Wire','Consumables','Tools','Packaging'];
   const sortedCats = [...Object.keys(tree)].sort((a,b) => {
     const ai = CAT_ORDER.indexOf(a); const bi = CAT_ORDER.indexOf(b);
     if (ai === -1 && bi === -1) return a.localeCompare(b);
