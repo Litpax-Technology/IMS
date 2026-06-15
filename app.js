@@ -2188,6 +2188,8 @@ async function loadReceived() {
     wrap.innerHTML = `<div class="empty"><div class="ei">❌</div><div class="et">${e.message}</div></div>`;
   }
 }
+let _wipData = [];
+
 async function loadWip() {
   const tb = document.getElementById('wip-tb');
   const em = document.getElementById('wip-empty');
@@ -2196,7 +2198,7 @@ async function loadWip() {
     const d = await api('getDashboard');
     const stocks = d.stocks || [];
     // GAS calcStocks se directly wip, totalOut, dispUsed lo
-    const wipData = stocks
+    _wipData = stocks
       .filter(s => (s.totalOut || 0) > 0)
       .map(s => ({
         name: s.name, cat: s.cat, unit: s.unit,
@@ -2206,9 +2208,30 @@ async function loadWip() {
       }))
       .sort((a,b) => b.wip - a.wip);
 
-    if (!wipData.length) { if (tb) tb.innerHTML = ''; if (em) em.style.display = 'block'; return; }
-    if (em) em.style.display = 'none';
-    if (tb) tb.innerHTML = wipData.map(s => `<tr>
+    // Category filter populate karo
+    const catF = document.getElementById('wip-cat-f');
+    if (catF) {
+      const cats = [...new Set(_wipData.map(s => s.cat).filter(Boolean))].sort();
+      const curVal = catF.value;
+      catF.innerHTML = '<option value="">All Categories</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
+      if (curVal) catF.value = curVal;
+    }
+
+    const wipData = _wipData;
+
+    filterWip();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+function filterWip() {
+  const tb = document.getElementById('wip-tb');
+  const em = document.getElementById('wip-empty');
+  const catF = document.getElementById('wip-cat-f');
+  const cf = catF ? catF.value : '';
+  const fl = _wipData.filter(s => !cf || s.cat === cf);
+  if (!fl.length) { if (tb) tb.innerHTML = ''; if (em) em.style.display = 'block'; return; }
+  if (em) em.style.display = 'none';
+  if (tb) tb.innerHTML = fl.map(s => `<tr>
       <td style="font-weight:600;color:var(--navy);">${s.name}</td>
       <td>${catBadge(s.cat)}</td>
       <td style="color:var(--muted);font-size:12px;">${s.unit||'—'}</td>
@@ -2219,7 +2242,6 @@ async function loadWip() {
         ${s.wip > 0 ? `<span style="font-size:10px;color:var(--purple);margin-left:4px;">In Production</span>` : ''}
       </td>
     </tr>`).join('');
-  } catch(e) { toast(e.message, 'err'); }
 }
 
 // ── SANDEEP DASHBOARD ──
