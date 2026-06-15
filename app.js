@@ -3,7 +3,7 @@
 // API URL: change here if redeployed
 // ============================================================
 
-const API = 'https://script.google.com/macros/s/AKfycbw_KXK7CV262LnFkGi6FKXB3oJznD7v13defPHiUa5UrhfGYeZbKSn26vnXVrRG2SU/exec';
+const API = 'https://script.google.com/macros/s/AKfycbxw0xfioFpyI5wB2gcQDKTDFQgM2WpbzGgVcgIe4Mdy7jj5ekFA1eLxu8bjtk92kxnw/exec';
 
 function setEl(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
 function showEl(id, show) { const el = document.getElementById(id); if (el) el.style.display = show ? 'inline' : 'none'; }
@@ -2195,28 +2195,16 @@ async function loadWip() {
   try {
     const d = await api('getDashboard');
     const stocks = d.stocks || [];
-    const outRows = await api('getOutward', {});
-    const disRows = await api('getDispatch', {});
-    const manualOut = {}, dispUsed = {};
-    outRows.forEach(r => {
-      if (!(r.remarks||'').startsWith('Dispatch:')) {
-        manualOut[r.itemName] = (manualOut[r.itemName]||0) + (r.qty||0);
-      }
-    });
-    for (const dis of disRows) {
-      try {
-        const bItems = await api('getBomItems', { bomName: dis.bomModel });
-        bItems.forEach(bi => {
-          dispUsed[bi.component] = (dispUsed[bi.component]||0) + (bi.qty * dis.qtyProduced);
-        });
-      } catch(e) {}
-    }
-    const wipData = stocks.map(s => ({
-      name: s.name, cat: s.cat, unit: s.unit,
-      totalOut: manualOut[s.name] || 0,
-      dispUsed: dispUsed[s.name] || 0,
-      wip: Math.max(0, (manualOut[s.name]||0) - (dispUsed[s.name]||0))
-    })).filter(s => s.totalOut > 0).sort((a,b) => b.wip - a.wip);
+    // GAS calcStocks se directly wip, totalOut, dispUsed lo
+    const wipData = stocks
+      .filter(s => (s.totalOut || 0) > 0)
+      .map(s => ({
+        name: s.name, cat: s.cat, unit: s.unit,
+        totalOut: s.totalOut || 0,
+        dispUsed: s.dispUsed || 0,
+        wip: s.wip || 0,
+      }))
+      .sort((a,b) => b.wip - a.wip);
 
     if (!wipData.length) { if (tb) tb.innerHTML = ''; if (em) em.style.display = 'block'; return; }
     if (em) em.style.display = 'none';
