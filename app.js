@@ -1985,7 +1985,7 @@ function renderRequests() {
       <td><span class="badge ${stColor}">${r.status}</span></td>
       <td style="white-space:nowrap;">
         ${isPending ? `
-          <button class="btn bgn bsm" onclick="fulfillRequest('${r.id}','${r.itemName.replace(/'/g,"\\'")}',${r.qty},'${r.department||''}')">✓ Issue</button>
+          <button class="btn bgn bsm" onclick="fulfillRequest('${r.id}','${r.itemName.replace(/'/g,"\\'")}',${r.qty},'${r.department||''}','${(r.requestedBy||'').replace(/'/g,"\\'")}')">✓ Issue</button>
           <button class="btn brd bsm" onclick="cancelRequest('${r.id}')">✕</button>
         ` : `<span style="font-size:11px;color:var(--muted);">${r.closedBy||'—'}</span>`}
       </td>
@@ -1993,27 +1993,36 @@ function renderRequests() {
   }).join('');
 }
 
-function fulfillRequest(reqId, itemName, qty, department) {
-  populateItemSelect('out-item');
+function fulfillRequest(reqId, itemName, qty, department, requestedBy) {
+  window._pendingReqId = reqId;
+  document.getElementById('outward-modal').classList.add('open');
+  showPage('outward');
+
+  // Find item category
+  const item = (_stocks && _stocks.find(s => s.name === itemName))
+             || (_items  && _items.find(i => i.name === itemName));
+  const cat = item ? item.cat : '';
+
+  const catSel  = document.getElementById('out-cat');
+  const itemSel = document.getElementById('out-item');
+
+  // Set category first
+  if (catSel && cat) catSel.value = cat;
+
+  // Filter items then set item value
+  filterOutwardItems();
   setTimeout(() => {
-    // Find item category
-    const item = _stocks.find(s => s.name === itemName) || _items.find(i => i.name === itemName);
-    const cat = item ? item.cat : '';
-    const catSel = document.getElementById('out-cat');
-    if (catSel && cat) {
-      catSel.value = cat;
-      filterOutwardItems();
-    }
-    document.getElementById('out-item').value = itemName;
-    document.getElementById('out-qty').value = qty;
-    document.getElementById('out-date').value = today();
-    document.getElementById('out-dept').value = department || '';
-    document.getElementById('out-by').value = 'Ajay';
-    document.getElementById('out-remarks').value = 'Req: ' + reqId;
-    updOutwardInfo();
-    window._pendingReqId = reqId;
-    document.getElementById('outward-modal').classList.add('open');
-    showPage('outward');
+    populateItemSelect('out-item');
+    setTimeout(() => {
+      if (itemSel) itemSel.value = itemName;
+      document.getElementById('out-qty').value   = qty;
+      document.getElementById('out-date').value  = today();
+      document.getElementById('out-dept').value  = department || '';
+      document.getElementById('out-by').value       = 'Ajay';
+      document.getElementById('out-issuedto').value  = requestedBy || '';
+      document.getElementById('out-remarks').value   = 'Req: ' + reqId;
+      updOutwardInfo();
+    }, 150);
   }, 100);
 }
 
@@ -2120,7 +2129,7 @@ async function loadAjayDash() {
               </div>
               <div style="display:flex;align-items:center;gap:8px;">
                 <span style="font-family:var(--mono);font-weight:700;color:var(--accent);">${r.qty}</span>
-                <button class="btn bgn bsm" onclick="fulfillRequest('${r.id}','${r.itemName.replace(/'/g,"\\'")}',${r.qty},'${r.department||''}')">Issue</button>
+                <button class="btn bgn bsm" onclick="fulfillRequest('${r.id}','${r.itemName.replace(/'/g,"\\'")}',${r.qty},'${r.department||''}','${(r.requestedBy||'').replace(/'/g,"\\'")}')">✓ Issue</button>
               </div>
             </div>`).join('')
           : `<div class="empty" style="padding:20px;"><div class="ei">✅</div><div class="et">No pending requests</div></div>`;
