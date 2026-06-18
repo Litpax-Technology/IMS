@@ -8,11 +8,11 @@
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: #f0f2f7; font-family: 'DM Sans', sans-serif; min-height: 100vh; padding: 20px 16px 48px; }
-.header { display: flex; align-items: center; gap: 12px; max-width: 620px; margin: 0 auto 20px; }
+.header { display: flex; align-items: center; gap: 12px; max-width: 660px; margin: 0 auto 20px; }
 .logo-box { width: 40px; height: 40px; background: linear-gradient(135deg, #162444, #243a72); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-family: 'DM Mono', monospace; font-weight: 700; font-size: 17px; color: #f59e0b; flex-shrink: 0; box-shadow: 0 4px 12px rgba(22,36,68,.2); }
 .header-text .title { font-size: 15px; font-weight: 700; color: #162444; }
 .header-text .sub { font-size: 10px; color: #6b7280; letter-spacing: .8px; text-transform: uppercase; }
-.card { background: #fff; border-radius: 14px; box-shadow: 0 4px 20px rgba(15,29,53,.08); max-width: 620px; margin: 0 auto; overflow: hidden; }
+.card { background: #fff; border-radius: 14px; box-shadow: 0 4px 20px rgba(15,29,53,.08); max-width: 660px; margin: 0 auto; overflow: hidden; }
 .card-header { background: linear-gradient(135deg, #162444, #1e3260); padding: 18px 22px; color: #fff; }
 .card-header h1 { font-size: 17px; font-weight: 700; }
 .card-header p { font-size: 12px; color: rgba(255,255,255,.55); margin-top: 3px; }
@@ -22,45 +22,40 @@ body { background: #f0f2f7; font-family: 'DM Sans', sans-serif; min-height: 100v
 .field label span { color: #dc2626; }
 .inp { width: 100%; background: #f6f8fc; border: 1.5px solid #dde3ef; border-radius: 8px; padding: 9px 12px; font-family: 'DM Sans', sans-serif; font-size: 13px; color: #0f1d35; outline: none; transition: all .15s; }
 .inp:focus { border-color: #2558e8; box-shadow: 0 0 0 3px rgba(37,88,232,.1); background: #fff; }
-.inp::placeholder { color: #9ca3af; }
 select.inp { cursor: pointer; }
-.section { margin-bottom: 18px; border: 1px solid #dde3ef; border-radius: 10px; overflow: hidden; }
-.section-header { background: #f6f8fc; padding: 10px 14px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #dde3ef; }
+.section { margin-bottom: 14px; border: 1px solid #dde3ef; border-radius: 10px; overflow: hidden; }
+.section-header { background: #f6f8fc; padding: 10px 14px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #dde3ef; cursor: pointer; user-select: none; }
 .section-header .icon { font-size: 15px; }
-.section-header h3 { font-size: 11px; font-weight: 700; color: #162444; text-transform: uppercase; letter-spacing: .8px; }
+.section-header h3 { font-size: 11px; font-weight: 700; color: #162444; text-transform: uppercase; letter-spacing: .8px; flex: 1; }
+.section-header .arr { font-size: 11px; color: #9ca3af; transition: transform .2s; }
+.section-header.open .arr { transform: rotate(180deg); }
+.section-items { display: none; }
+.section-items.open { display: block; }
 .item-row { display: flex; align-items: center; padding: 8px 14px; border-bottom: 1px solid #f0f2f7; gap: 10px; }
 .item-row:last-child { border-bottom: none; }
 .item-label { flex: 1; font-size: 13px; color: #374151; font-weight: 500; }
-.item-label .sub { font-size: 10px; color: #9ca3af; display: block; margin-top: 1px; }
 .qty-inp { width: 80px; background: #f6f8fc; border: 1.5px solid #dde3ef; border-radius: 7px; padding: 6px 10px; text-align: center; font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 600; color: #162444; outline: none; transition: all .15s; }
 .qty-inp:focus { border-color: #2558e8; background: #fff; }
 .unit-label { font-size: 11px; color: #9ca3af; width: 36px; text-align: left; }
-.wire-row { display: grid; grid-template-columns: 1fr 70px 70px 36px; gap: 6px; align-items: center; padding: 8px 14px; border-bottom: 1px solid #f0f2f7; font-size: 12px; }
-.wire-row:last-child { border-bottom: none; }
-.wire-header { display: grid; grid-template-columns: 1fr 70px 70px 36px; gap: 6px; padding: 6px 14px; font-size: 10px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid #dde3ef; background: #fafbff; }
-.other-row { padding: 8px 14px; }
-.other-inp { width: 100%; background: #f6f8fc; border: 1.5px solid #dde3ef; border-radius: 7px; padding: 7px 12px; font-family: 'DM Sans', sans-serif; font-size: 12px; color: #374151; outline: none; }
-.other-inp:focus { border-color: #2558e8; background: #fff; }
 .remarks-section { margin-bottom: 20px; }
 .submit-btn { width: 100%; background: linear-gradient(135deg, #162444, #1e3260); color: #fff; border: none; border-radius: 10px; padding: 14px; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; transition: all .2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
 .submit-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(22,36,68,.3); }
 .submit-btn:disabled { opacity: .6; cursor: not-allowed; transform: none; }
-.success-card { display: none; background: #fff; border-radius: 14px; box-shadow: 0 4px 20px rgba(15,29,53,.08); max-width: 620px; margin: 0 auto; padding: 48px 24px; text-align: center; }
+.success-card { display: none; background: #fff; border-radius: 14px; box-shadow: 0 4px 20px rgba(15,29,53,.08); max-width: 660px; margin: 0 auto; padding: 48px 24px; text-align: center; }
 .success-icon { font-size: 60px; margin-bottom: 16px; }
 .success-title { font-size: 22px; font-weight: 700; color: #162444; margin-bottom: 8px; }
 .success-sub { font-size: 13px; color: #6b7280; margin-bottom: 20px; line-height: 1.7; }
 .success-id { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 16px; margin-bottom: 24px; font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 600; color: #16a34a; line-height: 1.8; }
 .new-btn { background: #f0f2f7; color: #162444; border: none; border-radius: 10px; padding: 12px 28px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; }
 .new-btn:hover { background: #e0e4ee; }
-.footer { text-align: center; font-size: 11px; color: #9ca3af; margin-top: 20px; max-width: 620px; margin-left: auto; margin-right: auto; }
+.footer { text-align: center; font-size: 11px; color: #9ca3af; margin-top: 20px; max-width: 660px; margin-left: auto; margin-right: auto; }
 .overlay { display: none; position: fixed; inset: 0; background: rgba(15,29,53,.4); backdrop-filter: blur(3px); z-index: 99; align-items: center; justify-content: center; }
 .overlay.show { display: flex; }
 .spinner { width: 40px; height: 40px; border: 3px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
+.loading-msg { text-align: center; padding: 40px 20px; color: #6b7280; font-size: 14px; }
+.cat-icons { BMS: '⚡', Cells: '🔋', Charger: '🔌', 'Nickel/Busbar': '🪙', Box: '📦', Wire: '🔗', Consumables: '🧰', Tools: '🔧', Packaging: '📦' }
 @keyframes spin { to { transform: rotate(360deg); } }
-@media (max-width: 480px) {
-  .top-row { grid-template-columns: 1fr; }
-  .wire-row, .wire-header { grid-template-columns: 1fr 60px 60px 30px; gap: 4px; }
-}
+@media (max-width: 480px) { .top-row { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -79,7 +74,6 @@ select.inp { cursor: pointer; }
     <p>Fill required quantities — Store manager will be notified</p>
   </div>
   <div class="card-body">
-
     <div class="top-row">
       <div class="field">
         <label>Your Name <span>*</span></label>
@@ -91,80 +85,8 @@ select.inp { cursor: pointer; }
       </div>
     </div>
 
-    <!-- CELLS -->
-    <div class="section">
-      <div class="section-header"><span class="icon">🔋</span><h3>Cells</h3></div>
-      <div class="item-row"><span class="item-label">3.6V 4.5AH</span><input class="qty-inp" type="number" min="0" placeholder="0" id="cell-1"><span class="unit-label">Pcs</span></div>
-      <div class="item-row"><span class="item-label">3.6V 5AH</span><input class="qty-inp" type="number" min="0" placeholder="0" id="cell-2"><span class="unit-label">Pcs</span></div>
-      <div class="item-row"><span class="item-label">3.2V 100AH</span><input class="qty-inp" type="number" min="0" placeholder="0" id="cell-3"><span class="unit-label">Pcs</span></div>
-      <div class="item-row"><span class="item-label">3.2V 150AH</span><input class="qty-inp" type="number" min="0" placeholder="0" id="cell-4"><span class="unit-label">Pcs</span></div>
-      <div class="item-row"><span class="item-label">3.2V 314AH</span><input class="qty-inp" type="number" min="0" placeholder="0" id="cell-5"><span class="unit-label">Pcs</span></div>
-      <div class="item-row"><span class="item-label">Other <span class="sub">Naam likhein</span></span><input class="qty-inp" type="number" min="0" placeholder="0" id="cell-other-qty"><span class="unit-label">Pcs</span></div>
-      <div class="other-row"><input class="other-inp" type="text" id="cell-other-name" placeholder="Other cell name..."></div>
-    </div>
-
-    <!-- BMS -->
-    <div class="section">
-      <div class="section-header"><span class="icon">⚡</span><h3>BMS</h3></div>
-      <div class="item-row"><span class="item-label">10S 20Amp</span><input class="qty-inp" type="number" min="0" placeholder="0" id="bms-1"><span class="unit-label">Pcs</span></div>
-      <div class="item-row"><span class="item-label">2-Wheeler BMS</span><input class="qty-inp" type="number" min="0" placeholder="0" id="bms-2"><span class="unit-label">Pcs</span></div>
-      <div class="item-row"><span class="item-label">4S 100Amp</span><input class="qty-inp" type="number" min="0" placeholder="0" id="bms-3"><span class="unit-label">Pcs</span></div>
-      <div class="item-row"><span class="item-label">8S 100Amp</span><input class="qty-inp" type="number" min="0" placeholder="0" id="bms-4"><span class="unit-label">Pcs</span></div>
-      <div class="item-row"><span class="item-label">16S 100Amp</span><input class="qty-inp" type="number" min="0" placeholder="0" id="bms-5"><span class="unit-label">Pcs</span></div>
-      <div class="item-row"><span class="item-label">Other <span class="sub">Naam likhein</span></span><input class="qty-inp" type="number" min="0" placeholder="0" id="bms-other-qty"><span class="unit-label">Pcs</span></div>
-      <div class="other-row"><input class="other-inp" type="text" id="bms-other-name" placeholder="Other BMS name..."></div>
-    </div>
-
-    <!-- WIRE -->
-    <div class="section">
-      <div class="section-header"><span class="icon">🔌</span><h3>Wire</h3></div>
-      <div class="wire-header"><span>Size</span><span style="text-align:center;">Red</span><span style="text-align:center;">Black</span><span>Unit</span></div>
-      <div class="wire-row"><span>1mm</span><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-1-r"><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-1-b"><span class="unit-label">m</span></div>
-      <div class="wire-row"><span>1.5mm</span><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-2-r"><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-2-b"><span class="unit-label">m</span></div>
-      <div class="wire-row"><span>2.5mm</span><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-3-r"><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-3-b"><span class="unit-label">m</span></div>
-      <div class="wire-row"><span>6mm</span><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-4-r"><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-4-b"><span class="unit-label">m</span></div>
-      <div class="wire-row"><span>10mm</span><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-5-r"><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-5-b"><span class="unit-label">m</span></div>
-      <div class="wire-row"><span>16mm</span><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-6-r"><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-6-b"><span class="unit-label">m</span></div>
-      <div class="wire-row"><span>25mm</span><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-7-r"><input class="qty-inp" type="number" min="0" placeholder="0" id="wire-7-b"><span class="unit-label">m</span></div>
-    </div>
-
-    <!-- NICKEL -->
-    <div class="section">
-      <div class="section-header"><span class="icon">🪙</span><h3>Nickel Strip</h3></div>
-      <div class="item-row"><span class="item-label">21700</span><input class="qty-inp" type="number" min="0" placeholder="0" id="nkl-1"><span class="unit-label">Kg</span></div>
-      <div class="item-row"><span class="item-label">18650</span><input class="qty-inp" type="number" min="0" placeholder="0" id="nkl-2"><span class="unit-label">Kg</span></div>
-      <div class="item-row"><span class="item-label">32140</span><input class="qty-inp" type="number" min="0" placeholder="0" id="nkl-3"><span class="unit-label">Kg</span></div>
-      <div class="item-row"><span class="item-label">33140</span><input class="qty-inp" type="number" min="0" placeholder="0" id="nkl-4"><span class="unit-label">Kg</span></div>
-      <div class="item-row"><span class="item-label">Single Strip</span><input class="qty-inp" type="number" min="0" placeholder="0" id="nkl-5"><span class="unit-label">Kg</span></div>
-      <div class="item-row"><span class="item-label">Zig Zag</span><input class="qty-inp" type="number" min="0" placeholder="0" id="nkl-6"><span class="unit-label">Kg</span></div>
-    </div>
-
-    <!-- OTHER MATERIAL -->
-    <div class="section">
-      <div class="section-header"><span class="icon">🧰</span><h3>Other Material</h3></div>
-      <div class="item-row"><span class="item-label">Silicon Tube</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-1"><span class="unit-label">Pcs</span></div>
-      <div class="item-row"><span class="item-label">PG7</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-2"><span class="unit-label">Pcs</span></div>
-      <div class="item-row"><span class="item-label">PG9</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-3"><span class="unit-label">Pcs</span></div>
-      <div class="item-row"><span class="item-label">PG13.5</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-4"><span class="unit-label">Pcs</span></div>
-      <div class="item-row"><span class="item-label">Pressure Vent</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-5"><span class="unit-label">Pcs</span></div>
-      <div class="item-row"><span class="item-label">2 Wheeler Handle</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-6"><span class="unit-label">Pcs</span></div>
-      <div class="item-row"><span class="item-label">Thimble 2.5mm</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-7"><span class="unit-label">Pcs</span></div>
-      <div class="item-row"><span class="item-label">Thimble 25mm</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-8"><span class="unit-label">Pcs</span></div>
-      <div class="item-row"><span class="item-label">BusBar</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-9"><span class="unit-label">Pcs</span></div>
-      <div class="item-row"><span class="item-label">Soldering Wire</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-10"><span class="unit-label">Pcs</span></div>
-      <div class="item-row"><span class="item-label">Rivet</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-11"><span class="unit-label">Pcs</span></div>
-      <div class="item-row"><span class="item-label">MCB</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-12"><span class="unit-label">Pcs</span></div>
-      <div class="item-row"><span class="item-label">SB50 Connector</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-13"><span class="unit-label">Pcs</span></div>
-      <div class="item-row"><span class="item-label">ESS Connector</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-14"><span class="unit-label">Pcs</span></div>
-      <div class="item-row"><span class="item-label">Connector Red</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-15"><span class="unit-label">Pcs</span></div>
-      <div class="item-row"><span class="item-label">Connector Black</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-16"><span class="unit-label">Pcs</span></div>
-      <div class="item-row"><span class="item-label">Display</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-17"><span class="unit-label">Pcs</span></div>
-      <div class="item-row"><span class="item-label">Loose Screws</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-18"><span class="unit-label">Pcs</span></div>
-      <div class="item-row"><span class="item-label">Inverter Handle</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-19"><span class="unit-label">Pcs</span></div>
-      <div class="item-row"><span class="item-label">Spiral Pipe</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-20"><span class="unit-label">Pcs</span></div>
-      <div class="item-row"><span class="item-label">Glue Stick</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-21"><span class="unit-label">Pcs</span></div>
-      <div class="item-row"><span class="item-label">Stud</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-22"><span class="unit-label">Pcs</span></div>
-      <div class="item-row"><span class="item-label">Paper Cutter</span><input class="qty-inp" type="number" min="0" placeholder="0" id="oth-23"><span class="unit-label">Pcs</span></div>
+    <div id="items-container">
+      <div class="loading-msg">⏳ Items load ho rahe hain...</div>
     </div>
 
     <div class="remarks-section">
@@ -192,145 +114,147 @@ select.inp { cursor: pointer; }
 <div class="overlay" id="overlay"><div class="spinner"></div></div>
 
 <script>
-const API = 'https://script.google.com/macros/s/AKfycbzObqHKz55CCSwHSu0bjdoRIcHL2Sy4fFKHsJigfGAfxcVgPePJpD3UfnXW5EMjanBe/exec';
+const API = 'https://script.google.com/macros/s/AKfycbzvQeK99fNidQvCarTL-X-eBKBfid0d8T9X-kFclPBYakQ4GJhKsLS5uNHHsRAbKhDD/exec';
 
-function g(id) { return document.getElementById(id); }
-function v(id) { const el = g(id); return el ? (Number(el.value)||0) : 0; }
-function t(id) { const el = g(id); return el ? (el.value.trim()) : ''; }
+const CAT_ICONS = {
+  'Cells': '🔋', 'BMS': '⚡', 'Charger': '🔌',
+  'Nickel/Busbar': '🪙', 'Box': '📦', 'Wire': '🔗',
+  'Consumables': '🧰', 'Tools': '🔧', 'Packaging': '🎁'
+};
 
+let _allItems = [];
 
-async function loadDepts() {
-  try {
-    const r = await fetch(API, {method:'POST', redirect:'follow', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({action:'getConfig'})});
-    const cfg = JSON.parse(await r.text());
-    const sel = g('f-dept');
-    if (cfg && cfg.departments && cfg.departments.length) {
-      sel.innerHTML = '<option value="">-- Select --</option>' + cfg.departments.map(d => '<option>' + d + '</option>').join('');
-    }
-  } catch(e) {}
+async function apiFetch(action, body = {}) {
+  const r = await fetch(API, {
+    method: 'POST', redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ action, ...body })
+  });
+  return JSON.parse(await r.text());
 }
-window.addEventListener('load', loadDepts);
+
+async function loadForm() {
+  try {
+    const [cfg, stocks] = await Promise.all([
+      apiFetch('getConfig'),
+      apiFetch('getStockSummary')
+    ]);
+
+    // Departments
+    const sel = document.getElementById('f-dept');
+    if (cfg && cfg.departments && cfg.departments.length) {
+      sel.innerHTML = '<option value="">-- Select --</option>' +
+        cfg.departments.map(d => `<option>${d}</option>`).join('');
+    }
+
+    // Items — group by category
+    _allItems = stocks.filter(s => s.name && s.cat);
+    const grouped = {};
+    _allItems.forEach(s => {
+      if (!grouped[s.cat]) grouped[s.cat] = [];
+      grouped[s.cat].push(s);
+    });
+
+    // Cat order from config
+    const catOrder = (cfg && cfg.categories) ? cfg.categories : Object.keys(grouped);
+
+    const container = document.getElementById('items-container');
+    container.innerHTML = '';
+
+    catOrder.forEach(cat => {
+      const items = grouped[cat];
+      if (!items || !items.length) return;
+
+      const icon = CAT_ICONS[cat] || '📦';
+      const sec = document.createElement('div');
+      sec.className = 'section';
+      sec.innerHTML = `
+        <div class="section-header open" onclick="toggleSection(this)">
+          <span class="icon">${icon}</span>
+          <h3>${cat}</h3>
+          <span class="arr">▼</span>
+        </div>
+        <div class="section-items open" id="sec-${cat.replace(/[^a-z0-9]/gi,'_')}">
+          ${items.map(item => `
+            <div class="item-row">
+              <span class="item-label">${item.name}</span>
+              <input class="qty-inp" type="number" min="0" placeholder="0"
+                id="item_${item.name.replace(/[^a-z0-9]/gi,'_')}"
+                data-name="${item.name}" data-unit="${item.unit||'Pcs'}">
+              <span class="unit-label">${item.unit||'Pcs'}</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      container.appendChild(sec);
+    });
+
+  } catch(e) {
+    document.getElementById('items-container').innerHTML =
+      `<div class="loading-msg" style="color:#dc2626;">❌ Items load nahi hue — page refresh karein</div>`;
+  }
+}
+
+function toggleSection(header) {
+  header.classList.toggle('open');
+  const body = header.nextElementSibling;
+  body.classList.toggle('open');
+}
 
 async function submitForm() {
-  const name = t('f-name');
-  const dept = t('f-dept');
+  const name = document.getElementById('f-name').value.trim();
+  const dept = document.getElementById('f-dept').value;
   if (!name) { alert('Apna naam bharein'); return; }
   if (!dept) { alert('Department select karein'); return; }
 
   const items = [];
-
-  // Cells
-  [
-    {id:'cell-1', name:'Cell 3.6V 4.5AH'},
-    {id:'cell-2', name:'Cell 3.6V 5AH'},
-    {id:'cell-3', name:'Cell 3.2V 100AH'},
-    {id:'cell-4', name:'Cell 3.2V 150AH'},
-    {id:'cell-5', name:'Cell 3.2V 314AH'},
-  ].forEach(c => { const q = v(c.id); if (q > 0) items.push({itemName: c.name, qty: q, unit: 'Pcs'}); });
-  const coq = v('cell-other-qty'), con = t('cell-other-name');
-  if (coq > 0 && con) items.push({itemName: 'Cell - '+con, qty: coq, unit: 'Pcs'});
-
-  // BMS
-  [
-    {id:'bms-1', name:'BMS 10S 20Amp'},
-    {id:'bms-2', name:'BMS 2-Wheeler'},
-    {id:'bms-3', name:'BMS 4S 100Amp'},
-    {id:'bms-4', name:'BMS 8S 100Amp'},
-    {id:'bms-5', name:'BMS 16S 100Amp'},
-  ].forEach(b => { const q = v(b.id); if (q > 0) items.push({itemName: b.name, qty: q, unit: 'Pcs'}); });
-  const boq = v('bms-other-qty'), bon = t('bms-other-name');
-  if (boq > 0 && bon) items.push({itemName: 'BMS - '+bon, qty: boq, unit: 'Pcs'});
-
-  // Wire — Red & Black only
-  const wireSizes = ['1mm','1.5mm','2.5mm','6mm','10mm','16mm','25mm'];
-  wireSizes.forEach((sz, i) => {
-    const n = i+1;
-    const r = v(`wire-${n}-r`), b = v(`wire-${n}-b`);
-    if (r > 0) items.push({itemName: `Wire ${sz} Red`,  qty: r, unit: 'm'});
-    if (b > 0) items.push({itemName: `Wire ${sz} Black`, qty: b, unit: 'm'});
+  document.querySelectorAll('.qty-inp').forEach(inp => {
+    const qty = Number(inp.value) || 0;
+    if (qty > 0) {
+      items.push({
+        itemName: inp.dataset.name,
+        qty,
+        unit: inp.dataset.unit
+      });
+    }
   });
-
-  // Nickel
-  [
-    {id:'nkl-1', name:'Nickel 21700'},
-    {id:'nkl-2', name:'Nickel 18650'},
-    {id:'nkl-3', name:'Nickel 32140'},
-    {id:'nkl-4', name:'Nickel 33140'},
-    {id:'nkl-5', name:'Nickel Single Strip'},
-    {id:'nkl-6', name:'Nickel Zig Zag'},
-  ].forEach(n => { const q = v(n.id); if (q > 0) items.push({itemName: n.name, qty: q, unit: 'Kg'}); });
-
-  // Other
-  [
-    {id:'oth-1',  name:'Silicon Tube'},
-    {id:'oth-2',  name:'PG7'},
-    {id:'oth-3',  name:'PG9'},
-    {id:'oth-4',  name:'PG13.5'},
-    {id:'oth-5',  name:'Pressure Vent'},
-    {id:'oth-6',  name:'2 Wheeler Handle'},
-    {id:'oth-7',  name:'Thimble 2.5mm'},
-    {id:'oth-8',  name:'Thimble 25mm'},
-    {id:'oth-9',  name:'BusBar'},
-    {id:'oth-10', name:'Soldering Wire'},
-    {id:'oth-11', name:'Rivet'},
-    {id:'oth-12', name:'MCB'},
-    {id:'oth-13', name:'SB50 Connector'},
-    {id:'oth-14', name:'ESS Connector'},
-    {id:'oth-15', name:'Connector Red'},
-    {id:'oth-16', name:'Connector Black'},
-    {id:'oth-17', name:'Display'},
-    {id:'oth-18', name:'Loose Screws'},
-    {id:'oth-19', name:'Inverter Handle'},
-    {id:'oth-20', name:'Spiral Pipe'},
-    {id:'oth-21', name:'Glue Stick'},
-    {id:'oth-22', name:'Stud'},
-    {id:'oth-23', name:'Paper Cutter'},
-  ].forEach(o => { const q = v(o.id); if (q > 0) items.push({itemName: o.name, qty: q, unit: 'Pcs'}); });
 
   if (!items.length) { alert('Kam se kam ek item ki qty bharein'); return; }
 
-  g('overlay').classList.add('show');
-  g('submit-btn').disabled = true;
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('submit-btn').disabled = true;
 
   try {
-    // Single bulk API call — sabhi items ek saath
-    const r = await fetch(API, {
-      method: 'POST', redirect: 'follow',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({
-        action: 'addRequestBulk',
-        items,
-        department:  dept,
-        requestedBy: name,
-        remarks:     t('f-remarks'),
-      }),
+    const data = await apiFetch('addRequestBulk', {
+      items,
+      department:  dept,
+      requestedBy: name,
+      remarks:     document.getElementById('f-remarks').value.trim(),
     });
-    const data = JSON.parse(await r.text());
     if (data.error) throw new Error(data.error);
 
-    g('success-summary').innerHTML =
-      `<b>${data.count} items</b> request bheji gayi<br>` +
-      items.map(i => `• ${i.itemName}: <b>${i.qty} ${i.unit}</b>`).join('<br>');
-    g('form-card').style.display = 'none';
-    g('success-card').style.display = 'block';
-    window.scrollTo(0, 0);
+    document.getElementById('form-card').style.display = 'none';
+    document.getElementById('success-card').style.display = 'block';
+    document.getElementById('success-summary').innerHTML =
+      items.map(i => `${i.itemName}: ${i.qty} ${i.unit}`).join('<br>');
   } catch(e) {
     alert('Error: ' + e.message);
-    g('submit-btn').disabled = false;
+    document.getElementById('submit-btn').disabled = false;
   } finally {
-    g('overlay').classList.remove('show');
+    document.getElementById('overlay').classList.remove('show');
   }
 }
 
 function resetForm() {
-  document.querySelectorAll('.qty-inp').forEach(el => el.value = '');
-  document.querySelectorAll('.other-inp').forEach(el => el.value = '');
-  g('f-name').value = ''; g('f-dept').value = ''; g('f-remarks').value = '';
-  g('submit-btn').disabled = false;
-  g('form-card').style.display = 'block';
-  g('success-card').style.display = 'none';
-  window.scrollTo(0, 0);
+  document.getElementById('form-card').style.display = 'block';
+  document.getElementById('success-card').style.display = 'none';
+  document.getElementById('f-name').value = '';
+  document.getElementById('f-dept').value = '';
+  document.getElementById('f-remarks').value = '';
+  document.querySelectorAll('.qty-inp').forEach(i => i.value = '');
 }
+
+window.addEventListener('load', loadForm);
 </script>
 </body>
 </html>
