@@ -2805,69 +2805,7 @@ async function openCreatePO() {
   } catch(e) { toast(e.message, 'err'); closeM('create-po-modal'); }
 }
 
-async function saveCreatePO() {
-  if (!_stocks.length) return;
-  const reorderItems = _stocks.filter(s => s.status === 'Critical' || s.status === 'Reorder');
-  const supplier  = document.getElementById('po-supplier').value;
-  const expDate   = document.getElementById('po-exp-date').value;
 
-  // Collect checked items
-  const toCreate = [];
-  reorderItems.forEach(s => {
-    const key = s.name.replace(/\s/g,'_');
-    const chk = document.getElementById('po-chk-'+key);
-    const qty = Number((document.getElementById('po-qty-'+key)||{}).value) || 0;
-    if (chk && chk.checked && qty > 0) {
-      toCreate.push({ itemName: s.name, qty, supplier, expectedDate: expDate });
-    }
-  });
-
-  // Manual items bhi add karo
-  const manualRows = document.getElementById('po-manual-rows');
-  if (manualRows) {
-    const n = manualRows.children.length;
-    for (let i = 0; i < n; i++) {
-      const itemEl = document.getElementById('po-manual-item-'+i);
-      const qtyEl  = document.getElementById('po-manual-qty-'+i);
-      if (!itemEl || !qtyEl) continue;
-      const itemName = itemEl.value;
-      const qty = Number(qtyEl.value) || 0;
-      if (itemName && qty > 0) {
-        toCreate.push({ itemName, qty, supplier, expectedDate: expDate });
-      }
-    }
-  }
-
-  if (!toCreate.length) { toast('Koi item select nahi hai', 'err'); return; }
-
-  const btn = document.getElementById('po-btn');
-  btn.disabled = true; btn.textContent = 'Creating...';
-
-  try {
-    let created = 0;
-    for (const item of toCreate) {
-      await api('addIndent', {
-        itemName: item.itemName,
-        qty: item.qty,
-        date: today(),
-        supplier: item.supplier,
-        expectedDate: item.expectedDate,
-        remarks: 'Auto PO from Reorder',
-      });
-      created++;
-    }
-    toast(`✓ ${created} PO entries created — Indent/PO mein dekho`, 'ok');
-    closeM('create-po-modal');
-    _stocks = [];
-    loadReorder();
-    setTimeout(() => {
-      showPage('indent');
-      // Auto print preview
-      printPO(toCreate, document.getElementById('po-supplier').value, document.getElementById('po-exp-date').value);
-    }, 800);
-  } catch(e) { toast(e.message, 'err'); }
-  finally { btn.disabled = false; btn.textContent = '✓ Create PO'; }
-}
 let _sbInOpen  = false;
 let _sbOutOpen = false;
 let _sbInData  = [];
