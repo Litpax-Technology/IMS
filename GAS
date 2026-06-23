@@ -1,0 +1,956 @@
+// ============================================================
+// LITPAX IMS — Google Apps Script Backend v3
+// Features: Opening Stock, Indent/PO, SKU, WIP, FG
+// Sheet ID: 1OHa1MBqACoKlmhJuhwCVUP7V7Bp2II3O8Wnp9oIiphg
+// ============================================================
+
+const SHEET_ID = '1OHa1MBqACoKlmhJuhwCVUP7V7Bp2II3O8Wnp9oIiphg';
+
+const SH = {
+  ITEMS:    'Items',
+  BOM_MODELS:'BOM_Models',
+  BOM_ITEMS: 'BOM_Items',
+  INWARD:   'Inward',
+  OUTWARD:  'Outward',
+  DISPATCH: 'Dispatch',
+  SNAPSHOT: 'Stock_Snapshot',
+  OPENING:  'Opening_Stock',
+  INDENT:   'Indent_Link',
+  REQUESTS: 'Material_Requests',
+  CONFIG:   'Config',
+};
+
+// ── ROUTING ──
+function doGet(e) {
+  const action = e && e.parameter ? e.parameter.action : null;
+  return respond(action ? handleAction(action, e.parameter) : { status: 'Litpax IMS v3 OK' });
+}
+function doPost(e) {
+  let body = {};
+  try { body = JSON.parse(e.postData.contents); } catch(err) {}
+  return respond(handleAction(body.action, body));
+}
+function respond(data) {
+  return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
+}
+function handleAction(action, body) {
+  try {
+    switch(action) {
+      case 'getItems':          return getItems();
+      case 'getConfig':         return getConfig();
+      case 'setupConfig':       return setupConfig();
+      case 'addItem':           return addItem(body);
+      case 'updateItem':        return updateItem(body);
+      case 'deleteItem':        return deleteItem(body);
+      case 'getBomModels':      return getBomModels();
+      case 'addBomModel':       return addBomModel(body);
+      case 'getBomItems':       return getBomItems(body);
+      case 'saveBomItems':      return saveBomItems(body);
+      case 'deleteBomModel':    return deleteBomModel(body);
+      case 'getInward':         return getInward(body);
+      case 'addInward':         return addInward(body);
+      case 'getOutward':        return getOutward(body);
+      case 'addOutward':        return addOutward(body);
+      case 'getDispatch':       return getDispatch(body);
+      case 'addDispatch':        return addDispatch(body);
+      case 'addDirectDispatch':  return addDirectDispatch(body);
+      case 'updateDispatch':     return updateDispatch(body);
+      case 'deleteDispatch':     return deleteDispatch(body);
+      case 'getDashboard':      return getDashboard();
+      case 'getStockSummary':   return getStockSummary();
+      case 'getClosing':        return getClosing(body);
+      case 'saveSnapshot':      return saveSnapshot(body);
+      case 'getClosingHistory': return getClosingHistory(body);
+      case 'getMonthlyStock':    return getMonthlyStock(body);
+      case 'getMonthlyStockAll': return getMonthlyStockAll(body);
+      case 'getOpeningStock':   return getOpeningStock();
+      case 'setOpeningStock':   return setOpeningStock(body);
+      case 'getIndents':        return getIndents(body);
+      case 'addIndent':         return addIndent(body);
+      case 'receiveIndent':     return receiveIndent(body);
+      case 'cancelIndent':      return cancelIndent(body);
+      case 'migrateCategories':  return migrateCategories();
+      case 'getRequests':       return getRequests(body);
+      case 'addRequest':        return addRequest(body);
+      case 'addRequestBulk':    return addRequestBulk(body);
+      case 'closeRequest':      return closeRequest(body);
+      case 'cancelRequest':     return cancelRequest(body);
+      default: return { error: 'Unknown action: ' + action };
+    }
+  } catch(e) { return { error: e.message }; }
+}
+
+// ── SHEET HELPERS ──
+function getSheet(name) {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  let sh = ss.getSheetByName(name);
+  if (!sh) sh = createNewSheet(ss, name);
+  return sh;
+}
+function createNewSheet(ss, name) {
+  const sh = ss.insertSheet(name);
+  const hStyle = (s, n) => s.getRange(1,1,1,n).setBackground('#162444').setFontColor('#fff').setFontWeight('bold');
+  if (name === SH.OPENING) {
+    sh.appendRow(['Item Name','SKU Code','Opening Qty','Unit','Set Date','Remarks']);
+    hStyle(sh, 6);
+  }
+  if (name === SH.REQUESTS) {
+    sh.appendRow(['Req ID','Date','Time','Item Name','Qty Requested','Unit','Department','Requested By','Remarks','Status','Closed By','Closed At']);
+    hStyle(sh, 12);
+  }
+  if (name === SH.INDENT) {
+    sh.appendRow(['Indent ID','Date','Item Name','SKU','Qty','Unit','Supplier','Expected Date','Status','Invoice No','Received Qty','Received Date','Remarks','Created At']);
+    hStyle(sh, 14);
+  }
+  return sh;
+}
+function getRows(name) {
+  const sh = getSheet(name);
+  const data = sh.getDataRange().getValues();
+  if (data.length <= 1) return [];
+  return data.slice(1);
+}
+function today() { return Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd'); }
+function fmtDate(val) {
+  if (!val) return '';
+  if (val instanceof Date) return Utilities.formatDate(val, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  return String(val).slice(0, 10);
+}
+function nowISO() { return new Date().toISOString(); }
+function uid(prefix) { return prefix + Date.now().toString(36).toUpperCase(); }
+
+// ── CONFIG ──
+// Config sheet structure:
+// Row 1: Headers — Type | Key | Values (comma separated) | Remarks
+// Types: category, unit, department, role
+function getConfig() {
+  const sh = getSheet(SH.CONFIG);
+  const rows = sh.getDataRange().getValues().slice(1);
+  
+  const categories = [];
+  const brands = {};
+  const units = [];
+  const departments = [];
+  const catUnits = {};
+  const catOrder = [];
+  const noBrandCats = [];
+
+  rows.forEach(r => {
+    const type   = String(r[0]||'').trim();
+    const key    = String(r[1]||'').trim();
+    const values = String(r[2]||'').split(',').map(v => v.trim()).filter(Boolean);
+    const extra  = String(r[3]||'').trim();
+
+    if (type === 'category') {
+      categories.push(key);
+      catOrder.push(key);
+      brands[key] = values.length ? values : ['Other'];
+      catUnits[key] = extra || 'Pcs';
+      if (String(r[4]||'').trim() === 'no-brand') noBrandCats.push(key);
+    }
+    if (type === 'unit') units.push(key);
+    if (type === 'department') departments.push(key);
+  });
+
+  const roles = {};
+  rows.forEach(r => {
+    const type = String(r[0]||'').trim();
+    const key  = String(r[1]||'').trim();
+    const val  = String(r[2]||'').trim();
+    if (type === 'role' && key) roles[key] = val;
+  });
+
+  return { categories, brands, units, departments, catUnits, catOrder, noBrandCats, roles };
+}
+
+function setupConfig() {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  let sh = ss.getSheetByName(SH.CONFIG);
+  if (!sh) {
+    sh = ss.insertSheet(SH.CONFIG);
+  } else {
+    sh.clearContents();
+  }
+
+  // Headers
+  sh.appendRow(['Type', 'Key', 'Values (comma separated)', 'Default Unit', 'No Brand?', 'Remarks']);
+  sh.getRange(1,1,1,6).setBackground('#162444').setFontColor('#fff').setFontWeight('bold');
+
+  // Categories with brands
+  const cats = [
+    ['category', 'Cells',        'DMEGC,EVE,CATL,Other',                    'Pcs',    '',         ''],
+    ['category', 'BMS',          'JK,JBD,Daly,Solar,Other',                 'Pcs',    '',         ''],
+    ['category', 'Charger',      'Charge Q,Litpax,Indian,AXIOM,SHAKTI,XSTRONG POWER,Other', 'Pcs', '', ''],
+    ['category', 'Nickel/Busbar','Nickel,Busbar',                            'Kg',     '',         ''],
+    ['category', 'Box',          'Prismatic,Cylindrical,Other',              'Pcs',    '',         ''],
+    ['category', 'Wire',         'Other',                                    'm',      'no-brand', ''],
+    ['category', 'Consumables',  'Other',                                    'Pcs',    'no-brand', ''],
+    ['category', 'Tools',        'Other',                                    'Pcs',    'no-brand', ''],
+    ['category', 'Packaging',    'Other',                                    'Pcs',    'no-brand', ''],
+  ];
+  cats.forEach(r => sh.appendRow(r));
+
+  // Units
+  const units = ['Pcs','Kg','g','L','ml','Roll','Set','m','Bucket','Meter'];
+  units.forEach(u => sh.appendRow(['unit', u, '', '', '', '']));
+
+  // Departments
+  const depts = ['Volt Wing','Ampere Wing','Volt x Ampere Wing','Mega Grid','Cathodic Wing','Future Cell','Phoenix Wing','Other'];
+  depts.forEach(d => sh.appendRow(['department', d, '', '', '', '']));
+
+  return { success: true, message: 'Config sheet created!' };
+}
+
+// ── MIGRATE CATEGORIES ──
+function migrateCategories() {
+  const sh   = getSheet(SH.ITEMS);
+  const rows = sh.getDataRange().getValues();
+  const map  = {
+    'Nickel':      'Nickel/Busbar',
+    'Busbar':      'Nickel/Busbar',
+    'Other':       'Consumables',
+  };
+  let updated = 0;
+  for (let i = 1; i < rows.length; i++) {
+    const cat = String(rows[i][1] || '');
+    if (map[cat]) {
+      sh.getRange(i + 1, 2).setValue(map[cat]);
+      updated++;
+    }
+  }
+  return { success: true, updated, message: updated + ' items updated' };
+}
+
+// ── SETUP NEW SHEETS ──
+function setupNewSheets() {
+  getSheet(SH.OPENING);
+  getSheet(SH.INDENT);
+  getSheet(SH.REQUESTS);
+  return { success: true, message: 'All new sheets created!' };
+}
+
+// ── ITEMS ──
+function getItems() {
+  return getRows(SH.ITEMS).map(r => ({
+    name: String(r[0]||''), cat: String(r[1]||''), unit: String(r[2]||''),
+    adc: Number(r[3])||0, lt: Number(r[4])||0, sf: Number(r[5])||1.2,
+    moq: Number(r[6])||0, maxL: Number(r[7])||0, minL: Number(r[8])||0,
+    mit: Number(r[9])||0, remarks: String(r[10]||''),
+  })).filter(i => i.name);
+}
+function addItem(b) {
+  const items = getItems();
+  if (items.find(i => i.name.toLowerCase() === (b.name||'').toLowerCase()))
+    throw new Error('Item already exists: ' + b.name);
+  const maxL = Number(b.maxL) || Math.ceil((Number(b.adc)||0)*(Number(b.lt)||0)*(Number(b.sf)||1.2));
+  const rp   = Math.ceil(maxL / 2);
+  getSheet(SH.ITEMS).appendRow([b.name, b.cat||'Raw Material', b.unit||'',
+    Number(b.adc)||0, Number(b.lt)||0, Number(b.sf)||1.2,
+    Number(b.moq)||rp, maxL, rp,
+    Number(b.mit)||0, b.remarks||'', nowISO()]);
+  return { success: true };
+}
+function updateItem(b) {
+  const sh = getSheet(SH.ITEMS);
+  const rows = sh.getDataRange().getValues();
+  const search = (b.originalName||b.name).toLowerCase();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0].toString().toLowerCase() === search) {
+      const maxL2 = Number(b.maxL) || Math.ceil((Number(b.adc)||0)*(Number(b.lt)||0)*(Number(b.sf)||1.2));
+      const rp   = Math.ceil(maxL2 / 2);
+      sh.getRange(i+1,1,1,12).setValues([[b.name,b.cat,b.unit||'',
+        Number(b.adc)||0,Number(b.lt)||0,Number(b.sf)||1.2,
+        Number(b.moq)||rp, maxL2, rp,
+        Number(b.mit)||0,b.remarks||'',rows[i][11]]]);
+      return { success: true };
+    }
+  }
+  throw new Error('Item not found: '+b.name);
+}
+function deleteItem(b) {
+  const sh = getSheet(SH.ITEMS);
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0].toString().toLowerCase() === (b.name||'').toLowerCase()) {
+      sh.deleteRow(i+1); return { success: true };
+    }
+  }
+  throw new Error('Item not found');
+}
+function updateMIT(itemName, delta) {
+  const sh = getSheet(SH.ITEMS);
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0].toString().toLowerCase() === itemName.toLowerCase()) {
+      sh.getRange(i+1,10).setValue(Math.max(0,(Number(rows[i][9])||0)+delta));
+      return;
+    }
+  }
+}
+
+// ── OPENING STOCK ──
+function getOpeningStock() {
+  return getRows(SH.OPENING).map(r => ({
+    name:    String(r[0]||''),
+    sku:     String(r[1]||''),
+    qty:     Number(r[2])||0,
+    unit:    String(r[3]||''),
+    setDate: fmtDate(r[4]),
+    remarks: String(r[5]||''),
+  })).filter(r => r.name);
+}
+function setOpeningStock(b) {
+  const sh = getSheet(SH.OPENING);
+  const rows = sh.getDataRange().getValues();
+  const existing = {};
+  for (let i = 1; i < rows.length; i++) {
+    existing[String(rows[i][0]||'').toLowerCase()] = i + 1;
+  }
+  const date = today();
+  (b.items||[]).forEach(item => {
+    const key = item.name.toLowerCase();
+    if (existing[key]) {
+      sh.getRange(existing[key],1,1,6).setValues([[item.name, item.sku||'', Number(item.qty)||0, item.unit||'', date, item.remarks||'']]);
+    } else {
+      sh.appendRow([item.name, item.sku||'', Number(item.qty)||0, item.unit||'', date, item.remarks||'']);
+    }
+    updateSKU(item.name, item.sku||'');
+  });
+  return { success: true };
+}
+function updateSKU(itemName, sku) {}
+function getOpeningMap() {
+  const map = {};
+  getOpeningStock().forEach(r => { map[r.name] = r.qty; });
+  return map;
+}
+
+// ── STOCKS CALCULATOR ──
+function calcStocks() {
+  const items    = getItems();
+  const inRows   = getRows(SH.INWARD);
+  const outRows  = getRows(SH.OUTWARD);
+  const disRows  = getRows(SH.DISPATCH);
+  const openMap  = getOpeningMap();
+
+  const storeMap = {};
+  items.forEach(i => { storeMap[i.name] = openMap[i.name] || 0; });
+  inRows.forEach(r => {
+    const name = String(r[2]||'');
+    if (storeMap[name] !== undefined) storeMap[name] += Number(r[3])||0;
+  });
+  outRows.forEach(r => {
+    const name = String(r[2]||'');
+    const remarks = String(r[8]||'');
+    // Purani dispatch entries ignore karo (nayi entries Outward mein nahi aayengi)
+    if (remarks.startsWith('Dispatch:') || remarks.startsWith('Direct Dispatch:')) return;
+    if (storeMap[name] !== undefined) storeMap[name] -= Number(r[3])||0;
+  });
+
+
+  // WIP = Total Outward (Production only) - From Production returns - Dispatch Used
+  const manualOut = {};
+  items.forEach(i => { manualOut[i.name] = 0; });
+  outRows.forEach(r => {
+    const name = String(r[2]||''), qty = Number(r[3])||0;
+    const remarks = String(r[8]||'');
+    const purpose = String(r[10]||'Production');
+    // Purani dispatch entries ignore karo
+    if (remarks.startsWith('Dispatch:') || remarks.startsWith('Direct Dispatch:')) return;
+    // Sirf Production purpose wale WIP mein count honge
+    if (purpose !== 'Production') return;
+    if (manualOut[name] !== undefined) manualOut[name] += qty;
+  });
+  // From Production returns - WIP se minus karo
+  inRows.forEach(r => {
+    const name = String(r[2]||'');
+    const purpose = String(r[10]||'Raw Material');
+    const qty = Number(r[3])||0;
+    if (purpose === 'From Production' && manualOut[name] !== undefined) {
+      manualOut[name] = Math.max(0, manualOut[name] - qty);
+    }
+  });
+
+  // Dispatch sheet se consumed components calculate karo via BOM
+  const dispUsed = {};
+  items.forEach(i => { dispUsed[i.name] = 0; });
+  disRows.forEach(r => {
+    const bomName  = String(r[2]||'');
+    const dispQty  = Number(r[3])||0;
+    const verified = String(r[7]||'');
+    if (!bomName || !dispQty) return;
+
+    if (verified === 'Direct') {
+      // Direct Dispatch — item name directly in dispUsed
+      if (dispUsed[bomName] !== undefined) dispUsed[bomName] += dispQty;
+    } else {
+      // BOM-based dispatch — calculate component consumption
+      try {
+        const bomItems = getBomItems({ bomName: bomName });
+        bomItems.forEach(bi => {
+          const comp = bi.component;
+          if (dispUsed[comp] !== undefined) dispUsed[comp] += bi.qty * dispQty;
+        });
+      } catch(e) {}
+    }
+  });
+
+  const wipMap = {};
+  items.forEach(i => { wipMap[i.name] = Math.max(0,(manualOut[i.name]||0)-(dispUsed[i.name]||0)); });
+
+  return items.map(item => {
+    const cs  = storeMap[item.name] || 0;
+    const wip = wipMap[item.name]   || 0;
+    const op  = openMap[item.name]  || 0;
+    const rp  = item.minL || Math.ceil(((item.adc||0)*(item.lt||0)*(item.sf||1)) / 2);
+    const sto = Math.max(0,(item.maxL||0)-cs-(item.mit||0));
+    const status = cs <= 0 ? 'Critical' : cs <= rp ? 'Reorder' : 'OK';
+    return { ...item, currentStock: cs, wip, openingStock: op, reorderPoint: rp, stockToOrder: sto, status, totalOut: manualOut[item.name]||0, dispUsed: dispUsed[item.name]||0 };
+  });
+}
+
+function getFGSummary() {
+  const disRows = getRows(SH.DISPATCH);
+  const fgMap = {};
+  disRows.forEach(r => {
+    const model = String(r[2]||''), qty = Number(r[3])||0, date = fmtDate(r[1]);
+    if (!fgMap[model]) fgMap[model] = { model, totalProduced: 0, lastDate: '' };
+    fgMap[model].totalProduced += qty;
+    if (date > fgMap[model].lastDate) fgMap[model].lastDate = date;
+  });
+  return Object.values(fgMap);
+}
+
+// ── BOM MODELS ──
+function getBomModels() {
+  return getRows(SH.BOM_MODELS).map(r => ({
+    bomName: String(r[0]||''), alias: String(r[1]||''),
+    produces: String(r[2]||''), unit: String(r[3]||'Pcs'),
+    active: String(r[4]||'YES'), remarks: String(r[5]||''),
+  })).filter(r => r.bomName);
+}
+function addBomModel(b) {
+  const models = getBomModels();
+  if (models.find(m => m.bomName.toLowerCase() === (b.bomName||'').toLowerCase()))
+    throw new Error('BOM already exists: '+b.bomName);
+  getSheet(SH.BOM_MODELS).appendRow([b.bomName,b.alias||'',b.produces||b.bomName,'Pcs','YES',b.remarks||'']);
+  return { success: true };
+}
+function deleteBomModel(b) {
+  const sh = getSheet(SH.BOM_MODELS);
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0].toString().toLowerCase() === (b.bomName||'').toLowerCase()) {
+      sh.deleteRow(i+1); deleteBomItemsFor(b.bomName); return { success: true };
+    }
+  }
+  throw new Error('BOM not found');
+}
+function getBomItems(b) {
+  const rows = getRows(SH.BOM_ITEMS);
+  const all = rows.map(r => ({ bomName: String(r[0]||''), component: String(r[1]||''), qty: Number(r[2])||0, unit: String(r[3]||'') })).filter(r => r.bomName);
+  if (b && b.bomName) return all.filter(r => r.bomName.toLowerCase() === b.bomName.toLowerCase());
+  return all;
+}
+function saveBomItems(b) {
+  deleteBomItemsFor(b.bomName);
+  const sh = getSheet(SH.BOM_ITEMS);
+  (b.items||[]).forEach(item => sh.appendRow([b.bomName, item.component, Number(item.qty)||0, item.unit||'Pcs']));
+  return { success: true };
+}
+function deleteBomItemsFor(bomName) {
+  const sh = getSheet(SH.BOM_ITEMS);
+  const rows = sh.getDataRange().getValues();
+  for (let i = rows.length-1; i >= 1; i--) {
+    if (rows[i][0].toString().toLowerCase() === bomName.toLowerCase()) sh.deleteRow(i+1);
+  }
+}
+
+// ── INWARD ──
+function getInward(b) {
+  let rows = getRows(SH.INWARD).map(r => ({
+    id: String(r[0]||''), date: fmtDate(r[1]), itemName: String(r[2]||''),
+    qty: Number(r[3])||0, unit: String(r[4]||''), supplier: String(r[5]||''),
+    invoice: String(r[6]||''), by: String(r[7]||''), remarks: String(r[8]||''), ts: String(r[9]||''),
+    purpose: String(r[10]||'Raw Material'),
+  })).filter(r => r.itemName);
+  if (b && b.date) rows = rows.filter(r => r.date === b.date);
+  if (b && b.itemName) rows = rows.filter(r => r.itemName === b.itemName);
+  return rows.reverse();
+}
+function addInward(b) {
+  const items = getItems();
+  const item = items.find(i => i.name.toLowerCase() === (b.itemName||'').toLowerCase());
+  if (!item) throw new Error('Item not found: '+b.itemName);
+  const id = uid('IN');
+  getSheet(SH.INWARD).appendRow([id, b.date||today(), item.name, Number(b.qty)||0, item.unit, b.supplier||'', b.invoice||'', b.by||'Store', b.remarks||'', nowISO(), b.purpose||'Raw Material']);
+  if (b.indentId) receiveIndent({ id: b.indentId, itemName: item.name, qty: Number(b.qty)||0, date: b.date||today(), invoice: b.invoice||'' });
+  return { success: true, id };
+}
+
+// ── OUTWARD ──
+function getOutward(b) {
+  let rows = getRows(SH.OUTWARD).map(r => ({
+    id: String(r[0]||''), date: fmtDate(r[1]), itemName: String(r[2]||''),
+    qty: Number(r[3])||0, unit: String(r[4]||''), department: String(r[5]||''),
+    issuedTo: String(r[6]||''), by: String(r[7]||''), remarks: String(r[8]||''), ts: String(r[9]||''),
+    purpose: String(r[10]||'Production'),
+  })).filter(r => r.itemName);
+  if (b && b.date) rows = rows.filter(r => r.date === b.date);
+  if (b && b.department) rows = rows.filter(r => r.department === b.department);
+  return rows.reverse();
+}
+function addOutward(b) {
+  const stocks = calcStocks();
+  const stock = stocks.find(s => s.name.toLowerCase() === (b.itemName||'').toLowerCase());
+  if (!stock) throw new Error('Item not found: '+b.itemName);
+  if (Number(b.qty) > stock.currentStock)
+    throw new Error('Insufficient stock. Available: '+stock.currentStock+' '+stock.unit);
+  const id = uid('OUT');
+  getSheet(SH.OUTWARD).appendRow([id, b.date||today(), stock.name, Number(b.qty)||0, stock.unit, b.department||'', b.issuedTo||'', b.by||'Store', b.remarks||'', nowISO(), b.purpose||'Production']);
+  return { success: true, id };
+}
+
+// ── DISPATCH ──
+function getDispatch(b) {
+  let rows = getRows(SH.DISPATCH).map(r => ({
+    id: String(r[0]||''), date: fmtDate(r[1]), bomModel: String(r[2]||''),
+    qtyProduced: Number(r[3])||0, dispatchTo: String(r[4]||''),
+    orderRef: String(r[5]||''), by: String(r[6]||''), bomVerified: String(r[7]||''),
+    remarks: String(r[8]||''), ts: String(r[9]||''),
+  })).filter(r => r.bomModel);
+  if (b && b.date) rows = rows.filter(r => r.date === b.date);
+  return rows.reverse();
+}
+function addDispatch(b) {
+  const bomItems = getBomItems({ bomName: b.bomModel });
+  if (!bomItems.length) throw new Error('BOM items not found for: '+b.bomModel);
+  const qty = Number(b.qtyProduced)||1;
+  const stocks = calcStocks();
+  const shortages = [];
+  bomItems.forEach(bi => {
+    const needed = bi.qty * qty;
+    const s = stocks.find(x => x.name.toLowerCase() === bi.component.toLowerCase());
+    if (!s) {
+      shortages.push(bi.component + ': not in Items');
+    } else {
+      // Store stock + WIP dono milake check — production mein jo hai woh bhi count karo
+      const available = s.currentStock + (s.wip || 0);
+      if (available < needed) {
+        shortages.push(bi.component + ': chahiye ' + needed + ' ' + s.unit + ', available ' + available + ' (store: ' + s.currentStock + ' + production: ' + (s.wip||0) + ')');
+      }
+    }
+  });
+  if (shortages.length) throw new Error('Stock shortage:\n'+shortages.join('\n'));
+  const date = b.date||today();
+  const dispId = uid('DIS');
+  getSheet(SH.DISPATCH).appendRow([dispId, date, b.bomModel, qty, b.dispatchTo||'', b.orderRef||'', b.by||'Production', 'YES', b.remarks||'', nowISO()]);
+  return { success: true, id: dispId, componentsConsumed: bomItems.length };
+}
+
+function updateDispatch(b) {
+  const sh   = getSheet(SH.DISPATCH);
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === b.id) {
+      sh.getRange(i+1, 2).setValue(b.date     || rows[i][1]);
+      sh.getRange(i+1, 4).setValue(Number(b.qtyProduced) || rows[i][3]);
+      sh.getRange(i+1, 5).setValue(b.dispatchTo !== undefined ? b.dispatchTo : rows[i][4]);
+      sh.getRange(i+1, 6).setValue(b.orderRef  !== undefined ? b.orderRef   : rows[i][5]);
+      sh.getRange(i+1, 9).setValue(b.remarks   !== undefined ? b.remarks    : rows[i][8]);
+      return { success: true };
+    }
+  }
+  throw new Error('Dispatch not found');
+}
+
+function deleteDispatch(b) {
+  const sh   = getSheet(SH.DISPATCH);
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === b.id) {
+      sh.deleteRow(i + 1);
+      return { success: true };
+    }
+  }
+  throw new Error('Dispatch not found');
+}
+
+
+function addDirectDispatch(b) {
+  const itemName = b.itemName;
+  const qty      = Number(b.qty) || 0;
+  if (!itemName) throw new Error('Item name required');
+  if (qty <= 0)  throw new Error('Qty must be greater than 0');
+
+  // Check WIP for this item
+  const stocks = calcStocks();
+  const stock  = stocks.find(s => s.name.toLowerCase() === itemName.toLowerCase());
+  if (!stock) throw new Error('Item not found: ' + itemName);
+
+  const wip = stock.wip || 0;
+  if (wip <= 0) throw new Error(itemName + ' WIP mein nahi hai — pehle store se outward karo');
+  if (qty > wip) throw new Error('Insufficient WIP. Available: ' + wip + ' ' + stock.unit + ', Requested: ' + qty);
+
+  const date = b.date || today();
+
+  // Add dispatch entry only
+  const dispId = uid('DIS');
+  getSheet(SH.DISPATCH).appendRow([
+    dispId, date, stock.name, qty,
+    b.dispatchTo || '', b.orderRef || '',
+    b.by || 'Sandeep', 'Direct',
+    (b.invoiceNo ? 'INV: ' + b.invoiceNo + ' | ' : '') + (b.remarks || ''),
+    nowISO()
+  ]);
+
+  return { success: true, id: dispId, itemName: stock.name, qty, wip, remaining: wip - qty };
+}
+
+
+function getIndents(b) {
+  let rows = getRows(SH.INDENT).map(r => ({
+    id: String(r[0]||''), date: fmtDate(r[1]), itemName: String(r[2]||''),
+    sku: String(r[3]||''), qty: Number(r[4])||0, unit: String(r[5]||''),
+    supplier: String(r[6]||''), expectedDate: fmtDate(r[7]),
+    status: String(r[8]||'Pending'), invoice: String(r[9]||''),
+    receivedQty: Number(r[10])||0, receivedDate: fmtDate(r[11]),
+    remarks: String(r[12]||''), createdAt: String(r[13]||''),
+  })).filter(r => r.itemName);
+  if (b && b.status) rows = rows.filter(r => r.status === b.status);
+  return rows.reverse();
+}
+function addIndent(b) {
+  const items = getItems();
+  const item = items.find(i => i.name.toLowerCase() === (b.itemName||'').toLowerCase());
+  if (!item) throw new Error('Item not found: '+b.itemName);
+  const id = uid('IND');
+  const openStock = getOpeningStock();
+  const sku = (openStock.find(o => o.name.toLowerCase() === item.name.toLowerCase())||{}).sku || '';
+  getSheet(SH.INDENT).appendRow([id, b.date||today(), item.name, sku, Number(b.qty)||0, item.unit, b.supplier||'', b.expectedDate||'', 'Pending', '', 0, '', b.remarks||'', nowISO()]);
+  updateMIT(item.name, Number(b.qty)||0);
+  return { success: true, id };
+}
+function receiveIndent(b) {
+  const sh = getSheet(SH.INDENT);
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === b.id) {
+      const orderedQty = Number(rows[i][4])||0;
+      const recQty = Number(b.qty)||orderedQty;
+      sh.getRange(i+1,9).setValue('Received');
+      sh.getRange(i+1,10).setValue(b.invoice||'');
+      sh.getRange(i+1,11).setValue(recQty);
+      sh.getRange(i+1,12).setValue(b.date||today());
+      break;
+    }
+  }
+  updateMIT(b.itemName, -(Number(b.qty)||0));
+  return { success: true };
+}
+function cancelIndent(b) {
+  const sh = getSheet(SH.INDENT);
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === b.id) {
+      sh.getRange(i+1,9).setValue('Cancelled');
+      updateMIT(String(rows[i][2]), -(Number(rows[i][4])||0));
+      return { success: true };
+    }
+  }
+  throw new Error('Indent not found');
+}
+
+// ── MONTHLY STOCK CALCULATOR ──
+// Returns closing stock for every day of a month for a specific item
+function getMonthlyStock(b) {
+  const month    = b.month;    // format: 'YYYY-MM'
+  const itemName = b.itemName;
+  if (!month || !itemName) throw new Error('month and itemName required');
+
+  const items   = getItems();
+  const item    = items.find(i => i.name.toLowerCase() === itemName.toLowerCase());
+  if (!item) throw new Error('Item not found: ' + itemName);
+
+  const inRows  = getRows(SH.INWARD);
+  const outRows = getRows(SH.OUTWARD);
+  const openMap = getOpeningMap();
+
+  // Get last day of month
+  const [yr, mo] = month.split('-').map(Number);
+  const lastDay = new Date(yr, mo, 0).getDate();
+
+  const result = [];
+
+  for (let d = 1; d <= lastDay; d++) {
+    const date = month + '-' + String(d).padStart(2, '0');
+
+    const prevIn  = inRows.filter(r => String(r[2]||'') === item.name && fmtDate(r[1]) < date)
+                          .reduce((s,r) => s + (Number(r[3])||0), 0);
+    const prevOut = outRows.filter(r => String(r[2]||'') === item.name && fmtDate(r[1]) < date)
+                           .reduce((s,r) => s + (Number(r[3])||0), 0);
+    const opening = (openMap[item.name] || 0) + prevIn - prevOut;
+
+    const tIn  = inRows.filter(r => String(r[2]||'') === item.name && fmtDate(r[1]) === date)
+                       .reduce((s,r) => s + (Number(r[3])||0), 0);
+    const tOut = outRows.filter(r => String(r[2]||'') === item.name && fmtDate(r[1]) === date)
+                        .reduce((s,r) => s + (Number(r[3])||0), 0);
+    const closing = opening + tIn - tOut;
+
+    result.push({
+      date,
+      opening,
+      inward:  tIn,
+      outward: tOut,
+      closing,
+    });
+  }
+
+  return {
+    itemName: item.name,
+    unit:     item.unit,
+    maxL:     item.maxL || 0,
+    minL:     item.minL || 0,
+    month,
+    days: result,
+  };
+}
+
+// ── MONTHLY STOCK ALL ITEMS ──
+function getMonthlyStockAll(b) {
+  const month = b.month;
+  if (!month) throw new Error('month required');
+
+  const [yr, mo] = month.split('-').map(Number);
+  const lastDay  = new Date(yr, mo, 0).getDate();
+
+  // Cap to today — future dates nahi dikhne chahiye
+  const todayStr = today();
+  const todayMonth = todayStr.slice(0, 7);
+  const effectiveLastDay = (month === todayMonth)
+    ? Math.min(lastDay, parseInt(todayStr.slice(8, 10)))
+    : lastDay;
+
+  const dates = [];
+  for (let d = 1; d <= effectiveLastDay; d++) {
+    dates.push(month + '-' + String(d).padStart(2, '0'));
+  }
+
+  const items   = getItems();
+  const inRows  = getRows(SH.INWARD);
+  const outRows = getRows(SH.OUTWARD);
+  const openMap = getOpeningMap();
+
+  const result = items.map(item => {
+    // Find first date this item has any data
+    const hasOpening = (openMap[item.name] || 0) > 0;
+
+    // First inward date for this item
+    const itemInDates  = inRows.filter(r => String(r[2]||'') === item.name).map(r => fmtDate(r[1])).filter(Boolean);
+    const itemOutDates = outRows.filter(r => String(r[2]||'') === item.name).map(r => fmtDate(r[1])).filter(Boolean);
+    const allDates     = [...itemInDates, ...itemOutDates].sort();
+    const firstTxnDate = allDates.length ? allDates[0] : null;
+
+    // Opening stock set date
+    const openingRows = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SH.OPENING)
+                          .getDataRange().getValues().slice(1)
+                          .filter(r => String(r[0]||'').toLowerCase() === item.name.toLowerCase());
+    const openingSetDate = openingRows.length ? fmtDate(openingRows[0][4]) : null;
+
+    // First date from which we have data
+    const candidates = [firstTxnDate, openingSetDate].filter(Boolean).sort();
+    const firstDataDate = candidates.length ? candidates[0] : null;
+
+    const closings = dates.map(date => {
+      // Before first data date — show null
+      if (firstDataDate && date < firstDataDate) return null;
+
+      const prevIn  = inRows.filter(r => String(r[2]||'') === item.name && fmtDate(r[1]) < date)
+                            .reduce((s,r) => s + (Number(r[3])||0), 0);
+      const prevOut = outRows.filter(r => String(r[2]||'') === item.name && fmtDate(r[1]) < date)
+                             .reduce((s,r) => s + (Number(r[3])||0), 0);
+      const opening = (openMap[item.name] || 0) + prevIn - prevOut;
+      const tIn  = inRows.filter(r => String(r[2]||'') === item.name && fmtDate(r[1]) === date)
+                         .reduce((s,r) => s + (Number(r[3])||0), 0);
+      const tOut = outRows.filter(r => String(r[2]||'') === item.name && fmtDate(r[1]) === date)
+                          .reduce((s,r) => s + (Number(r[3])||0), 0);
+      return opening + tIn - tOut;
+    });
+
+    return { name: item.name, unit: item.unit, maxL: item.maxL || 0, closings };
+  });
+
+  return { month, days: dates, items: result };
+}
+
+
+function getDashboard() {
+  const stocks = calcStocks();
+  const td = today();
+  const inRows  = getRows(SH.INWARD).filter(r => fmtDate(r[1]) === td);
+  const outRows = getRows(SH.OUTWARD).filter(r => fmtDate(r[1]) === td);
+  const todayIn  = inRows.reduce((s,r) => s+(Number(r[3])||0), 0);
+  const todayOut = outRows.filter(r => !String(r[8]||'').startsWith('Dispatch:') && !String(r[8]||'').startsWith('Direct Dispatch:')).reduce((s,r) => s+(Number(r[3])||0), 0);
+  const alerts = stocks.filter(s => s.status !== 'OK');
+  const allIn  = getInward({}).slice(0,5).map(t => ({...t, txnType:'IN'}));
+  const allOut = getOutward({}).slice(0,5).map(t => ({...t, txnType:'OUT'}));
+  const recent = [...allIn,...allOut].sort((a,b) => new Date(b.ts)-new Date(a.ts)).slice(0,10);
+  const wipItems = stocks.filter(s => s.wip > 0);
+  const fg = getFGSummary();
+  const pendingIndents = getIndents({ status: 'Pending' });
+  const pendingRequests = getPendingRequestsCount();
+  return {
+    totalItems: stocks.length, reorderCount: alerts.length,
+    criticalCount: alerts.filter(s => s.status==='Critical').length,
+    todayIn, todayOut, alerts: alerts.slice(0,8),
+    recentTxns: recent, stocks, wipItems, fg,
+    pendingIndents: pendingIndents.length,
+    pendingRequests,
+  };
+}
+
+function getStockSummary() { return calcStocks(); }
+
+// ── DAILY CLOSING ──
+function getClosing(b) {
+  const date = (b&&b.date) ? b.date : today();
+  const items = getItems();
+  const inRows  = getRows(SH.INWARD);
+  const outRows = getRows(SH.OUTWARD);
+  const openMap = getOpeningMap();
+  return items.map(item => {
+    const prevIn  = inRows.filter(r => String(r[2]||'')===item.name && fmtDate(r[1])<date).reduce((s,r)=>s+(Number(r[3])||0),0);
+    const prevOut = outRows.filter(r => String(r[2]||'')===item.name && fmtDate(r[1])<date).reduce((s,r)=>s+(Number(r[3])||0),0);
+    const opening = (openMap[item.name]||0) + prevIn - prevOut;
+    const tIn  = inRows.filter(r => String(r[2]||'')===item.name && fmtDate(r[1])===date).reduce((s,r)=>s+(Number(r[3])||0),0);
+    const tOut = outRows.filter(r => String(r[2]||'')===item.name && fmtDate(r[1])===date).reduce((s,r)=>s+(Number(r[3])||0),0);
+    const closing = opening + tIn - tOut;
+    const rp = Math.ceil((item.adc||0)*(item.lt||0)*(item.sf||1));
+    return { name:item.name, cat:item.cat, unit:item.unit, opening, todayIn:tIn, todayOut:tOut, closing, mit:item.mit||0, reorderPoint:rp, status: closing<=0?'Critical':closing<=rp?'Reorder':'OK' };
+  });
+}
+
+// ── SNAPSHOT ──
+function saveSnapshot(b) {
+  const date = (b&&b.date) ? b.date : today();
+  const rows = getClosing({ date });
+  const sh = getSheet(SH.SNAPSHOT);
+  rows.forEach(r => sh.appendRow([date,r.name,r.cat,r.unit,r.opening,r.todayIn,r.todayOut,r.closing,r.mit,r.reorderPoint,r.status]));
+  return { success: true, rows: rows.length };
+}
+
+// ── CLOSING HISTORY ──
+function getClosingHistory(b) {
+  const from = b&&b.from ? b.from : today();
+  const to   = b&&b.to   ? b.to   : today();
+  const rows = getRows(SH.SNAPSHOT);
+  const filtered = rows.filter(r => { const d=fmtDate(r[0]); return d>=from && d<=to; });
+  if (!filtered.length) return [];
+  const byDate = {};
+  filtered.forEach(r => {
+    const d = fmtDate(r[0]);
+    if (!byDate[d]) byDate[d] = [];
+    byDate[d].push({ date:d, name:String(r[1]||''), cat:String(r[2]||''), unit:String(r[3]||''), opening:Number(r[4])||0, todayIn:Number(r[5])||0, todayOut:Number(r[6])||0, closing:Number(r[7])||0, mit:Number(r[8])||0, reorderPoint:Number(r[9])||0, status:String(r[10]||'') });
+  });
+  return Object.keys(byDate).sort().map(date => ({
+    date, rows: byDate[date],
+    totalIn: byDate[date].reduce((s,r)=>s+r.todayIn,0),
+    totalOut: byDate[date].reduce((s,r)=>s+r.todayOut,0),
+    alerts: byDate[date].filter(r=>r.status!=='OK').length,
+  }));
+}
+
+// ── MATERIAL REQUESTS ──
+function getRequests(b) {
+  let rows = getRows(SH.REQUESTS).map(r => ({
+    id:          String(r[0]||''),
+    date:        fmtDate(r[1]),
+    time:        String(r[2]||''),
+    itemName:    String(r[3]||''),
+    qty:         Number(r[4])||0,
+    unit:        String(r[5]||''),
+    department:  String(r[6]||''),
+    requestedBy: String(r[7]||''),
+    remarks:     String(r[8]||''),
+    status:      String(r[9]||'Pending'),
+    closedBy:    String(r[10]||''),
+    closedAt:    String(r[11]||''),
+  })).filter(r => r.itemName);
+  if (b && b.status) rows = rows.filter(r => r.status === b.status);
+  if (b && b.department) rows = rows.filter(r => r.department === b.department);
+  return rows.reverse();
+}
+function addRequestBulk(b) {
+  // b.items = [{itemName, qty, unit}, ...], b.department, b.requestedBy, b.remarks
+  const ids = [];
+  const now  = new Date();
+  const time = Utilities.formatDate(now, Session.getScriptTimeZone(), 'HH:mm');
+  const sh   = getSheet(SH.REQUESTS);
+  (b.items || []).forEach(item => {
+    if (!item.itemName || !item.qty) return;
+    const id = uid('REQ');
+    sh.appendRow([
+      id, today(), time, item.itemName,
+      Number(item.qty)||0, item.unit || 'Pcs',
+      b.department||'', b.requestedBy||'Production',
+      b.remarks||'', 'Pending', '', ''
+    ]);
+    ids.push(id);
+  });
+  return { success: true, ids, count: ids.length };
+}
+
+function addRequest(b) {
+  const id = uid('REQ');
+  const now = new Date();
+  const time = Utilities.formatDate(now, Session.getScriptTimeZone(), 'HH:mm');
+  // Item validation nahi — production wale koi bhi item request kar sakte hain
+  const items = getItems();
+  const item = items.find(i => i.name.toLowerCase() === (b.itemName||'').toLowerCase());
+  const unit = item ? item.unit : (b.unit || 'Pcs');
+  getSheet(SH.REQUESTS).appendRow([
+    id, today(), time, b.itemName,
+    Number(b.qty)||0, unit,
+    b.department||'', b.requestedBy||'Production',
+    b.remarks||'', 'Pending', '', ''
+  ]);
+  return { success: true, id };
+}
+function closeRequest(b) {
+  const sh = getSheet(SH.REQUESTS);
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === b.id) {
+      sh.getRange(i+1, 10).setValue('Closed');
+      sh.getRange(i+1, 11).setValue(b.closedBy||'Ajay');
+      sh.getRange(i+1, 12).setValue(nowISO());
+      return { success: true };
+    }
+  }
+  throw new Error('Request not found');
+}
+function cancelRequest(b) {
+  const sh = getSheet(SH.REQUESTS);
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === b.id) {
+      sh.getRange(i+1, 10).setValue('Cancelled');
+      return { success: true };
+    }
+  }
+  throw new Error('Request not found');
+}
+function getPendingRequestsCount() {
+  try {
+    const rows = getRows(SH.REQUESTS);
+    return rows.filter(r => String(r[9]||'') === 'Pending').length;
+  } catch(e) { return 0; }
+}
+
+function testItem() {
+  const stocks = calcStocks();
+  const s = stocks.find(s => s.name.trim().toLowerCase() === 'rivet (5/32*1/2")'.toLowerCase());
+  Logger.log(s ? 'FOUND: ' + s.name : 'NOT FOUND');
+  // All items list
+  stocks.forEach(i => { if (i.name.toLowerCase().includes('rivet')) Logger.log('|' + i.name + '|'); });
+}
