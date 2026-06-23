@@ -1877,133 +1877,281 @@ async function saveOpeningStock() {
 }
 
 // ============================================================
-// INDENT / PO
+// PO SYSTEM — app.js replacement section
+// Replace karo: loadIndents, renderIndents, openIndentModal,
+// saveIndent, openReceiveModal, confirmReceive, cancelIndent,
+// saveCreatePO functions
 // ============================================================
-let _indents = [];
-let _currentIndent = null;
 
+// ── PO STATE ──
+let _pos = [];
+let _expandedPO = null;
+
+// ── LOAD POs ──
 async function loadIndents() {
-  document.getElementById('indent-tb').innerHTML = `<tr class="lrow"><td colspan="10"><span class="loader"></span></td></tr>`;
+  document.getElementById('indent-tb').innerHTML = `<tr class="lrow"><td colspan="7"><span class="loader"></span></td></tr>`;
   const statusF = document.getElementById('indent-status-f').value;
   try {
     const body = statusF ? { status: statusF } : {};
-    _indents = await api('getIndents', body);
-    renderIndents();
+    _pos = await api('getPOs', body);
+    renderPOs();
   } catch(e) { toast(e.message, 'err'); }
 }
 
-function renderIndents() {
+// ── RENDER PO LIST ──
+function renderPOs() {
   const tb = document.getElementById('indent-tb');
   const em = document.getElementById('indent-empty');
-  if (!_indents.length) { tb.innerHTML = ''; em.style.display = 'block'; return; }
+  if (!_pos.length) { tb.innerHTML = ''; em.style.display = 'block'; return; }
   em.style.display = 'none';
-  tb.innerHTML = _indents.map(ind => {
-    const stColor = ind.status === 'Received' ? 'b-ok' : ind.status === 'Cancelled' ? 'b-ro' : 'b-dep';
-    const isOverdue = ind.status === 'Pending' && ind.expectedDate && ind.expectedDate < today();
-    return `<tr ${isOverdue ? 'style="background:#fff8f0;"' : ''}>
-      <td style="font-family:var(--mono);font-size:11px;color:var(--muted);">${ind.id}</td>
-      <td style="font-size:12px;color:var(--muted);">${fmtD(ind.date)}</td>
-      <td style="font-weight:600;">${ind.itemName} ${isOverdue ? '<span style="color:var(--red);font-size:10px;">⚠ Overdue</span>' : ''}</td>
-      <td style="font-family:var(--mono);font-size:11px;color:var(--accent);">${ind.sku||'—'}</td>
-      <td style="font-family:var(--mono);font-weight:700;">${ind.qty}</td>
-      <td>${ind.supplier||'—'}</td>
-      <td style="font-size:12px;color:${isOverdue?'var(--red)':'var(--muted)'};">${fmtD(ind.expectedDate)||'—'}</td>
-      <td><span class="badge ${stColor}">${ind.status}</span></td>
-      <td style="font-size:12px;color:var(--muted);">${ind.remarks||'—'}</td>
-      <td style="white-space:nowrap;">
-        <button class="btn bg bsm" style="font-size:11px;padding:4px 8px;" title="Print PO" onclick="printSinglePO('${ind.id}','${ind.itemName.replace(/'/g,"\\'")}',${ind.qty},'${ind.supplier||''}','${ind.expectedDate||''}')">🖨</button>
-        ${ind.status === 'Pending' ? `
-          <button class="btn bgn bsm" onclick="openReceiveModal('${ind.id}','${ind.itemName.replace(/'/g,"\\'")}',${ind.qty},'${ind.supplier||''}')">✓ Receive</button>
-          <button class="btn brd bsm" onclick="cancelIndent('${ind.id}')">✕</button>
-        ` : '—'}
-      </td>
-    </tr>`;
+
+  tb.innerHTML = _pos.map(po => {
+    const stColor = po.status === 'Completed' ? 'b-ok'
+                  : po.status === 'Cancelled'  ? 'b-ro'
+                  : po.status === 'Partial'     ? 'b-dep'
+                  : 'b-in';
+    const isExpanded = _expandedPO === po.poId;
+    return `
+      <tr style="cursor:pointer;" onclick="togglePOExpand('${po.poId}')">
+        <td style="font-family:var(--mono);font-size:11px;color:var(--accent);font-weight:700;">${po.poId}</td>
+        <td style="font-size:12px;color:var(--muted);">${fmtD(po.date)}</td>
+        <td style="font-weight:600;">${po.supplier || '—'}</td>
+        <td style="font-size:12px;color:${po.expectedDate && po.expectedDate < today() && po.status==='Pending' ? 'var(--red)' : 'var(--muted)'};">${fmtD(po.expectedDate) || '—'}</td>
+        <td><span class="badge ${stColor}">${po.status}</span></td>
+        <td style="font-family:var(--mono);font-size:12px;">${po.totalItems} items</td>
+        <td style="white-space:nowrap;">
+          <button class="btn bg bsm" style="font-size:11px;padding:4px 8px;" title="Print PO" onclick="event.stopPropagation();printPOById('${po.poId}','${po.supplier||''}','${po.expectedDate||''}')">🖨</button>
+          ${po.status !== 'Completed' && po.status !== 'Cancelled' ? `
+            <button class="btn brd bsm" style="font-size:11px;padding:4px 8px;margin-left:4px;" onclick="event.stopPropagation();cancelPOConfirm('${po.poId}')">✕</button>
+          ` : ''}
+          <span style="font-size:11px;color:var(--muted);margin-left:6px;">${isExpanded ? '▲' : '▼'}</span>
+        </td>
+      </tr>
+      ${isExpanded ? `
+      <tr id="po-expand-${po.poId}">
+        <td colspan="7" style="padding:0;background:#f8faff;border-bottom:2px solid var(--accent);">
+          <div id="po-items-wrap-${po.poId}" style="padding:12px 20px;">
+            <div style="color:var(--muted);font-size:12px;padding:8px 0;"><span class="loader"></span> Loading items...</div>
+          </div>
+        </td>
+      </tr>` : ''}
+    `;
   }).join('');
+
+  // Agar koi expand hai toh items load karo
+  if (_expandedPO) loadPOItems(_expandedPO);
 }
 
-function openIndentModal() {
-  populateItemSelect('ind-item');
-  document.getElementById('ind-qty').value = '';
-  document.getElementById('ind-date').value = today();
-  document.getElementById('ind-supplier').value = '';
-  document.getElementById('ind-exp').value = '';
-  document.getElementById('ind-remarks').value = '';
-  document.getElementById('indent-modal').classList.add('open');
+// ── TOGGLE PO EXPAND ──
+async function togglePOExpand(poId) {
+  if (_expandedPO === poId) {
+    _expandedPO = null;
+  } else {
+    _expandedPO = poId;
+  }
+  renderPOs();
 }
 
-async function saveIndent() {
-  const itemName = document.getElementById('ind-item').value;
-  const qty      = Number(document.getElementById('ind-qty').value);
-  const date     = document.getElementById('ind-date').value;
-  if (!itemName) { toast('Please select an item', 'err'); return; }
-  if (!qty || qty <= 0) { toast('Enter a valid quantity', 'err'); return; }
-  const btn = document.getElementById('ind-btn');
-  btn.disabled = true; btn.textContent = 'Saving...';
+// ── LOAD & RENDER PO ITEMS ──
+async function loadPOItems(poId) {
+  const wrap = document.getElementById('po-items-wrap-' + poId);
+  if (!wrap) return;
   try {
-    const r = await api('addIndent', {
-      itemName, qty, date,
-      supplier:     document.getElementById('ind-supplier').value,
-      expectedDate: document.getElementById('ind-exp').value,
-      remarks:      document.getElementById('ind-remarks').value,
-    });
-    toast('Indent saved ✓ — ' + r.id, 'ok');
-    closeM('indent-modal');
-    _stocks = [];
-    loadIndents();
-    loadDash();
-  } catch(e) { toast(e.message, 'err'); }
-  finally { btn.disabled = false; btn.textContent = 'Save Indent'; }
+    const po = _pos.find(p => p.poId === poId);
+    const items = await api('getPOItems', { poId });
+    if (!items.length) {
+      wrap.innerHTML = `<div style="color:var(--muted);font-size:12px;padding:8px 0;">No items found</div>`;
+      return;
+    }
+
+    const pendingCount   = items.filter(i => i.status === 'Pending').length;
+    const receivedCount  = items.filter(i => i.status === 'Received').length;
+    const cancelledCount = items.filter(i => i.status === 'Cancelled').length;
+
+    wrap.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="display:flex;gap:12px;font-size:12px;">
+          <span style="color:var(--orange);">⏳ Pending: <b>${pendingCount}</b></span>
+          <span style="color:var(--green);">✓ Received: <b>${receivedCount}</b></span>
+          ${cancelledCount > 0 ? `<span style="color:var(--muted);">✕ Cancelled: <b>${cancelledCount}</b></span>` : ''}
+        </div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+          <tr style="background:var(--s2);">
+            <th style="text-align:left;padding:8px 12px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;border-bottom:1px solid var(--border);">Item</th>
+            <th style="padding:8px 12px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;border-bottom:1px solid var(--border);text-align:center;">Ordered</th>
+            <th style="padding:8px 12px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;border-bottom:1px solid var(--border);text-align:center;">Received</th>
+            <th style="padding:8px 12px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;border-bottom:1px solid var(--border);text-align:center;">Status</th>
+            <th style="padding:8px 12px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;border-bottom:1px solid var(--border);">Invoice / Date</th>
+            <th style="padding:8px 12px;border-bottom:1px solid var(--border);"></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${items.map(item => {
+            const stBadge = item.status === 'Received'  ? '<span class="badge b-ok">✓ Received</span>'
+                          : item.status === 'Cancelled' ? '<span class="badge b-ro">✕ Cancelled</span>'
+                          : '<span class="badge b-dep">⏳ Pending</span>';
+            return `<tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:10px 12px;font-weight:600;color:var(--navy);">${item.itemName}
+                <div style="font-size:11px;font-weight:400;color:var(--muted);">${item.unit}</div>
+              </td>
+              <td style="padding:10px 12px;text-align:center;font-family:var(--mono);font-weight:700;">${item.orderedQty}</td>
+              <td style="padding:10px 12px;text-align:center;font-family:var(--mono);font-weight:700;color:var(--green);">${item.receivedQty > 0 ? item.receivedQty : '—'}</td>
+              <td style="padding:10px 12px;text-align:center;">${stBadge}</td>
+              <td style="padding:10px 12px;font-size:11px;color:var(--muted);">
+                ${item.invoice ? `<div>${item.invoice}</div>` : ''}
+                ${item.receivedDate ? `<div>${fmtD(item.receivedDate)}</div>` : '—'}
+              </td>
+              <td style="padding:10px 12px;white-space:nowrap;">
+                ${item.status === 'Pending' ? `
+                  <button class="btn bgn bsm" style="font-size:11px;padding:4px 10px;" onclick="openReceivePOItemModal('${poId}','${item.itemName.replace(/'/g,"\\'")}',${item.orderedQty},'${po ? po.supplier||'' : ''}')">✓ Receive</button>
+                  <button class="btn brd bsm" style="font-size:11px;padding:4px 8px;margin-left:4px;" onclick="cancelPOItemConfirm('${poId}','${item.itemName.replace(/'/g,"\\'")}')">✕</button>
+                ` : '—'}
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    `;
+  } catch(e) {
+    if (wrap) wrap.innerHTML = `<div style="color:var(--red);font-size:12px;padding:8px 0;">Error: ${e.message}</div>`;
+  }
 }
 
-function openReceiveModal(id, itemName, qty, supplier) {
-  _currentIndent = { id, itemName, qty };
+// ── RECEIVE PO ITEM MODAL ──
+let _currentPOReceive = null;
+
+function openReceivePOItemModal(poId, itemName, orderedQty, supplier) {
+  _currentPOReceive = { poId, itemName, orderedQty, supplier };
   document.getElementById('recv-info').innerHTML = `
-    <div style="font-weight:600;font-size:14px;margin-bottom:6px;">${itemName}</div>
-    <div style="color:var(--muted);font-size:12px;">Ordered Qty: <b style="font-family:var(--mono);color:var(--navy);">${qty}</b></div>`;
-  document.getElementById('recv-qty').value = qty;
-  document.getElementById('recv-date').value = today();
-  document.getElementById('recv-invoice').value = '';
+    <div style="font-weight:600;font-size:14px;margin-bottom:4px;">${itemName}</div>
+    <div style="color:var(--muted);font-size:12px;">PO: <b style="color:var(--accent);">${poId}</b> &nbsp;|&nbsp; Ordered: <b style="font-family:var(--mono);color:var(--navy);">${orderedQty}</b></div>`;
+  document.getElementById('recv-qty').value      = orderedQty;
+  document.getElementById('recv-date').value     = today();
+  document.getElementById('recv-invoice').value  = '';
   document.getElementById('recv-supplier').value = supplier || '';
-  document.getElementById('recv-by').value = 'Ajay';
+  document.getElementById('recv-by').value       = 'Ajay';
   document.getElementById('receive-modal').classList.add('open');
 }
 
 async function confirmReceive() {
-  if (!_currentIndent) return;
-  const qty     = Number(document.getElementById('recv-qty').value);
-  const date    = document.getElementById('recv-date').value;
-  const invoice = document.getElementById('recv-invoice').value;
-  const supplier= document.getElementById('recv-supplier').value;
-  const by      = document.getElementById('recv-by').value || 'Ajay';
-  if (!qty || qty <= 0) { toast('Enter a valid quantity', 'err'); return; }
+  if (!_currentPOReceive) return;
+  const qty      = Number(document.getElementById('recv-qty').value);
+  const date     = document.getElementById('recv-date').value;
+  const invoice  = document.getElementById('recv-invoice').value;
+  const supplier = document.getElementById('recv-supplier').value;
+  const by       = document.getElementById('recv-by').value || 'Ajay';
+  if (!qty || qty <= 0) { toast('Valid qty daalo', 'err'); return; }
   const btn = document.getElementById('recv-btn');
   btn.disabled = true; btn.textContent = 'Processing...';
   try {
-    await api('addInward', {
-      itemName:  _currentIndent.itemName,
-      qty, date, supplier, invoice, by,
-      indentId:  _currentIndent.id,
-      remarks:   'Indent: ' + _currentIndent.id,
+    await api('receivePOItem', {
+      poId:     _currentPOReceive.poId,
+      itemName: _currentPOReceive.itemName,
+      qty, date, invoice, supplier, by,
     });
-    toast('Material received & stock updated ✓', 'ok');
+    toast(`✓ ${_currentPOReceive.itemName} received — stock updated`, 'ok');
     closeM('receive-modal');
+    _currentPOReceive = null;
     _stocks = [];
     loadIndents();
-    loadInward();
     loadDash();
   } catch(e) { toast(e.message, 'err'); }
   finally { btn.disabled = false; btn.textContent = 'Receive & Add to Stock'; }
 }
 
-async function cancelIndent(id) {
-  if (!confirm('Cancel this indent?')) return;
+// ── CANCEL PO ──
+async function cancelPOConfirm(poId) {
+  if (!confirm(`PO "${poId}" cancel karna chahte ho? Saari pending items cancel ho jaayengi.`)) return;
   try {
-    await api('cancelIndent', { id });
-    toast('Indent cancelled', 'warn');
+    await api('cancelPO', { poId });
+    toast('PO cancelled ✓', 'warn');
     _stocks = [];
     loadIndents();
     loadDash();
   } catch(e) { toast(e.message, 'err'); }
+}
+
+// ── CANCEL PO ITEM ──
+async function cancelPOItemConfirm(poId, itemName) {
+  if (!confirm(`"${itemName}" is PO se cancel karna chahte ho?`)) return;
+  try {
+    await api('cancelPOItem', { poId, itemName });
+    toast(`${itemName} cancelled ✓`, 'warn');
+    _stocks = [];
+    loadPOItems(poId);
+    loadIndents();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+// ── PRINT PO BY ID ──
+async function printPOById(poId, supplier, expDate) {
+  try {
+    const items = await api('getPOItems', { poId });
+    const poItems = items.map(i => ({ itemName: i.itemName, qty: i.orderedQty, unit: i.unit }));
+    printPO(poItems, supplier, expDate);
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+// ── CREATE PO FROM REORDER (saveCreatePO replacement) ──
+async function saveCreatePO() {
+  if (!_stocks.length) return;
+  const reorderItems = _stocks.filter(s => s.status === 'Critical' || s.status === 'Reorder');
+  const supplier = document.getElementById('po-supplier').value;
+  const expDate  = document.getElementById('po-exp-date').value;
+
+  const toCreate = [];
+  reorderItems.forEach(s => {
+    const key = s.name.replace(/\s/g,'_');
+    const chk = document.getElementById('po-chk-'+key);
+    const qty = Number((document.getElementById('po-qty-'+key)||{}).value) || 0;
+    if (chk && chk.checked && qty > 0) {
+      toCreate.push({ itemName: s.name, qty });
+    }
+  });
+
+  // Manual items
+  const manualRows = document.getElementById('po-manual-rows');
+  if (manualRows) {
+    const n = manualRows.children.length;
+    for (let i = 0; i < n; i++) {
+      const itemEl = document.getElementById('po-manual-item-'+i);
+      const qtyEl  = document.getElementById('po-manual-qty-'+i);
+      if (!itemEl || !qtyEl) continue;
+      const itemName = itemEl.value;
+      const qty = Number(qtyEl.value) || 0;
+      if (itemName && qty > 0) toCreate.push({ itemName, qty });
+    }
+  }
+
+  if (!toCreate.length) { toast('Koi item select nahi hai', 'err'); return; }
+
+  const btn = document.getElementById('po-btn');
+  btn.disabled = true; btn.textContent = 'Creating...';
+
+  try {
+    const r = await api('createPO', {
+      supplier,
+      expectedDate: expDate,
+      items: toCreate,
+      remarks: 'Auto PO from Reorder',
+    });
+    toast(`✓ PO created — ${r.poId} (${r.itemCount} items)`, 'ok');
+    closeM('create-po-modal');
+    _stocks = [];
+    loadReorder();
+    setTimeout(() => {
+      showPage('indent');
+      printPOById(r.poId, supplier, expDate);
+    }, 800);
+  } catch(e) { toast(e.message, 'err'); }
+  finally { btn.disabled = false; btn.textContent = '✓ Create PO'; }
+}
+
+// ── INDENT MODAL (disabled — PO system use karo) ──
+function openIndentModal() {
+  toast('Ab seedha Reorder page se PO create karo', 'warn');
 }
 
 // ============================================================
