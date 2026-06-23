@@ -933,6 +933,39 @@
   </div>
 </div>
 
+  <!-- ADD PO ITEM MODAL -->
+<div class="modal" id="add-po-item-modal">
+  <div class="mc" style="max-width:420px;">
+    <div class="mh">
+      <h2>Add Item to PO</h2>
+      <button class="mc-x" onclick="closeM('add-po-item-modal')">✕</button>
+    </div>
+    <div class="mb">
+      <input type="hidden" id="add-poi-id">
+      <div class="fg">
+        <label class="fl">Category</label>
+        <select class="inp cat-select" id="add-poi-cat" onchange="filterAddPOItems()">
+          <option value="">-- Select Category --</option>
+        </select>
+      </div>
+      <div class="fg" style="margin-top:12px;">
+        <label class="fl">Item</label>
+        <select class="inp" id="add-poi-item">
+          <option value="">-- Select Category first --</option>
+        </select>
+      </div>
+      <div class="fg" style="margin-top:12px;">
+        <label class="fl">Qty</label>
+        <input class="inp" id="add-poi-qty" type="number" min="1" placeholder="Enter quantity">
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bg" id="add-poi-btn" onclick="saveAddPOItem()">Add Item</button>
+      <button class="btn brd" onclick="closeM('add-po-item-modal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- EDIT DISPATCH MODAL -->
 <div class="ov" id="edit-dispatch-modal">
   <div class="modal">
