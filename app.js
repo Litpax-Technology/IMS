@@ -193,7 +193,6 @@ window.onload = async function() {
   setVal('in-date-f', today());
   setVal('out-date-f', today());
   setDot('loading', 'Connecting...');
-  // Load config first (categories, brands, units etc.)
   await loadConfig();
   const savedRole = sessionStorage.getItem('lpx_role');
   if (savedRole && ROLES[savedRole]) {
@@ -239,13 +238,16 @@ function showPage(id) {
   if (id === 'wip')          loadWip();
   if (id === 'adc')          initADC();
   if (id === 'received')     { const d = document.getElementById('recv-date'); if(d) d.value = today(); loadReceived(); }
-  if (id === 'ajay-dash')    loadAjayDash();
-  if (id === 'sandeep-dash') loadSandeepDash();
 }
 
 // ── BADGES ──
 function catBadge(c) {
-  const m = { 'Raw Material': 'b-rm', 'Consumable': 'b-con', 'Packaging': 'b-pkg' };
+  const m = {
+    'Cells':'b-cells','BMS':'b-bms','Charger':'b-charger',
+    'Nickel/Busbar':'b-nickel','Box':'b-box','Wire':'b-wire',
+    'Consumables':'b-con','Tools':'b-tools','Packaging':'b-pkg',
+    'Raw Material':'b-rm'
+  };
   return `<span class="badge ${m[c] || 'b-rm'}">${c || '—'}</span>`;
 }
 function stBadge(s) {
@@ -292,10 +294,7 @@ async function loadDash() {
     const nbr = document.getElementById('nb-req');
     if (nbr) { nbr.style.display = d.pendingRequests > 0 ? 'inline' : 'none'; nbr.textContent = d.pendingRequests; }
 
-    // Sidebar inward/outward (admin)
     loadSbActivity();
-
-    // ── 3 CHARTS ──
     renderReorderChart(d.stocks || []);
     renderWipChart(d.wipItems || []);
     renderCategoryChart(d.stocks || []);
@@ -334,7 +333,6 @@ function renderInward(rows) {
 }
 
 function openInwardModal() {
-  // Ensure stocks loaded for category filter
   if (!_stocks.length && !_items.length) {
     api('getStockSummary').then(d => { _stocks = d; _items = d; }).catch(() => {});
   }
@@ -423,16 +421,13 @@ async function loadOutward() {
     if (dateF) body.date = dateF;
     if (deptF) body.department = deptF;
     let rows = await api('getOutward', body);
-    // Populate item filter
     const itemF_el = document.getElementById('out-item-f');
     if (itemF_el && itemF_el.options.length <= 1) {
       const allItems = [...new Set(rows.map(r => r.itemName).filter(Boolean))].sort();
       allItems.forEach(i => { const o = document.createElement('option'); o.value = i; o.textContent = i; itemF_el.appendChild(o); });
       if (itemF) itemF_el.value = itemF;
     }
-    // Apply item filter
     if (itemF) rows = rows.filter(r => r.itemName === itemF);
-    // Apply purpose filter
     if (purposeF) rows = rows.filter(r => (r.purpose||'Production') === purposeF);
     renderOutward(rows);
   } catch(e) { toast(e.message, 'err'); }
@@ -671,7 +666,6 @@ async function selectDispatchType(type) {
     document.getElementById('dd-error').style.display    = 'none';
     document.getElementById('dd-btn').disabled = true;
 
-    // Load only Charger items with WIP > 0
     const chargerWip = _stocks.filter(s => s.cat === 'Charger' && (s.wip || 0) > 0);
     const sel = document.getElementById('dd-item');
     if (chargerWip.length) {
@@ -775,7 +769,6 @@ async function updDispatchPreview() {
     const rows = items.map(bi => {
       const needed = bi.qty * qty;
       const s = stockMap[bi.component];
-      // Store stock + WIP dono milake available hai
       const storeQty = s ? s.currentStock : 0;
       const wipQty   = s ? (s.wip || 0) : 0;
       const avail    = storeQty + wipQty;
@@ -795,7 +788,6 @@ async function updDispatchPreview() {
       ${hasShortage ? `<div style="margin-top:10px;padding:8px 10px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;font-size:12px;color:var(--red);font-weight:600;">⛔ Insufficient stock — dispatch nahi ho sakta</div>` : ''}
     </div>`;
 
-    // Block/unblock confirm button
     if (btn) {
       btn.disabled = hasShortage;
       btn.style.opacity = hasShortage ? '0.4' : '1';
@@ -879,7 +871,7 @@ function filterItems() {
   }).join('');
 }
 
-// ── CATEGORY / BRAND CONFIG — Dynamic from Config sheet ──
+// ── CATEGORY / BRAND CONFIG ──
 let _config = {
   categories:  ['Cells','BMS','Charger','Nickel/Busbar','Box','Wire','Consumables','Tools','Packaging'],
   brands:      { 'Cells':['DMEGC','EVE','CATL','Other'], 'BMS':['JK','JBD','Daly','Solar','Other'], 'Charger':['Charge Q','Litpax','Indian','AXIOM','SHAKTI','XSTRONG POWER','Other'], 'Nickel/Busbar':['Nickel','Busbar'], 'Box':['Prismatic','Cylindrical','Other'], 'Wire':['—'], 'Consumables':['—'], 'Tools':['—'], 'Packaging':['—'] },
@@ -890,7 +882,6 @@ let _config = {
   noBrandCats: ['Wire','Consumables','Tools','Packaging'],
 };
 
-// Keep backward compat
 const CAT_BRANDS = new Proxy({}, { get: (_, k) => _config.brands[k] });
 const CAT_UNITS  = new Proxy({}, { get: (_, k) => _config.catUnits[k] });
 
@@ -900,7 +891,6 @@ async function loadConfig() {
     if (cfg && cfg.categories && cfg.categories.length) {
       _config = cfg;
     }
-    // ── Sheet se PINs load karo ──
     if (cfg && cfg.roles) {
       Object.keys(cfg.roles).forEach(role => {
         if (ROLES[role]) ROLES[role].pin = cfg.roles[role];
@@ -908,13 +898,11 @@ async function loadConfig() {
     }
     applyConfigToUI();
   } catch(e) {
-    // Fallback to defaults already set
     applyConfigToUI();
   }
 }
 
 function applyConfigToUI() {
-  // 1. Cat grid in Add Item modal
   const catGrid = document.getElementById('cat-grid');
   if (catGrid) {
     const icons = { 'BMS':'⚡','Cells':'🔋','Charger':'🔌','Wire':'🔩','Nickel/Busbar':'🪙','Box':'📦','Consumables':'🧰','Tools':'🔧','Packaging':'📦' };
@@ -923,14 +911,12 @@ function applyConfigToUI() {
     ).join('');
   }
 
-  // 2. Unit dropdowns
   document.querySelectorAll('.unit-select').forEach(sel => {
     const cur = sel.value;
     sel.innerHTML = _config.units.map(u => `<option value="${u}">${u}</option>`).join('');
     if (cur) sel.value = cur;
   });
 
-  // 3. Category filter dropdowns
   const catOpts = `<option value="">All Categories</option>` +
     _config.catOrder.map(c => `<option>${c}</option>`).join('');
   document.querySelectorAll('.cat-filter-select').forEach(sel => {
@@ -939,7 +925,6 @@ function applyConfigToUI() {
     if (cur) sel.value = cur;
   });
 
-  // 4. Inward/Outward category dropdowns
   const catOptsNoAll = _config.catOrder.map(c => `<option>${c}</option>`).join('');
   document.querySelectorAll('.cat-select').forEach(sel => {
     const cur = sel.value;
@@ -947,7 +932,6 @@ function applyConfigToUI() {
     if (cur) sel.value = cur;
   });
 
-  // 5. Department dropdowns
   const deptOpts = `<option value="">-- Select --</option>` +
     _config.departments.map(d => `<option>${d}</option>`).join('');
   document.querySelectorAll('.dept-select').forEach(sel => {
@@ -956,8 +940,6 @@ function applyConfigToUI() {
     if (cur) sel.value = cur;
   });
 }
-
-
 
 let _selCat = '', _selBrand = '';
 
@@ -971,7 +953,6 @@ function selectCat(cat) {
   const noBrandCats = _config.noBrandCats || ['Wire','Consumables','Tools','Packaging'];
 
   if (brands.length === 1 && brands[0] === '—' || noBrandCats.includes(cat)) {
-    // Skip brand step — go directly to model
     document.getElementById('brand-section').style.display = 'none';
     document.getElementById('model-section').style.display = 'block';
     document.getElementById('item-details').style.display = 'block';
@@ -1301,7 +1282,6 @@ function renderStockTree(stocks) {
   const tree = {};
   stocks.forEach(s => {
     const cat   = s.cat || 'Other';
-    // No brand grouping for these categories
     const noBrandCats = ['Wire','Consumables','Tools','Packaging'];
     const brand = noBrandCats.includes(cat) ? '__direct__' : parseBrand(s);
     if (!tree[cat]) tree[cat] = {};
@@ -1340,7 +1320,6 @@ function renderStockTree(stocks) {
       const brandTotal  = models.reduce((s,i) => s + i.currentStock, 0);
       const brandAlerts = models.filter(i => i.status !== 'OK').length;
 
-      // No brand grouping — show items directly
       if (brand === '__direct__') {
         html += `<div class="tree-brand">
           <div class="tree-model-headers">
@@ -1563,7 +1542,6 @@ function switchClTab(tab) {
   const btnR    = document.getElementById('cl-tab-range');
   const btnH    = document.getElementById('cl-tab-heatmap');
 
-  // Hide all
   single.style.display  = 'none';
   range.style.display   = 'none';
   heatmap.style.display = 'none';
@@ -1581,13 +1559,11 @@ function switchClTab(tab) {
   } else if (tab === 'heatmap') {
     heatmap.style.display = 'block';
     if (btnH) { btnH.style.borderColor='var(--accent)'; btnH.style.color='var(--accent)'; }
-    // Set default month to current
     const now = new Date();
     const hmMonth = document.getElementById('hm-month');
     if (hmMonth && !hmMonth.value) {
       hmMonth.value = now.toISOString().slice(0,7);
     }
-    // Populate item dropdown
     loadHeatmapItems();
   }
 }
@@ -1679,7 +1655,7 @@ async function saveSnapshot() {
 }
 
 // ── MONTHLY STOCK HEATMAP ──
-async function loadHeatmapItems() { /* not needed anymore */ }
+async function loadHeatmapItems() { /* not needed */ }
 
 async function genHeatmap() {
   const month = document.getElementById('hm-month').value;
@@ -1696,7 +1672,6 @@ async function genHeatmap() {
     const data = await api('getMonthlyStockAll', { month });
 
     const days  = data.days;
-    // Apply category filter using _stocks cat info
     const items = cat
       ? data.items.filter(i => { const s = _stocks.find(x => x.name === i.name); return s ? s.cat === cat : false; })
       : data.items;
@@ -1708,7 +1683,6 @@ async function genHeatmap() {
 
     const monthName = new Date(month + '-01').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
 
-    // Color function
     function getColor(stock, maxL) {
       if (stock === null || stock === undefined) return { bg: '#f3f4f6', text: '#d1d5db' };
       if (stock === 0) return { bg: '#f3f4f6', text: '#9ca3af' };
@@ -1720,7 +1694,6 @@ async function genHeatmap() {
       return              { bg: '#ef4444', text: '#fff' };
     }
 
-    // Date labels — show day number only
     const dateLabels = days.map(d => {
       const dt = new Date(d + 'T00:00:00');
       return { date: d, day: dt.getDate(), dow: dt.toLocaleDateString('en-IN', { weekday: 'short' }) };
@@ -1771,7 +1744,6 @@ async function genHeatmap() {
     wrap.innerHTML = `<div class="empty"><div class="ei">❌</div><div class="et">${e.message}</div></div>`;
   }
 }
-
 
 function populateItemSelect(id) {
   const sel = document.getElementById(id);
@@ -1877,10 +1849,7 @@ async function saveOpeningStock() {
 }
 
 // ============================================================
-// PO SYSTEM — app.js replacement section
-// Replace karo: loadIndents, renderIndents, openIndentModal,
-// saveIndent, openReceiveModal, confirmReceive, cancelIndent,
-// saveCreatePO functions
+// PO SYSTEM
 // ============================================================
 
 // ── PO STATE ──
@@ -1938,17 +1907,11 @@ function renderPOs() {
     `;
   }).join('');
 
-  // Agar koi expand hai toh items load karo
   if (_expandedPO) loadPOItems(_expandedPO);
 }
 
-// ── TOGGLE PO EXPAND ──
 async function togglePOExpand(poId) {
-  if (_expandedPO === poId) {
-    _expandedPO = null;
-  } else {
-    _expandedPO = poId;
-  }
+  _expandedPO = (_expandedPO === poId) ? null : poId;
   renderPOs();
 }
 
@@ -1995,7 +1958,7 @@ async function loadPOItems(poId) {
         </thead>
         <tbody>
           ${items.map(item => {
-            const stBadge = item.status === 'Received'  ? '<span class="badge b-ok">✓ Received</span>'
+            const stBadgeStr = item.status === 'Received'  ? '<span class="badge b-ok">✓ Received</span>'
                           : item.status === 'Cancelled' ? '<span class="badge b-ro">✕ Cancelled</span>'
                           : '<span class="badge b-dep">⏳ Pending</span>';
             return `<tr style="border-bottom:1px solid var(--border);">
@@ -2004,7 +1967,7 @@ async function loadPOItems(poId) {
               </td>
               <td style="padding:10px 12px;text-align:center;font-family:var(--mono);font-weight:700;">${item.orderedQty}</td>
               <td style="padding:10px 12px;text-align:center;font-family:var(--mono);font-weight:700;color:var(--green);">${item.receivedQty > 0 ? item.receivedQty : '—'}</td>
-              <td style="padding:10px 12px;text-align:center;">${stBadge}</td>
+              <td style="padding:10px 12px;text-align:center;">${stBadgeStr}</td>
               <td style="padding:10px 12px;font-size:11px;color:var(--muted);">
                 ${item.invoice ? `<div>${item.invoice}</div>` : ''}
                 ${item.receivedDate ? `<div>${fmtD(item.receivedDate)}</div>` : '—'}
@@ -2072,7 +2035,6 @@ async function confirmReceive() {
   finally { btn.disabled = false; btn.textContent = 'Receive & Add to Stock'; }
 }
 
-// ── CANCEL PO ──
 async function cancelPOConfirm(poId) {
   if (!confirm(`PO "${poId}" cancel karna chahte ho? Saari pending items cancel ho jaayengi.`)) return;
   try {
@@ -2084,7 +2046,6 @@ async function cancelPOConfirm(poId) {
   } catch(e) { toast(e.message, 'err'); }
 }
 
-// ── CANCEL PO ITEM ──
 async function cancelPOItemConfirm(poId, itemName) {
   if (!confirm(`"${itemName}" is PO se cancel karna chahte ho?`)) return;
   try {
@@ -2096,7 +2057,6 @@ async function cancelPOItemConfirm(poId, itemName) {
   } catch(e) { toast(e.message, 'err'); }
 }
 
-// ── PRINT PO BY ID ──
 async function printPOById(poId, supplier, expDate) {
   try {
     const items = await api('getPOItems', { poId });
@@ -2105,7 +2065,7 @@ async function printPOById(poId, supplier, expDate) {
   } catch(e) { toast(e.message, 'err'); }
 }
 
-// ── CREATE PO FROM REORDER (saveCreatePO replacement) ──
+// ── CREATE PO FROM REORDER ──
 async function saveCreatePO() {
   if (!_stocks.length) return;
   const reorderItems = _stocks.filter(s => s.status === 'Critical' || s.status === 'Reorder');
@@ -2160,604 +2120,11 @@ async function saveCreatePO() {
   finally { btn.disabled = false; btn.textContent = '✓ Create PO'; }
 }
 
-// ── INDENT MODAL (disabled — PO system use karo) ──
 function openIndentModal() {
   toast('Ab seedha Reorder page se PO create karo', 'warn');
 }
 
-// ============================================================
-// MATERIAL REQUESTS
-// ============================================================
-let _requests = [];
-
-async function loadRequests() {
-  document.getElementById('req-tb').innerHTML = `<tr class="lrow"><td colspan="10"><span class="loader"></span></td></tr>`;
-  const statusF = document.getElementById('req-status-f').value;
-  try {
-    const body = statusF ? { status: statusF } : {};
-    _requests = await api('getRequests', body);
-    renderRequests();
-  } catch(e) { toast(e.message, 'err'); }
-}
-
-function renderRequests() {
-  const tb = document.getElementById('req-tb');
-  const em = document.getElementById('req-empty');
-  if (!_requests.length) { tb.innerHTML = ''; em.style.display = 'block'; return; }
-  em.style.display = 'none';
-  tb.innerHTML = _requests.map(r => {
-    const stColor = r.status === 'Closed' ? 'b-ok' : r.status === 'Cancelled' ? 'b-ro' : 'b-dep';
-    const isPending = r.status === 'Pending';
-    return `<tr ${isPending ? 'style="background:#f0f7ff;"' : ''}>
-      <td style="font-size:12px;color:var(--muted);">${fmtD(r.date)}</td>
-      <td style="font-family:var(--mono);font-size:12px;color:var(--muted);">${r.time}</td>
-      <td style="font-weight:600;color:var(--navy);">${r.itemName}</td>
-      <td style="font-family:var(--mono);font-weight:700;font-size:16px;color:var(--accent);">${r.qty}</td>
-      <td style="color:var(--muted);font-size:12px;">${r.unit||'—'}</td>
-      <td>${depBadge(r.department)}</td>
-      <td style="font-size:12px;">${r.requestedBy||'—'}</td>
-      <td style="font-size:12px;color:var(--muted);">${r.remarks||'—'}</td>
-      <td><span class="badge ${stColor}">${r.status}</span></td>
-      <td style="white-space:nowrap;">
-        ${isPending ? `
-          <button class="btn bgn bsm" onclick="fulfillRequest('${r.id}','${r.itemName.replace(/'/g,"\\'")}',${r.qty},'${r.department||''}','${(r.requestedBy||'').replace(/'/g,"\\'")}')">✓ Issue</button>
-          <button class="btn brd bsm" onclick="cancelRequest('${r.id}')">✕</button>
-        ` : `<span style="font-size:11px;color:var(--muted);">${r.closedBy||'—'}</span>`}
-      </td>
-    </tr>`;
-  }).join('');
-}
-
-function fulfillRequest(reqId, itemName, qty, department, requestedBy) {
-  window._pendingReqId = reqId;
-  document.getElementById('outward-modal').classList.add('open');
-  showPage('outward');
-
-  // Find item category
-  const item = (_stocks && _stocks.find(s => s.name === itemName))
-             || (_items  && _items.find(i => i.name === itemName));
-  const cat = item ? item.cat : '';
-
-  const catSel  = document.getElementById('out-cat');
-  const itemSel = document.getElementById('out-item');
-
-  // Set category first
-  if (catSel && cat) catSel.value = cat;
-
-  // Filter items then set item value
-  filterOutwardItems();
-  setTimeout(() => {
-    populateItemSelect('out-item');
-    setTimeout(() => {
-      if (itemSel) itemSel.value = itemName;
-      document.getElementById('out-qty').value   = qty;
-      document.getElementById('out-date').value  = today();
-      document.getElementById('out-dept').value  = department || '';
-      document.getElementById('out-by').value       = 'Ajay';
-      document.getElementById('out-issuedto').value  = requestedBy || '';
-      document.getElementById('out-remarks').value   = 'Req: ' + reqId;
-      updOutwardInfo();
-    }, 150);
-  }, 100);
-}
-
-async function cancelRequest(id) {
-  if (!confirm('Cancel this request?')) return;
-  try {
-    await api('cancelRequest', { id });
-    toast('Request cancelled', 'warn');
-    loadRequests();
-    loadDash();
-  } catch(e) { toast(e.message, 'err'); }
-}
-
-// ── AJAY DASHBOARD ──
-function toggleAjayOK() {
-  const list = document.getElementById('aj-ok-list');
-  const arrow = document.getElementById('aj-ok-arrow');
-  if (!list) return;
-  if (list.style.display === 'none') { list.style.display = 'block'; if (arrow) arrow.textContent = '▲ Hide'; }
-  else { list.style.display = 'none'; if (arrow) arrow.textContent = '▼ Show'; }
-}
-
-async function loadAjayDash() {
-  const now = new Date();
-  const hr = now.getHours();
-  const g = hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
-  const grEl = document.getElementById('ajay-greeting');
-  if (grEl) grEl.textContent = `${g}, Ajay 👋`;
-  const dtEl = document.getElementById('ajay-date');
-  if (dtEl) dtEl.textContent = now.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-  try {
-    const d = await api('getDashboard');
-    _stocks = d.stocks || [];
-    const crit  = (d.stocks||[]).filter(s => s.status === 'Critical');
-    const reord = (d.stocks||[]).filter(s => s.status === 'Reorder');
-    setEl('aj-total',     d.totalItems || 0);
-    setEl('aj-critical',  crit.length);
-    setEl('aj-reorder',   reord.length);
-    setEl('aj-req-count', d.pendingRequests || 0);
-
-    const nb = document.getElementById('nb');
-    if (nb) { nb.style.display = d.reorderCount>0?'inline':'none'; nb.textContent = d.reorderCount; }
-    const nbr = document.getElementById('nb-req');
-    if (nbr) { nbr.style.display = d.pendingRequests>0?'inline':'none'; nbr.textContent = d.pendingRequests; }
-    const ajrb = document.getElementById('aj-req-badge');
-    if (ajrb) { ajrb.style.display = d.pendingRequests>0?'inline':'none'; ajrb.textContent = d.pendingRequests; }
-
-    // Today Inward
-    const inL = document.getElementById('aj-inward-list');
-    const inC = document.getElementById('aj-in-count');
-    try {
-      const inRows = await api('getInward', { date: today() });
-      const inMap = {};
-      inRows.forEach(r => {
-        if (!inMap[r.itemName]) inMap[r.itemName] = { qty: 0, unit: r.unit };
-        inMap[r.itemName].qty += r.qty;
-      });
-      const inItems = Object.entries(inMap).sort((a,b) => a[0].localeCompare(b[0]));
-      if (inC) inC.textContent = inItems.length ? inItems.length + ' items' : '';
-      if (inL) inL.innerHTML = inItems.length
-        ? inItems.map(([name, v]) => `
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 16px;border-bottom:1px solid var(--border);">
-            <div style="font-weight:600;font-size:13px;color:var(--navy);">${name}</div>
-            <span style="font-family:var(--mono);font-weight:700;color:var(--green);">+${v.qty} <span style="font-size:11px;font-weight:400;color:var(--muted);">${v.unit||''}</span></span>
-          </div>`).join('')
-        : `<div class="empty" style="padding:20px;"><div class="ei">📥</div><div class="et">No inward today</div></div>`;
-    } catch(e) {}
-
-    // Today Outward
-    const outL = document.getElementById('aj-outward-list');
-    const outC = document.getElementById('aj-out-count');
-    try {
-      const outRows = await api('getOutward', { date: today() });
-      const manual = outRows.filter(r => !(r.remarks||'').startsWith('Dispatch:'));
-      const outMap = {};
-      manual.forEach(r => {
-        if (!outMap[r.itemName]) outMap[r.itemName] = { qty: 0, unit: r.unit };
-        outMap[r.itemName].qty += r.qty;
-      });
-      const outItems = Object.entries(outMap).sort((a,b) => a[0].localeCompare(b[0]));
-      if (outC) outC.textContent = outItems.length ? outItems.length + ' items' : '';
-      if (outL) outL.innerHTML = outItems.length
-        ? outItems.map(([name, v]) => `
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 16px;border-bottom:1px solid var(--border);">
-            <div style="font-weight:600;font-size:13px;color:var(--navy);">${name}</div>
-            <span style="font-family:var(--mono);font-weight:700;color:var(--orange);">-${v.qty} <span style="font-size:11px;font-weight:400;color:var(--muted);">${v.unit||''}</span></span>
-          </div>`).join('')
-        : `<div class="empty" style="padding:20px;"><div class="ei">📤</div><div class="et">No outward today</div></div>`;
-    } catch(e) {}
-
-    // Pending requests
-    const reqW = document.getElementById('aj-requests');
-    if (reqW) {
-      try {
-        const reqs = await api('getRequests', { status: 'Pending' });
-        if (ajrb) { ajrb.style.display = reqs.length>0?'inline':'none'; ajrb.textContent = reqs.length; }
-        setEl('aj-req-count', reqs.length || d.pendingRequests || 0);
-        reqW.innerHTML = reqs.length
-          ? reqs.map(r => `
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);background:#f8faff;">
-              <div>
-                <div style="font-weight:600;font-size:13px;">${r.itemName}</div>
-                <div style="font-size:11px;color:var(--muted);">${r.department||'—'} · ${r.requestedBy||'—'}</div>
-              </div>
-              <div style="display:flex;align-items:center;gap:8px;">
-                <span style="font-family:var(--mono);font-weight:700;color:var(--accent);">${r.qty}</span>
-                <button class="btn bgn bsm" onclick="fulfillRequest('${r.id}','${r.itemName.replace(/'/g,"\\'")}',${r.qty},'${r.department||''}','${(r.requestedBy||'').replace(/'/g,"\\'")}')">✓ Issue</button>
-              </div>
-            </div>`).join('')
-          : `<div class="empty" style="padding:20px;"><div class="ei">✅</div><div class="et">No pending requests</div></div>`;
-      } catch(e) {}
-    }
-
-    setDot('ok', 'Connected');
-  } catch(e) { toast(e.message, 'err'); setDot('err', 'Error'); }
-}
-
-// ── RECEIVED FROM STORE (Sandeep) ──
-async function loadReceived() {
-  const dateEl = document.getElementById('recv-date');
-  const catEl  = document.getElementById('recv-cat');
-  if (!dateEl.value) dateEl.value = today();
-  const date    = dateEl.value;
-  const catFilter = catEl ? catEl.value : '';
-  const wrap = document.getElementById('recv-content');
-  wrap.innerHTML = `<div class="empty"><div class="ei">⏳</div><div class="et">Loading...</div></div>`;
-
-  try {
-    if (!_stocks.length) _stocks = await api('getStockSummary');
-    const rows = await api('getOutward', { date });
-    // Exclude dispatch entries
-    let received = rows.filter(r => !String(r.remarks||'').startsWith('Dispatch:') && !String(r.remarks||'').startsWith('Direct Dispatch:'));
-
-    // Apply category filter
-    if (catFilter) {
-      received = received.filter(r => {
-        const stock = _stocks.find(s => s.name === r.itemName);
-        return stock ? stock.cat === catFilter : false;
-      });
-    }
-
-    if (!received.length) {
-      wrap.innerHTML = `<div class="empty"><div class="ei">📭</div><div class="et">Is date koi material nahi aaya</div></div>`;
-      return;
-    }
-
-    // Group by category
-    const catMap = {};
-    received.forEach(r => {
-      const stock = _stocks.find(s => s.name === r.itemName);
-      const cat = stock ? stock.cat : 'Other';
-      if (!catMap[cat]) catMap[cat] = [];
-      catMap[cat].push(r);
-    });
-
-    const totalQty = received.reduce((s, r) => s + r.qty, 0);
-    const cats = Object.keys(catMap).sort();
-
-    let html = `
-      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
-        <div class="card" style="flex:1;min-width:140px;padding:14px 18px;">
-          <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;">Total Items</div>
-          <div style="font-size:28px;font-weight:700;color:var(--navy);font-family:var(--mono);margin-top:4px;">${received.length}</div>
-        </div>
-        <div class="card" style="flex:1;min-width:140px;padding:14px 18px;">
-          <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;">Categories</div>
-          <div style="font-size:28px;font-weight:700;color:var(--accent);font-family:var(--mono);margin-top:4px;">${cats.length}</div>
-        </div>
-      </div>`;
-
-    cats.forEach(cat => {
-      const items = catMap[cat];
-      const catTotal = items.reduce((s, r) => s + r.qty, 0);
-      const icon = {'BMS':'⚡','Cells':'🔋','Charger':'🔌','Wire':'🔩','Nickel/Busbar':'🪙','Box':'📦','Consumables':'🧰','Tools':'🔧','Packaging':'📦'}[cat] || '📦';
-
-      html += `<div class="card" style="margin-bottom:12px;">
-        <div style="padding:12px 16px;background:#f8faff;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span style="font-size:16px;">${icon}</span>
-            <span style="font-weight:700;color:var(--navy);font-size:14px;">${cat}</span>
-            <span style="font-size:11px;color:var(--muted);">${items.length} items</span>
-          </div>
-          <span style="font-family:var(--mono);font-weight:700;color:var(--accent);">${catTotal} total</span>
-        </div>
-        <div class="tw"><table>
-          <thead><tr>
-            <th>Item</th><th>Qty</th><th>Unit</th><th>Issued By</th><th>Time</th><th>Remarks</th>
-          </tr></thead>
-          <tbody>
-            ${items.map(r => `<tr>
-              <td style="font-weight:600;color:var(--navy);">${r.itemName}</td>
-              <td style="font-family:var(--mono);font-weight:700;color:var(--orange);">${r.qty}</td>
-              <td style="color:var(--muted);">${r.unit||'—'}</td>
-              <td>${r.by||'—'}</td>
-              <td style="color:var(--muted);font-size:11px;">${r.ts ? new Date(r.ts).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) : '—'}</td>
-              <td style="font-size:11px;color:var(--muted);">${r.remarks||'—'}</td>
-            </tr>`).join('')}
-          </tbody>
-        </table></div>
-      </div>`;
-    });
-
-    wrap.innerHTML = html;
-  } catch(e) {
-    toast(e.message, 'err');
-    wrap.innerHTML = `<div class="empty"><div class="ei">❌</div><div class="et">${e.message}</div></div>`;
-  }
-}
-let _wipData = [];
-
-async function loadWip() {
-  const tb = document.getElementById('wip-tb');
-  const em = document.getElementById('wip-empty');
-  if (tb) tb.innerHTML = `<tr class="lrow"><td colspan="6"><span class="loader"></span></td></tr>`;
-  try {
-    const d = await api('getDashboard');
-    const stocks = d.stocks || [];
-    // GAS calcStocks se directly wip, totalOut, dispUsed lo
-    _wipData = stocks
-      .filter(s => (s.totalOut || 0) > 0)
-      .map(s => ({
-        name: s.name, cat: s.cat, unit: s.unit,
-        totalOut: s.totalOut || 0,
-        dispUsed: s.dispUsed || 0,
-        wip: s.wip || 0,
-      }))
-      .sort((a,b) => b.wip - a.wip);
-
-    // Category filter populate karo
-    const catF = document.getElementById('wip-cat-f');
-    if (catF) {
-      const cats = [...new Set(_wipData.map(s => s.cat).filter(Boolean))].sort();
-      const curVal = catF.value;
-      catF.innerHTML = '<option value="">All Categories</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
-      if (curVal) catF.value = curVal;
-    }
-
-    const wipData = _wipData;
-
-    filterWip();
-  } catch(e) { toast(e.message, 'err'); }
-}
-
-function filterWip() {
-  const tb = document.getElementById('wip-tb');
-  const em = document.getElementById('wip-empty');
-  const catF = document.getElementById('wip-cat-f');
-  const cf = catF ? catF.value : '';
-  const fl = _wipData.filter(s => !cf || s.cat === cf);
-  if (!fl.length) { if (tb) tb.innerHTML = ''; if (em) em.style.display = 'block'; return; }
-  if (em) em.style.display = 'none';
-  if (tb) tb.innerHTML = fl.map(s => `<tr>
-      <td style="font-weight:600;color:var(--navy);">${s.name}</td>
-      <td>${catBadge(s.cat)}</td>
-      <td style="color:var(--muted);font-size:12px;">${s.unit||'—'}</td>
-      <td style="font-family:var(--mono);color:var(--orange);font-weight:600;">${s.totalOut}</td>
-      <td style="font-family:var(--mono);color:var(--green);font-weight:600;">${s.dispUsed}</td>
-      <td>
-        <span style="font-family:var(--mono);font-weight:800;font-size:16px;color:${s.wip>0?'var(--purple)':'var(--muted)'};">${s.wip}</span>
-        ${s.wip > 0 ? `<span style="font-size:10px;color:var(--purple);margin-left:4px;">In Production</span>` : ''}
-      </td>
-    </tr>`).join('');
-}
-
-// ── SANDEEP DASHBOARD ──
-async function loadSandeepDash() {
-  const now = new Date();
-  const hr = now.getHours();
-  const g = hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
-  const grEl = document.getElementById('sandeep-greeting');
-  if (grEl) grEl.textContent = `${g}, Sandeep 👋`;
-  const dtEl = document.getElementById('sandeep-date');
-  if (dtEl) dtEl.textContent = now.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-
-  function catSection(id, cat, icon, items, renderDetail) {
-    const total = items.reduce((s,i) => s + (i.qty||i.wip||0), 0);
-    const unit  = items[0] ? (items[0].unit||'') : '';
-    return `<div style="border-bottom:1px solid var(--border);">
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;cursor:pointer;background:var(--s2);"
-        onclick="const d=document.getElementById('${id}');const a=document.getElementById('arr-${id}');if(d.style.display==='none'){d.style.display='block';a.textContent='▲';}else{d.style.display='none';a.textContent='▼';}">
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span>${icon}</span>
-          <span style="font-weight:700;font-size:13px;color:var(--navy);">${cat}</span>
-          <span style="font-size:11px;color:var(--muted);">${items.length} items</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;">
-          <span style="font-family:var(--mono);font-weight:700;font-size:15px;color:var(--navy);">${total} <span style="font-size:11px;font-weight:400;color:var(--muted);">${unit}</span></span>
-          <span id="arr-${id}" style="font-size:11px;color:var(--muted);">▼</span>
-        </div>
-      </div>
-      <div id="${id}" style="display:none;">${renderDetail(items)}</div>
-    </div>`;
-  }
-
-  try {
-    const d = await api('getDashboard');
-    _stocks = d.stocks || [];
-
-    // Section 1: Today Received
-    const issueEl = document.getElementById('sd-issue-section');
-    const issueSummEl = document.getElementById('sd-issue-summary');
-    try {
-      const outRows = await api('getOutward', { date: today() });
-      const issued = outRows.filter(r => !(r.remarks||'').startsWith('Dispatch:'));
-      const catMap = {};
-      issued.forEach(r => {
-        const s = _stocks.find(x => x.name === r.itemName);
-        const cat = s ? s.cat : 'Other';
-        if (!catMap[cat]) catMap[cat] = {};
-        if (!catMap[cat][r.itemName]) catMap[cat][r.itemName] = { qty: 0, unit: r.unit };
-        catMap[cat][r.itemName].qty += r.qty;
-      });
-      const cats = Object.keys(catMap).sort();
-      if (issueSummEl) issueSummEl.textContent = issued.length ? `${cats.length} categories, ${issued.length} entries` : '';
-      if (!cats.length) {
-        if (issueEl) issueEl.innerHTML = `<div class="empty" style="padding:24px;"><div class="ei">📤</div><div class="et">Nothing received today</div></div>`;
-      } else {
-        const html = cats.map(cat => {
-          const items = Object.entries(catMap[cat]).sort((a,b)=>a[0].localeCompare(b[0])).map(([name,v])=>({name,qty:v.qty,unit:v.unit}));
-          return catSection(`sd-iss-${cat}`, cat, getCatIcon(cat), items, (items) =>
-            items.map(i => `<div style="display:flex;justify-content:space-between;padding:8px 16px 8px 32px;border-bottom:1px solid var(--border);font-size:13px;">
-              <span style="color:var(--t2);">${i.name}</span>
-              <span style="font-family:var(--mono);font-weight:700;color:var(--orange);">${i.qty} <span style="font-size:11px;font-weight:400;color:var(--muted);">${i.unit||''}</span></span>
-            </div>`).join('')
-          );
-        }).join('');
-        if (issueEl) issueEl.innerHTML = html;
-      }
-    } catch(e) {}
-
-    // Section 2: WIP
-    const wipEl  = document.getElementById('sd-wip-section');
-    const wipSummEl = document.getElementById('sd-wip-summary');
-
-    // Fresh stock data se WIP calculate karo — dashboard wipItems pe depend mat karo
-    const freshStocks = await api('getStockSummary');
-    const wipItems = freshStocks.filter(s => (s.wip || 0) > 0);
-    const wipCatMap = {};
-    wipItems.forEach(s => {
-      const cat = s.cat || 'Other';
-      if (!wipCatMap[cat]) wipCatMap[cat] = [];
-      wipCatMap[cat].push({ name: s.name, qty: s.wip, unit: s.unit });
-    });
-    const wipCats = Object.keys(wipCatMap).sort();
-    if (wipSummEl) wipSummEl.textContent = wipItems.length ? `${wipItems.length} items in production` : 'Nothing in WIP';
-    if (!wipCats.length) {
-      if (wipEl) wipEl.innerHTML = `<div class="empty" style="padding:24px;"><div class="ei">🏭</div><div class="et">Nothing in WIP</div></div>`;
-    } else {
-      const html = wipCats.map(cat => {
-        const items = wipCatMap[cat];
-        return catSection(`sd-wip-${cat}`, cat, getCatIcon(cat), items, (items) =>
-          items.map(i => `<div style="display:flex;justify-content:space-between;padding:8px 16px 8px 32px;border-bottom:1px solid var(--border);font-size:13px;">
-            <span style="color:var(--t2);">${i.name}</span>
-            <span style="font-family:var(--mono);font-weight:700;color:var(--purple);">${i.qty} <span style="font-size:11px;font-weight:400;color:var(--muted);">${i.unit||''}</span></span>
-          </div>`).join('')
-        );
-      }).join('');
-      if (wipEl) wipEl.innerHTML = html;
-    }
-
-    // Section 3: Today Dispatch
-    const disEl  = document.getElementById('sd-dispatch-section');
-    const disSummEl = document.getElementById('sd-dispatch-summary');
-    try {
-      const disRows = await api('getDispatch', {});
-      const todayDis = disRows.filter(r => r.date === today());
-      if (disSummEl) disSummEl.textContent = todayDis.length ? `${todayDis.length} dispatched today` : 'No dispatch today';
-      if (!todayDis.length) {
-        if (disEl) disEl.innerHTML = `<div class="empty" style="padding:24px;"><div class="ei">🚚</div><div class="et">No dispatch today</div></div>`;
-      } else {
-        const bomMap = {};
-        todayDis.forEach(r => {
-          if (!bomMap[r.bomModel]) bomMap[r.bomModel] = { qty: 0, entries: [] };
-          bomMap[r.bomModel].qty += r.qtyProduced;
-          bomMap[r.bomModel].entries.push(r);
-        });
-        const html = Object.entries(bomMap).map(([model, v]) => {
-          const items = [{name: model, qty: v.qty, unit: 'units'}];
-          return catSection(`sd-dis-${model.replace(/\s/g,'_')}`, model, '🔋', items, () =>
-            v.entries.map(r => `<div style="display:flex;justify-content:space-between;padding:8px 16px 8px 32px;border-bottom:1px solid var(--border);font-size:13px;">
-              <div>
-                <div style="font-weight:600;color:var(--navy);">${r.bomModel}</div>
-                <div style="font-size:11px;color:var(--muted);">${r.dispatchTo||'—'} · ${r.by||'—'}</div>
-              </div>
-              <span style="font-family:var(--mono);font-weight:700;color:var(--green);">×${r.qtyProduced}</span>
-            </div>`).join('')
-          );
-        }).join('');
-        if (disEl) disEl.innerHTML = html;
-      }
-    } catch(e) {}
-
-    setDot('ok', 'Connected');
-  } catch(e) { toast(e.message, 'err'); setDot('err', 'Error'); }
-}
-
-// ============================================================
-// ADMIN DASHBOARD CHARTS
-// ============================================================
-let _reorderChartInst  = null;
-let _wipChartInst      = null;
-let _categoryChartInst = null;
-
-function renderReorderChart(stocks) {
-  const canvas = document.getElementById('reorderChart');
-  if (!canvas) return;
-  const items = stocks.filter(s => s.status !== 'OK').slice(0, 12);
-  if (!items.length) {
-    canvas.parentElement.innerHTML = `<div class="empty" style="padding:40px;"><div class="ei">✅</div><div class="et">All stocks healthy!</div><div class="es">Koi reorder required nahi</div></div>`;
-    return;
-  }
-  const labels  = items.map(s => s.name.length > 14 ? s.name.slice(0,14)+'…' : s.name);
-  const current = items.map(s => s.currentStock);
-  const rop     = items.map(s => s.reorderPoint);
-  if (_reorderChartInst) _reorderChartInst.destroy();
-  _reorderChartInst = new Chart(canvas, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [
-        {
-          label: 'Current Stock',
-          data: current,
-          backgroundColor: items.map(s => s.status === 'Critical' ? 'rgba(220,38,38,.85)' : 'rgba(234,88,12,.85)'),
-          borderRadius: 5, borderSkipped: false,
-        },
-        {
-          label: 'Reorder Point',
-          data: rop,
-          backgroundColor: 'rgba(37,88,232,.18)',
-          borderColor: 'rgba(37,88,232,.6)',
-          borderWidth: 1.5,
-          borderRadius: 5, borderSkipped: false,
-        },
-      ]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: true,
-      plugins: {
-        legend: { position: 'top', labels: { font: { size: 11, family: 'DM Sans' }, boxWidth: 12, padding: 12 } },
-        tooltip: { callbacks: { afterBody: (i) => { const s = items[i[0].dataIndex]; return s ? [`Status: ${s.status}`, `Max: ${s.maxL||0}`] : []; } } }
-      },
-      scales: {
-        x: { grid: { display: false }, ticks: { font: { size: 10, family: 'DM Sans' }, maxRotation: 35 } },
-        y: { beginAtZero: true, ticks: { font: { size: 10, family: 'DM Sans' } }, grid: { color: 'rgba(0,0,0,.04)' } }
-      }
-    }
-  });
-}
-
-function renderWipChart(wipItems) {
-  const canvas = document.getElementById('wipChart');
-  if (!canvas) return;
-  if (!wipItems || !wipItems.length) {
-    canvas.parentElement.innerHTML = `<div class="empty" style="padding:40px;"><div class="ei">🏭</div><div class="et">No WIP items</div><div class="es">Production mein kuch nahi</div></div>`;
-    return;
-  }
-  const labels = wipItems.map(s => s.name.length > 14 ? s.name.slice(0,14)+'…' : s.name);
-  const data   = wipItems.map(s => s.wip);
-  if (_wipChartInst) _wipChartInst.destroy();
-  _wipChartInst = new Chart(canvas, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        label: 'WIP Qty',
-        data,
-        backgroundColor: 'rgba(124,58,237,.8)',
-        borderRadius: 5, borderSkipped: false,
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: true,
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { afterBody: (i) => { const s = wipItems[i[0].dataIndex]; return s ? [`Store Stock: ${s.currentStock} ${s.unit||''}`] : []; } } }
-      },
-      scales: {
-        x: { grid: { display: false }, ticks: { font: { size: 10, family: 'DM Sans' }, maxRotation: 35 } },
-        y: { beginAtZero: true, ticks: { font: { size: 10, family: 'DM Sans' } }, grid: { color: 'rgba(0,0,0,.04)' } }
-      }
-    }
-  });
-}
-
-function renderCategoryChart(stocks) {
-  const canvas = document.getElementById('categoryChart');
-  if (!canvas || !stocks.length) return;
-  const catMap = {};
-  stocks.forEach(s => { catMap[s.cat||'Other'] = (catMap[s.cat||'Other']||0) + 1; });
-  const labels = Object.keys(catMap);
-  const data   = Object.values(catMap);
-  const colors = [
-    'rgba(37,88,232,.85)', 'rgba(16,163,74,.85)', 'rgba(234,88,12,.85)',
-    'rgba(124,58,237,.85)', 'rgba(220,38,38,.85)', 'rgba(8,145,178,.85)',
-    'rgba(217,119,6,.85)', 'rgba(107,114,128,.85)'
-  ];
-  if (_categoryChartInst) _categoryChartInst.destroy();
-  _categoryChartInst = new Chart(canvas, {
-    type: 'doughnut',
-    data: {
-      labels,
-      datasets: [{
-        data,
-        backgroundColor: colors.slice(0, labels.length),
-        borderWidth: 2, borderColor: '#fff',
-        hoverOffset: 6,
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: true,
-      plugins: {
-        legend: { position: 'bottom', labels: { font: { size: 11, family: 'DM Sans' }, boxWidth: 12, padding: 10 } },
-        tooltip: { callbacks: { label: (i) => ` ${i.label}: ${i.raw} items` } }
-      }
-    }
-  });
-}
-
-// ── CREATE PO FROM REORDER ──
+// ── CREATE PO MODAL — openCreatePO (SELECT ALL TOGGLE ADDED) ──
 async function openCreatePO() {
   const btn = document.getElementById('po-btn');
   const list = document.getElementById('po-items-list');
@@ -2786,7 +2153,15 @@ async function openCreatePO() {
             <th style="padding:8px 12px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;border-bottom:1.5px solid var(--border);background:var(--s2);text-align:center;">Current</th>
             <th style="padding:8px 12px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;border-bottom:1.5px solid var(--border);background:var(--s2);text-align:center;">MOQ</th>
             <th style="padding:8px 12px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;border-bottom:1.5px solid var(--border);background:var(--s2);text-align:center;">Order Qty</th>
-            <th style="padding:8px 12px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;border-bottom:1.5px solid var(--border);background:var(--s2);text-align:center;">Include</th>
+            <th style="padding:8px 12px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;border-bottom:1.5px solid var(--border);background:var(--s2);text-align:center;">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:5px;">
+                <span>Include</span>
+                <button onclick="toggleAllPOCheckboxes()" id="po-toggle-all-btn"
+                  style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:12px;border:1.5px solid var(--accent);color:var(--accent);background:transparent;cursor:pointer;white-space:nowrap;line-height:1.5;transition:all .15s;">
+                  ☐ Uncheck All
+                </button>
+              </div>
+            </th>
           </tr></thead>
           <tbody>
             ${reorderItems.map(s => {
@@ -2816,10 +2191,75 @@ async function openCreatePO() {
   } catch(e) { toast(e.message, 'err'); closeM('create-po-modal'); }
 }
 
+// ── SELECT ALL / UNCHECK ALL TOGGLE ──
+function toggleAllPOCheckboxes() {
+  const checkboxes = [...document.querySelectorAll('[id^="po-chk-"]')];
+  if (!checkboxes.length) return;
+  const allChecked = checkboxes.every(cb => cb.checked);
+  checkboxes.forEach(cb => { cb.checked = !allChecked; });
+  const btn = document.getElementById('po-toggle-all-btn');
+  if (btn) btn.textContent = allChecked ? '☑ Select All' : '☐ Uncheck All';
+}
 
+// ── MANUAL PO ITEM ──
 let _sbInOpen  = false;
 let _sbOutOpen = false;
 let _sbInData  = [];
+let _manualPOItems = [];
+
+function addManualPOItem() {
+  const list = document.getElementById('po-items-list');
+  const manualDiv = document.getElementById('po-manual-section');
+  
+  if (!manualDiv) {
+    const div = document.createElement('div');
+    div.id = 'po-manual-section';
+    div.style.cssText = 'margin-top:14px;border-top:1px solid var(--border);padding-top:12px;';
+    div.innerHTML = `
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px;">Manual Items</div>
+      <div id="po-manual-rows"></div>
+      <button class="btn bg bsm" style="margin-top:8px;" onclick="addManualPORow()">+ Add Another</button>
+    `;
+    list.appendChild(div);
+    addManualPORow();
+  } else {
+    addManualPORow();
+  }
+}
+
+function addManualPORow() {
+  const container = document.getElementById('po-manual-rows');
+  if (!container) return;
+  const idx = container.children.length;
+  const catOpts = _config.catOrder.map(c => `<option value="${c}">${c}</option>`).join('');
+  const row = document.createElement('div');
+  row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 80px 36px;gap:8px;margin-bottom:8px;align-items:center;';
+  row.innerHTML = `
+    <select class="inp" id="po-manual-cat-${idx}" style="font-size:12px;" onchange="filterManualPOItems(${idx})">
+      <option value="">-- Category --</option>
+      ${catOpts}
+    </select>
+    <select class="inp" id="po-manual-item-${idx}" style="font-size:12px;">
+      <option value="">-- Select Category first --</option>
+    </select>
+    <input type="number" class="inp" id="po-manual-qty-${idx}" placeholder="Qty" min="1" style="font-size:12px;text-align:center;">
+    <button class="btn brd bsm" onclick="this.parentElement.remove()" style="padding:5px 8px;">✕</button>
+  `;
+  container.appendChild(row);
+}
+
+function filterManualPOItems(idx) {
+  const cat = document.getElementById('po-manual-cat-'+idx).value;
+  const sel = document.getElementById('po-manual-item-'+idx);
+  sel.innerHTML = '<option value="">-- Select Item --</option>';
+  if (!cat) return;
+  const src = _stocks.length ? _stocks : _items;
+  src.filter(s => s.cat === cat).forEach(s => {
+    const o = document.createElement('option');
+    o.value = s.name; o.textContent = s.name;
+    sel.appendChild(o);
+  });
+}
 
 // ── ADC CALCULATE ──
 function initADC() {
@@ -2832,7 +2272,6 @@ function initADC() {
   if (fromEl && !fromEl.value) fromEl.value = fmt(weekAgo);
   if (toEl   && !toEl.value)   toEl.value   = fmt(today);
 
-  // Category filter populate
   const catEl = document.getElementById('adc-cat');
   if (catEl && catEl.options.length <= 1 && _config.categories) {
     _config.categories.forEach(c => {
@@ -2896,7 +2335,6 @@ async function loadADC() {
       api('getOutward', {}),
     ]);
 
-    // Date filter
     const from = new Date(fromVal); from.setHours(0,0,0,0);
     const to   = new Date(toVal);   to.setHours(23,59,59,999);
     const days = Math.max(1, Math.round((to - from) / (1000*60*60*24)) + 1);
@@ -2904,7 +2342,6 @@ async function loadADC() {
     const inFiltered  = inRows.filter(r => { const d = new Date(r.date); return d >= from && d <= to; });
     const outFiltered = outRows.filter(r => { const d = new Date(r.date); return d >= from && d <= to; });
 
-    // Aggregate by item
     const map = {};
     const addItem = (name, unit, cat) => {
       if (!map[name]) map[name] = { name, unit, cat: cat||'', inQty: 0, outQty: 0 };
@@ -2912,7 +2349,6 @@ async function loadADC() {
     inFiltered.forEach(r => { addItem(r.itemName, r.unit, r.cat); map[r.itemName].inQty += r.qty||0; });
     outFiltered.forEach(r => { addItem(r.itemName, r.unit, r.cat); map[r.itemName].outQty += r.qty||0; });
 
-    // Enrich category from stocks
     if (_stocks.length) {
       _stocks.forEach(s => { if (map[s.name]) map[s.name].cat = s.cat||map[s.name].cat; });
     } else {
@@ -2925,7 +2361,6 @@ async function loadADC() {
 
     if (!rows.length) { tb.innerHTML = ''; em.style.display = 'block'; return; }
 
-    // PDF button show karo
     const pdfBtn = document.getElementById('adc-pdf-btn');
     if (pdfBtn) pdfBtn.style.display = '';
 
@@ -2948,75 +2383,15 @@ async function loadADC() {
   } catch(e) { toast(e.message, 'err'); }
 }
 
-// ── MANUAL PO ITEM ──
-let _manualPOItems = [];
-
-function addManualPOItem() {
-  // Simple prompt-style inline row add
-  const list = document.getElementById('po-items-list');
-  const manualDiv = document.getElementById('po-manual-section');
-  
-  if (!manualDiv) {
-    // Create manual section first time
-    const div = document.createElement('div');
-    div.id = 'po-manual-section';
-    div.style.cssText = 'margin-top:14px;border-top:1px solid var(--border);padding-top:12px;';
-    div.innerHTML = `
-      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px;">Manual Items</div>
-      <div id="po-manual-rows"></div>
-      <button class="btn bg bsm" style="margin-top:8px;" onclick="addManualPORow()">+ Add Another</button>
-    `;
-    list.appendChild(div);
-    addManualPORow();
-  } else {
-    addManualPORow();
-  }
-}
-
-function addManualPORow() {
-  const container = document.getElementById('po-manual-rows');
-  if (!container) return;
-  const idx = container.children.length;
-  const catOpts = _config.catOrder.map(c => `<option value="${c}">${c}</option>`).join('');
-  const row = document.createElement('div');
-  row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 80px 36px;gap:8px;margin-bottom:8px;align-items:center;';
-  row.innerHTML = `
-    <select class="inp" id="po-manual-cat-${idx}" style="font-size:12px;" onchange="filterManualPOItems(${idx})">
-      <option value="">-- Category --</option>
-      ${catOpts}
-    </select>
-    <select class="inp" id="po-manual-item-${idx}" style="font-size:12px;">
-      <option value="">-- Select Category first --</option>
-    </select>
-    <input type="number" class="inp" id="po-manual-qty-${idx}" placeholder="Qty" min="1" style="font-size:12px;text-align:center;">
-    <button class="btn brd bsm" onclick="this.parentElement.remove()" style="padding:5px 8px;">✕</button>
-  `;
-  container.appendChild(row);
-}
-
-function filterManualPOItems(idx) {
-  const cat = document.getElementById('po-manual-cat-'+idx).value;
-  const sel = document.getElementById('po-manual-item-'+idx);
-  sel.innerHTML = '<option value="">-- Select Item --</option>';
-  if (!cat) return;
-  const src = _stocks.length ? _stocks : _items;
-  src.filter(s => s.cat === cat).forEach(s => {
-    const o = document.createElement('option');
-    o.value = s.name; o.textContent = s.name;
-    sel.appendChild(o);
-  });
-}
 let _sbOutData = [];
 
 async function loadSbActivity() {
-  // Only for admin
   if (_currentRole !== 'admin') return;
   try {
     const [inRows, outRows] = await Promise.all([
       api('getInward', { date: today() }),
       api('getOutward', { date: today() }),
     ]);
-    // Group inward by item
     const inMap = {};
     inRows.forEach(r => {
       if (!inMap[r.itemName]) inMap[r.itemName] = { qty: 0, unit: r.unit };
@@ -3024,7 +2399,6 @@ async function loadSbActivity() {
     });
     _sbInData = Object.entries(inMap).sort((a,b) => a[0].localeCompare(b[0]));
 
-    // Group outward by item (exclude dispatch)
     const outMap = {};
     outRows.filter(r => !(r.remarks||'').startsWith('Dispatch:')).forEach(r => {
       if (!outMap[r.itemName]) outMap[r.itemName] = { qty: 0, unit: r.unit };
@@ -3032,13 +2406,11 @@ async function loadSbActivity() {
     });
     _sbOutData = Object.entries(outMap).sort((a,b) => a[0].localeCompare(b[0]));
 
-    // Update counts
     const inC = document.getElementById('sb-in-count');
     if (inC) inC.textContent = _sbInData.length ? _sbInData.length + ' items' : '';
     const outC = document.getElementById('sb-out-count');
     if (outC) outC.textContent = _sbOutData.length ? _sbOutData.length + ' items' : '';
 
-    // Re-render if open
     if (_sbInOpen)  renderSbIn();
     if (_sbOutOpen) renderSbOut();
   } catch(e) {}
@@ -3085,7 +2457,6 @@ function renderSbOut() {
 
 // ── PO PRINT ──
 function printPO(items, supplier, expDate) {
-  // Category wise sort
   const catOrder = _config.catOrder || [];
   const sorted = [...items].sort((a, b) => {
     const sa = _stocks.find(s => s.name === a.itemName);
@@ -3098,7 +2469,6 @@ function printPO(items, supplier, expDate) {
     return a.itemName.localeCompare(b.itemName);
   });
 
-  // Group by category
   const grouped = {};
   sorted.forEach(item => {
     const s = _stocks.find(x => x.name === item.itemName);
@@ -3142,19 +2512,16 @@ function printPO(items, supplier, expDate) {
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a2e; padding: 32px; font-size: 13px; }
-    
     .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #0d1f3c; }
     .company-name { font-size: 22px; font-weight: 800; color: #0d1f3c; }
     .company-sub { font-size: 11px; color: #6b7280; margin-top: 3px; }
     .po-title { text-align: right; }
     .po-title h2 { font-size: 20px; font-weight: 800; color: #0d1f3c; }
     .po-number { font-size: 13px; color: #2558e8; font-weight: 600; margin-top: 4px; }
-    
     .meta-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 22px; }
     .meta-box { background: #f8faff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 14px; }
     .meta-label { font-size: 9px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .7px; margin-bottom: 4px; }
     .meta-value { font-size: 13px; font-weight: 600; color: #0d1f3c; }
-    
     table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
     thead th { background: #0d1f3c; color: #fff; padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; }
     thead th.center { text-align: center; }
@@ -3165,26 +2532,19 @@ function printPO(items, supplier, expDate) {
     .iname { font-weight: 500; }
     .center { text-align: center; }
     .qty { font-weight: 700; color: #0d1f3c; font-size: 14px; }
-    
     .footer { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 32px; padding-top: 16px; border-top: 1px solid #e5e7eb; }
     .sign-box { text-align: center; }
     .sign-line { width: 160px; border-top: 1.5px solid #374151; margin: 40px auto 6px; }
     .sign-label { font-size: 11px; color: #6b7280; font-weight: 600; }
     .footer-note { font-size: 10px; color: #9ca3af; text-align: center; margin-top: 8px; }
-    
-    @media print {
-      body { padding: 16px; }
-      .no-print { display: none; }
-    }
+    @media print { body { padding: 16px; } .no-print { display: none; } }
   </style>
 </head>
 <body>
-
   <div class="no-print" style="background:#0d1f3c;color:#fff;padding:10px 20px;margin:-32px -32px 24px;display:flex;justify-content:space-between;align-items:center;">
     <span style="font-weight:700;">Purchase Order Preview</span>
     <button onclick="window.print()" style="background:#1D9E75;color:#fff;border:none;padding:8px 20px;border-radius:6px;font-weight:700;cursor:pointer;font-size:13px;">🖨 Print / Save PDF</button>
   </div>
-
   <div class="header">
     <div>
       <div class="company-name">Litpax Technology Pvt. Ltd.</div>
@@ -3195,22 +2555,11 @@ function printPO(items, supplier, expDate) {
       <div class="po-number">${poNumber}</div>
     </div>
   </div>
-
   <div class="meta-grid">
-    <div class="meta-box">
-      <div class="meta-label">PO Date</div>
-      <div class="meta-value">${dateStr}</div>
-    </div>
-    <div class="meta-box">
-      <div class="meta-label">Supplier</div>
-      <div class="meta-value">${supplier || '—'}</div>
-    </div>
-    <div class="meta-box">
-      <div class="meta-label">Expected Delivery</div>
-      <div class="meta-value">${expDate ? new Date(expDate+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '—'}</div>
-    </div>
+    <div class="meta-box"><div class="meta-label">PO Date</div><div class="meta-value">${dateStr}</div></div>
+    <div class="meta-box"><div class="meta-label">Supplier</div><div class="meta-value">${supplier || '—'}</div></div>
+    <div class="meta-box"><div class="meta-label">Expected Delivery</div><div class="meta-value">${expDate ? new Date(expDate+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '—'}</div></div>
   </div>
-
   <table>
     <thead>
       <tr>
@@ -3220,33 +2569,20 @@ function printPO(items, supplier, expDate) {
         <th class="center" style="width:80px;">Qty</th>
       </tr>
     </thead>
-    <tbody>
-      ${itemsHTML}
-    </tbody>
+    <tbody>${itemsHTML}</tbody>
   </table>
-
   <div class="footer">
-    <div class="sign-box">
-      <div class="sign-line"></div>
-      <div class="sign-label">Prepared By</div>
-    </div>
-    <div class="sign-box">
-      <div class="sign-line"></div>
-      <div class="sign-label">Authorized By</div>
-    </div>
-    <div class="sign-box">
-      <div class="sign-line"></div>
-      <div class="sign-label">Supplier Acknowledgement</div>
-    </div>
+    <div class="sign-box"><div class="sign-line"></div><div class="sign-label">Prepared By</div></div>
+    <div class="sign-box"><div class="sign-line"></div><div class="sign-label">Authorized By</div></div>
+    <div class="sign-box"><div class="sign-line"></div><div class="sign-label">Supplier Acknowledgement</div></div>
   </div>
-
   <div class="footer-note">This is a computer generated Purchase Order — Litpax Technology Pvt. Ltd.</div>
-
 </body>
 </html>`);
   win.document.close();
   setTimeout(() => win.print(), 500);
 }
+
 function openAddPOItemModal(poId) {
   document.getElementById('add-poi-id').value = poId;
   document.getElementById('add-poi-cat').value = '';
@@ -3290,4 +2626,543 @@ function printSinglePO(id, itemName, qty, supplier, expDate) {
   const s = _stocks.find(x => x.name === itemName);
   const items = [{ itemName, qty, unit: s ? s.unit : 'Pcs' }];
   printPO(items, supplier, expDate);
+}
+
+// ── MATERIAL REQUESTS ──
+let _requests = [];
+
+async function loadRequests() {
+  document.getElementById('req-tb').innerHTML = `<tr class="lrow"><td colspan="10"><span class="loader"></span></td></tr>`;
+  const statusF = document.getElementById('req-status-f').value;
+  try {
+    const body = statusF ? { status: statusF } : {};
+    _requests = await api('getRequests', body);
+    renderRequests();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+function renderRequests() {
+  const tb = document.getElementById('req-tb');
+  const em = document.getElementById('req-empty');
+  if (!_requests.length) { tb.innerHTML = ''; em.style.display = 'block'; return; }
+  em.style.display = 'none';
+  tb.innerHTML = _requests.map(r => {
+    const stColor = r.status === 'Closed' ? 'b-ok' : r.status === 'Cancelled' ? 'b-ro' : 'b-dep';
+    const isPending = r.status === 'Pending';
+    return `<tr ${isPending ? 'style="background:#f0f7ff;"' : ''}>
+      <td style="font-size:12px;color:var(--muted);">${fmtD(r.date)}</td>
+      <td style="font-family:var(--mono);font-size:12px;color:var(--muted);">${r.time}</td>
+      <td style="font-weight:600;color:var(--navy);">${r.itemName}</td>
+      <td style="font-family:var(--mono);font-weight:700;font-size:16px;color:var(--accent);">${r.qty}</td>
+      <td style="color:var(--muted);font-size:12px;">${r.unit||'—'}</td>
+      <td>${depBadge(r.department)}</td>
+      <td style="font-size:12px;">${r.requestedBy||'—'}</td>
+      <td style="font-size:12px;color:var(--muted);">${r.remarks||'—'}</td>
+      <td><span class="badge ${stColor}">${r.status}</span></td>
+      <td style="white-space:nowrap;">
+        ${isPending ? `
+          <button class="btn bgn bsm" onclick="fulfillRequest('${r.id}','${r.itemName.replace(/'/g,"\\'")}',${r.qty},'${r.department||''}','${(r.requestedBy||'').replace(/'/g,"\\'")}')">✓ Issue</button>
+          <button class="btn brd bsm" onclick="cancelRequest('${r.id}')">✕</button>
+        ` : `<span style="font-size:11px;color:var(--muted);">${r.closedBy||'—'}</span>`}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function fulfillRequest(reqId, itemName, qty, department, requestedBy) {
+  window._pendingReqId = reqId;
+  document.getElementById('outward-modal').classList.add('open');
+  showPage('outward');
+
+  const item = (_stocks && _stocks.find(s => s.name === itemName))
+             || (_items  && _items.find(i => i.name === itemName));
+  const cat = item ? item.cat : '';
+
+  const catSel  = document.getElementById('out-cat');
+  const itemSel = document.getElementById('out-item');
+
+  if (catSel && cat) catSel.value = cat;
+
+  filterOutwardItems();
+  setTimeout(() => {
+    populateItemSelect('out-item');
+    setTimeout(() => {
+      if (itemSel) itemSel.value = itemName;
+      document.getElementById('out-qty').value   = qty;
+      document.getElementById('out-date').value  = today();
+      document.getElementById('out-dept').value  = department || '';
+      document.getElementById('out-by').value       = 'Ajay';
+      document.getElementById('out-issuedto').value  = requestedBy || '';
+      document.getElementById('out-remarks').value   = 'Req: ' + reqId;
+      updOutwardInfo();
+    }, 150);
+  }, 100);
+}
+
+async function cancelRequest(id) {
+  if (!confirm('Cancel this request?')) return;
+  try {
+    await api('cancelRequest', { id });
+    toast('Request cancelled', 'warn');
+    loadRequests();
+    loadDash();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+// ── AJAY DASHBOARD ──
+function toggleAjayOK() {
+  const list = document.getElementById('aj-ok-list');
+  const arrow = document.getElementById('aj-ok-arrow');
+  if (!list) return;
+  if (list.style.display === 'none') { list.style.display = 'block'; if (arrow) arrow.textContent = '▲ Hide'; }
+  else { list.style.display = 'none'; if (arrow) arrow.textContent = '▼ Show'; }
+}
+
+async function loadAjayDash() {
+  const now = new Date();
+  const hr = now.getHours();
+  const g = hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
+  const grEl = document.getElementById('ajay-greeting');
+  if (grEl) grEl.textContent = `${g}, Ajay 👋`;
+  const dtEl = document.getElementById('ajay-date');
+  if (dtEl) dtEl.textContent = now.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  try {
+    const d = await api('getDashboard');
+    _stocks = d.stocks || [];
+    const crit  = (d.stocks||[]).filter(s => s.status === 'Critical');
+    const reord = (d.stocks||[]).filter(s => s.status === 'Reorder');
+    setEl('aj-total',     d.totalItems || 0);
+    setEl('aj-critical',  crit.length);
+    setEl('aj-reorder',   reord.length);
+    setEl('aj-req-count', d.pendingRequests || 0);
+
+    const nb = document.getElementById('nb');
+    if (nb) { nb.style.display = d.reorderCount>0?'inline':'none'; nb.textContent = d.reorderCount; }
+    const nbr = document.getElementById('nb-req');
+    if (nbr) { nbr.style.display = d.pendingRequests>0?'inline':'none'; nbr.textContent = d.pendingRequests; }
+    const ajrb = document.getElementById('aj-req-badge');
+    if (ajrb) { ajrb.style.display = d.pendingRequests>0?'inline':'none'; ajrb.textContent = d.pendingRequests; }
+
+    const inL = document.getElementById('aj-inward-list');
+    const inC = document.getElementById('aj-in-count');
+    try {
+      const inRows = await api('getInward', { date: today() });
+      const inMap = {};
+      inRows.forEach(r => {
+        if (!inMap[r.itemName]) inMap[r.itemName] = { qty: 0, unit: r.unit };
+        inMap[r.itemName].qty += r.qty;
+      });
+      const inItems = Object.entries(inMap).sort((a,b) => a[0].localeCompare(b[0]));
+      if (inC) inC.textContent = inItems.length ? inItems.length + ' items' : '';
+      if (inL) inL.innerHTML = inItems.length
+        ? inItems.map(([name, v]) => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 16px;border-bottom:1px solid var(--border);">
+            <div style="font-weight:600;font-size:13px;color:var(--navy);">${name}</div>
+            <span style="font-family:var(--mono);font-weight:700;color:var(--green);">+${v.qty} <span style="font-size:11px;font-weight:400;color:var(--muted);">${v.unit||''}</span></span>
+          </div>`).join('')
+        : `<div class="empty" style="padding:20px;"><div class="ei">📥</div><div class="et">No inward today</div></div>`;
+    } catch(e) {}
+
+    const outL = document.getElementById('aj-outward-list');
+    const outC = document.getElementById('aj-out-count');
+    try {
+      const outRows = await api('getOutward', { date: today() });
+      const manual = outRows.filter(r => !(r.remarks||'').startsWith('Dispatch:'));
+      const outMap = {};
+      manual.forEach(r => {
+        if (!outMap[r.itemName]) outMap[r.itemName] = { qty: 0, unit: r.unit };
+        outMap[r.itemName].qty += r.qty;
+      });
+      const outItems = Object.entries(outMap).sort((a,b) => a[0].localeCompare(b[0]));
+      if (outC) outC.textContent = outItems.length ? outItems.length + ' items' : '';
+      if (outL) outL.innerHTML = outItems.length
+        ? outItems.map(([name, v]) => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 16px;border-bottom:1px solid var(--border);">
+            <div style="font-weight:600;font-size:13px;color:var(--navy);">${name}</div>
+            <span style="font-family:var(--mono);font-weight:700;color:var(--orange);">-${v.qty} <span style="font-size:11px;font-weight:400;color:var(--muted);">${v.unit||''}</span></span>
+          </div>`).join('')
+        : `<div class="empty" style="padding:20px;"><div class="ei">📤</div><div class="et">No outward today</div></div>`;
+    } catch(e) {}
+
+    const reqW = document.getElementById('aj-requests');
+    if (reqW) {
+      try {
+        const reqs = await api('getRequests', { status: 'Pending' });
+        if (ajrb) { ajrb.style.display = reqs.length>0?'inline':'none'; ajrb.textContent = reqs.length; }
+        setEl('aj-req-count', reqs.length || d.pendingRequests || 0);
+        reqW.innerHTML = reqs.length
+          ? reqs.map(r => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);background:#f8faff;">
+              <div>
+                <div style="font-weight:600;font-size:13px;">${r.itemName}</div>
+                <div style="font-size:11px;color:var(--muted);">${r.department||'—'} · ${r.requestedBy||'—'}</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-family:var(--mono);font-weight:700;color:var(--accent);">${r.qty}</span>
+                <button class="btn bgn bsm" onclick="fulfillRequest('${r.id}','${r.itemName.replace(/'/g,"\\'")}',${r.qty},'${r.department||''}','${(r.requestedBy||'').replace(/'/g,"\\'")}')">✓ Issue</button>
+              </div>
+            </div>`).join('')
+          : `<div class="empty" style="padding:20px;"><div class="ei">✅</div><div class="et">No pending requests</div></div>`;
+      } catch(e) {}
+    }
+
+    setDot('ok', 'Connected');
+  } catch(e) { toast(e.message, 'err'); setDot('err', 'Error'); }
+}
+
+// ── RECEIVED FROM STORE (Sandeep) ──
+async function loadReceived() {
+  const dateEl = document.getElementById('recv-date');
+  const catEl  = document.getElementById('recv-cat');
+  if (!dateEl.value) dateEl.value = today();
+  const date    = dateEl.value;
+  const catFilter = catEl ? catEl.value : '';
+  const wrap = document.getElementById('recv-content');
+  wrap.innerHTML = `<div class="empty"><div class="ei">⏳</div><div class="et">Loading...</div></div>`;
+
+  try {
+    if (!_stocks.length) _stocks = await api('getStockSummary');
+    const rows = await api('getOutward', { date });
+    let received = rows.filter(r => !String(r.remarks||'').startsWith('Dispatch:') && !String(r.remarks||'').startsWith('Direct Dispatch:'));
+
+    if (catFilter) {
+      received = received.filter(r => {
+        const stock = _stocks.find(s => s.name === r.itemName);
+        return stock ? stock.cat === catFilter : false;
+      });
+    }
+
+    if (!received.length) {
+      wrap.innerHTML = `<div class="empty"><div class="ei">📭</div><div class="et">Is date koi material nahi aaya</div></div>`;
+      return;
+    }
+
+    const catMap = {};
+    received.forEach(r => {
+      const stock = _stocks.find(s => s.name === r.itemName);
+      const cat = stock ? stock.cat : 'Other';
+      if (!catMap[cat]) catMap[cat] = [];
+      catMap[cat].push(r);
+    });
+
+    const cats = Object.keys(catMap).sort();
+
+    let html = `
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+        <div class="card" style="flex:1;min-width:140px;padding:14px 18px;">
+          <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;">Total Items</div>
+          <div style="font-size:28px;font-weight:700;color:var(--navy);font-family:var(--mono);margin-top:4px;">${received.length}</div>
+        </div>
+        <div class="card" style="flex:1;min-width:140px;padding:14px 18px;">
+          <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;">Categories</div>
+          <div style="font-size:28px;font-weight:700;color:var(--accent);font-family:var(--mono);margin-top:4px;">${cats.length}</div>
+        </div>
+      </div>`;
+
+    cats.forEach(cat => {
+      const items = catMap[cat];
+      const catTotal = items.reduce((s, r) => s + r.qty, 0);
+      const icon = getCatIcon(cat);
+
+      html += `<div class="card" style="margin-bottom:12px;">
+        <div style="padding:12px 16px;background:#f8faff;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:16px;">${icon}</span>
+            <span style="font-weight:700;color:var(--navy);font-size:14px;">${cat}</span>
+            <span style="font-size:11px;color:var(--muted);">${items.length} items</span>
+          </div>
+          <span style="font-family:var(--mono);font-weight:700;color:var(--accent);">${catTotal} total</span>
+        </div>
+        <div class="tw"><table>
+          <thead><tr>
+            <th>Item</th><th>Qty</th><th>Unit</th><th>Issued By</th><th>Time</th><th>Remarks</th>
+          </tr></thead>
+          <tbody>
+            ${items.map(r => `<tr>
+              <td style="font-weight:600;color:var(--navy);">${r.itemName}</td>
+              <td style="font-family:var(--mono);font-weight:700;color:var(--orange);">${r.qty}</td>
+              <td style="color:var(--muted);">${r.unit||'—'}</td>
+              <td>${r.by||'—'}</td>
+              <td style="color:var(--muted);font-size:11px;">${r.ts ? new Date(r.ts).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) : '—'}</td>
+              <td style="font-size:11px;color:var(--muted);">${r.remarks||'—'}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table></div>
+      </div>`;
+    });
+
+    wrap.innerHTML = html;
+  } catch(e) {
+    toast(e.message, 'err');
+    wrap.innerHTML = `<div class="empty"><div class="ei">❌</div><div class="et">${e.message}</div></div>`;
+  }
+}
+
+let _wipData = [];
+
+async function loadWip() {
+  const tb = document.getElementById('wip-tb');
+  const em = document.getElementById('wip-empty');
+  if (tb) tb.innerHTML = `<tr class="lrow"><td colspan="6"><span class="loader"></span></td></tr>`;
+  try {
+    const d = await api('getDashboard');
+    const stocks = d.stocks || [];
+    _wipData = stocks
+      .filter(s => (s.totalOut || 0) > 0)
+      .map(s => ({
+        name: s.name, cat: s.cat, unit: s.unit,
+        totalOut: s.totalOut || 0,
+        dispUsed: s.dispUsed || 0,
+        wip: s.wip || 0,
+      }))
+      .sort((a,b) => b.wip - a.wip);
+
+    const catF = document.getElementById('wip-cat-f');
+    if (catF) {
+      const cats = [...new Set(_wipData.map(s => s.cat).filter(Boolean))].sort();
+      const curVal = catF.value;
+      catF.innerHTML = '<option value="">All Categories</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
+      if (curVal) catF.value = curVal;
+    }
+
+    filterWip();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+function filterWip() {
+  const tb = document.getElementById('wip-tb');
+  const em = document.getElementById('wip-empty');
+  const catF = document.getElementById('wip-cat-f');
+  const cf = catF ? catF.value : '';
+  const fl = _wipData.filter(s => !cf || s.cat === cf);
+  if (!fl.length) { if (tb) tb.innerHTML = ''; if (em) em.style.display = 'block'; return; }
+  if (em) em.style.display = 'none';
+  if (tb) tb.innerHTML = fl.map(s => `<tr>
+      <td style="font-weight:600;color:var(--navy);">${s.name}</td>
+      <td>${catBadge(s.cat)}</td>
+      <td style="color:var(--muted);font-size:12px;">${s.unit||'—'}</td>
+      <td style="font-family:var(--mono);color:var(--orange);font-weight:600;">${s.totalOut}</td>
+      <td style="font-family:var(--mono);color:var(--green);font-weight:600;">${s.dispUsed}</td>
+      <td>
+        <span style="font-family:var(--mono);font-weight:800;font-size:16px;color:${s.wip>0?'var(--purple)':'var(--muted)'};">${s.wip}</span>
+        ${s.wip > 0 ? `<span style="font-size:10px;color:var(--purple);margin-left:4px;">In Production</span>` : ''}
+      </td>
+    </tr>`).join('');
+}
+
+// ── SANDEEP DASHBOARD ──
+async function loadSandeepDash() {
+  const now = new Date();
+  const hr = now.getHours();
+  const g = hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
+  const grEl = document.getElementById('sandeep-greeting');
+  if (grEl) grEl.textContent = `${g}, Sandeep 👋`;
+  const dtEl = document.getElementById('sandeep-date');
+  if (dtEl) dtEl.textContent = now.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+  function catSection(id, cat, icon, items, renderDetail) {
+    const total = items.reduce((s,i) => s + (i.qty||i.wip||0), 0);
+    const unit  = items[0] ? (items[0].unit||'') : '';
+    return `<div style="border-bottom:1px solid var(--border);">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;cursor:pointer;background:var(--s2);"
+        onclick="const d=document.getElementById('${id}');const a=document.getElementById('arr-${id}');if(d.style.display==='none'){d.style.display='block';a.textContent='▲';}else{d.style.display='none';a.textContent='▼';}">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span>${icon}</span>
+          <span style="font-weight:700;font-size:13px;color:var(--navy);">${cat}</span>
+          <span style="font-size:11px;color:var(--muted);">${items.length} items</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-family:var(--mono);font-weight:700;font-size:15px;color:var(--navy);">${total} <span style="font-size:11px;font-weight:400;color:var(--muted);">${unit}</span></span>
+          <span id="arr-${id}" style="font-size:11px;color:var(--muted);">▼</span>
+        </div>
+      </div>
+      <div id="${id}" style="display:none;">${renderDetail(items)}</div>
+    </div>`;
+  }
+
+  try {
+    const d = await api('getDashboard');
+    _stocks = d.stocks || [];
+
+    const issueEl = document.getElementById('sd-issue-section');
+    const issueSummEl = document.getElementById('sd-issue-summary');
+    try {
+      const outRows = await api('getOutward', { date: today() });
+      const issued = outRows.filter(r => !(r.remarks||'').startsWith('Dispatch:'));
+      const catMap = {};
+      issued.forEach(r => {
+        const s = _stocks.find(x => x.name === r.itemName);
+        const cat = s ? s.cat : 'Other';
+        if (!catMap[cat]) catMap[cat] = {};
+        if (!catMap[cat][r.itemName]) catMap[cat][r.itemName] = { qty: 0, unit: r.unit };
+        catMap[cat][r.itemName].qty += r.qty;
+      });
+      const cats = Object.keys(catMap).sort();
+      if (issueSummEl) issueSummEl.textContent = issued.length ? `${cats.length} categories, ${issued.length} entries` : '';
+      if (!cats.length) {
+        if (issueEl) issueEl.innerHTML = `<div class="empty" style="padding:24px;"><div class="ei">📤</div><div class="et">Nothing received today</div></div>`;
+      } else {
+        const html = cats.map(cat => {
+          const items = Object.entries(catMap[cat]).sort((a,b)=>a[0].localeCompare(b[0])).map(([name,v])=>({name,qty:v.qty,unit:v.unit}));
+          return catSection(`sd-iss-${cat}`, cat, getCatIcon(cat), items, (items) =>
+            items.map(i => `<div style="display:flex;justify-content:space-between;padding:8px 16px 8px 32px;border-bottom:1px solid var(--border);font-size:13px;">
+              <span style="color:var(--t2);">${i.name}</span>
+              <span style="font-family:var(--mono);font-weight:700;color:var(--orange);">${i.qty} <span style="font-size:11px;font-weight:400;color:var(--muted);">${i.unit||''}</span></span>
+            </div>`).join('')
+          );
+        }).join('');
+        if (issueEl) issueEl.innerHTML = html;
+      }
+    } catch(e) {}
+
+    const wipEl  = document.getElementById('sd-wip-section');
+    const wipSummEl = document.getElementById('sd-wip-summary');
+
+    const freshStocks = await api('getStockSummary');
+    const wipItems = freshStocks.filter(s => (s.wip || 0) > 0);
+    const wipCatMap = {};
+    wipItems.forEach(s => {
+      const cat = s.cat || 'Other';
+      if (!wipCatMap[cat]) wipCatMap[cat] = [];
+      wipCatMap[cat].push({ name: s.name, qty: s.wip, unit: s.unit });
+    });
+    const wipCats = Object.keys(wipCatMap).sort();
+    if (wipSummEl) wipSummEl.textContent = wipItems.length ? `${wipItems.length} items in production` : 'Nothing in WIP';
+    if (!wipCats.length) {
+      if (wipEl) wipEl.innerHTML = `<div class="empty" style="padding:24px;"><div class="ei">🏭</div><div class="et">Nothing in WIP</div></div>`;
+    } else {
+      const html = wipCats.map(cat => {
+        const items = wipCatMap[cat];
+        return catSection(`sd-wip-${cat}`, cat, getCatIcon(cat), items, (items) =>
+          items.map(i => `<div style="display:flex;justify-content:space-between;padding:8px 16px 8px 32px;border-bottom:1px solid var(--border);font-size:13px;">
+            <span style="color:var(--t2);">${i.name}</span>
+            <span style="font-family:var(--mono);font-weight:700;color:var(--purple);">${i.qty} <span style="font-size:11px;font-weight:400;color:var(--muted);">${i.unit||''}</span></span>
+          </div>`).join('')
+        );
+      }).join('');
+      if (wipEl) wipEl.innerHTML = html;
+    }
+
+    const disEl  = document.getElementById('sd-dispatch-section');
+    const disSummEl = document.getElementById('sd-dispatch-summary');
+    try {
+      const disRows = await api('getDispatch', {});
+      const todayDis = disRows.filter(r => r.date === today());
+      if (disSummEl) disSummEl.textContent = todayDis.length ? `${todayDis.length} dispatched today` : 'No dispatch today';
+      if (!todayDis.length) {
+        if (disEl) disEl.innerHTML = `<div class="empty" style="padding:24px;"><div class="ei">🚚</div><div class="et">No dispatch today</div></div>`;
+      } else {
+        const bomMap = {};
+        todayDis.forEach(r => {
+          if (!bomMap[r.bomModel]) bomMap[r.bomModel] = { qty: 0, entries: [] };
+          bomMap[r.bomModel].qty += r.qtyProduced;
+          bomMap[r.bomModel].entries.push(r);
+        });
+        const html = Object.entries(bomMap).map(([model, v]) => {
+          const items = [{name: model, qty: v.qty, unit: 'units'}];
+          return catSection(`sd-dis-${model.replace(/\s/g,'_')}`, model, '🔋', items, () =>
+            v.entries.map(r => `<div style="display:flex;justify-content:space-between;padding:8px 16px 8px 32px;border-bottom:1px solid var(--border);font-size:13px;">
+              <div>
+                <div style="font-weight:600;color:var(--navy);">${r.bomModel}</div>
+                <div style="font-size:11px;color:var(--muted);">${r.dispatchTo||'—'} · ${r.by||'—'}</div>
+              </div>
+              <span style="font-family:var(--mono);font-weight:700;color:var(--green);">×${r.qtyProduced}</span>
+            </div>`).join('')
+          );
+        }).join('');
+        if (disEl) disEl.innerHTML = html;
+      }
+    } catch(e) {}
+
+    setDot('ok', 'Connected');
+  } catch(e) { toast(e.message, 'err'); setDot('err', 'Error'); }
+}
+
+// ── ADMIN DASHBOARD CHARTS ──
+let _reorderChartInst  = null;
+let _wipChartInst      = null;
+let _categoryChartInst = null;
+
+function renderReorderChart(stocks) {
+  const canvas = document.getElementById('reorderChart');
+  if (!canvas) return;
+  const items = stocks.filter(s => s.status !== 'OK').slice(0, 12);
+  if (!items.length) {
+    canvas.parentElement.innerHTML = `<div class="empty" style="padding:40px;"><div class="ei">✅</div><div class="et">All stocks healthy!</div><div class="es">Koi reorder required nahi</div></div>`;
+    return;
+  }
+  const labels  = items.map(s => s.name.length > 14 ? s.name.slice(0,14)+'…' : s.name);
+  const current = items.map(s => s.currentStock);
+  const rop     = items.map(s => s.reorderPoint);
+  if (_reorderChartInst) _reorderChartInst.destroy();
+  _reorderChartInst = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Current Stock', data: current, backgroundColor: items.map(s => s.status === 'Critical' ? 'rgba(220,38,38,.85)' : 'rgba(234,88,12,.85)'), borderRadius: 5, borderSkipped: false },
+        { label: 'Reorder Point', data: rop, backgroundColor: 'rgba(37,88,232,.18)', borderColor: 'rgba(37,88,232,.6)', borderWidth: 1.5, borderRadius: 5, borderSkipped: false },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: {
+        legend: { position: 'top', labels: { font: { size: 11, family: 'DM Sans' }, boxWidth: 12, padding: 12 } },
+        tooltip: { callbacks: { afterBody: (i) => { const s = items[i[0].dataIndex]; return s ? [`Status: ${s.status}`, `Max: ${s.maxL||0}`] : []; } } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10, family: 'DM Sans' }, maxRotation: 35 } },
+        y: { beginAtZero: true, ticks: { font: { size: 10, family: 'DM Sans' } }, grid: { color: 'rgba(0,0,0,.04)' } }
+      }
+    }
+  });
+}
+
+function renderWipChart(wipItems) {
+  const canvas = document.getElementById('wipChart');
+  if (!canvas) return;
+  if (!wipItems || !wipItems.length) {
+    canvas.parentElement.innerHTML = `<div class="empty" style="padding:40px;"><div class="ei">🏭</div><div class="et">No WIP items</div><div class="es">Production mein kuch nahi</div></div>`;
+    return;
+  }
+  const labels = wipItems.map(s => s.name.length > 14 ? s.name.slice(0,14)+'…' : s.name);
+  const data   = wipItems.map(s => s.wip);
+  if (_wipChartInst) _wipChartInst.destroy();
+  _wipChartInst = new Chart(canvas, {
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'WIP Qty', data, backgroundColor: 'rgba(124,58,237,.8)', borderRadius: 5, borderSkipped: false }] },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { afterBody: (i) => { const s = wipItems[i[0].dataIndex]; return s ? [`Store Stock: ${s.currentStock} ${s.unit||''}`] : []; } } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10, family: 'DM Sans' }, maxRotation: 35 } },
+        y: { beginAtZero: true, ticks: { font: { size: 10, family: 'DM Sans' } }, grid: { color: 'rgba(0,0,0,.04)' } }
+      }
+    }
+  });
+}
+
+function renderCategoryChart(stocks) {
+  const canvas = document.getElementById('categoryChart');
+  if (!canvas || !stocks.length) return;
+  const catMap = {};
+  stocks.forEach(s => { catMap[s.cat||'Other'] = (catMap[s.cat||'Other']||0) + 1; });
+  const labels = Object.keys(catMap);
+  const data   = Object.values(catMap);
+  const colors = ['rgba(37,88,232,.85)','rgba(16,163,74,.85)','rgba(234,88,12,.85)','rgba(124,58,237,.85)','rgba(220,38,38,.85)','rgba(8,145,178,.85)','rgba(217,119,6,.85)','rgba(107,114,128,.85)'];
+  if (_categoryChartInst) _categoryChartInst.destroy();
+  _categoryChartInst = new Chart(canvas, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data, backgroundColor: colors.slice(0, labels.length), borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }] },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 11, family: 'DM Sans' }, boxWidth: 12, padding: 10 } },
+        tooltip: { callbacks: { label: (i) => ` ${i.label}: ${i.raw} items` } }
+      }
+    }
+  });
 }
