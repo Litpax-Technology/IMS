@@ -3231,6 +3231,44 @@ function printPO(items, supplier, expDate) {
   win.document.close();
   setTimeout(() => win.print(), 500);
 }
+function openAddPOItemModal(poId) {
+  document.getElementById('add-poi-id').value = poId;
+  document.getElementById('add-poi-cat').value = '';
+  document.getElementById('add-poi-item').innerHTML = '<option value="">-- Select Category first --</option>';
+  document.getElementById('add-poi-qty').value = '';
+  document.getElementById('add-po-item-modal').classList.add('open');
+}
+
+function filterAddPOItems() {
+  const cat = document.getElementById('add-poi-cat').value;
+  const sel = document.getElementById('add-poi-item');
+  sel.innerHTML = '<option value="">-- Select Item --</option>';
+  if (!cat) return;
+  const src = _stocks.length ? _stocks : _items;
+  src.filter(s => s.cat === cat).forEach(s => {
+    const o = document.createElement('option');
+    o.value = s.name; o.textContent = s.name;
+    sel.appendChild(o);
+  });
+}
+
+async function saveAddPOItem() {
+  const poId     = document.getElementById('add-poi-id').value;
+  const itemName = document.getElementById('add-poi-item').value;
+  const qty      = Number(document.getElementById('add-poi-qty').value);
+  if (!itemName) { toast('Item select karo', 'err'); return; }
+  if (!qty || qty <= 0) { toast('Valid qty daalo', 'err'); return; }
+  const btn = document.getElementById('add-poi-btn');
+  btn.disabled = true; btn.textContent = 'Adding...';
+  try {
+    await api('addPOItem', { poId, itemName, qty });
+    toast('Item added ✓', 'ok');
+    closeM('add-po-item-modal');
+    loadPOItems(poId);
+    loadIndents();
+  } catch(e) { toast(e.message, 'err'); }
+  finally { btn.disabled = false; btn.textContent = 'Add Item'; }
+}
 
 function printSinglePO(id, itemName, qty, supplier, expDate) {
   const s = _stocks.find(x => x.name === itemName);
