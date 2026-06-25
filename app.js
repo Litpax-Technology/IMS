@@ -2082,7 +2082,6 @@ async function saveCreatePO() {
     }
   });
 
-  // Manual items
   const manualRows = document.getElementById('po-manual-rows');
   if (manualRows) {
     const n = manualRows.children.length;
@@ -2098,26 +2097,9 @@ async function saveCreatePO() {
 
   if (!toCreate.length) { toast('Koi item select nahi hai', 'err'); return; }
 
-  const btn = document.getElementById('po-btn');
-  btn.disabled = true; btn.textContent = 'Creating...';
-
-  try {
-    const r = await api('createPO', {
-      supplier,
-      expectedDate: expDate,
-      items: toCreate,
-      remarks: 'Auto PO from Reorder',
-    });
-    toast(`✓ PO created — ${r.poId} (${r.itemCount} items)`, 'ok');
-    closeM('create-po-modal');
-    _stocks = [];
-    loadReorder();
-    setTimeout(() => {
-      showPage('indent');
-      printPOById(r.poId, supplier, expDate);
-    }, 800);
-  } catch(e) { toast(e.message, 'err'); }
-  finally { btn.disabled = false; btn.textContent = '✓ Create PO'; }
+  // Save nahi — pehle preview dikhao
+  _pendingPOData = { supplier, expDate, items: toCreate };
+  previewPOBeforeSave(toCreate, supplier, expDate);
 }
 
 function openIndentModal() {
@@ -2453,6 +2435,184 @@ function renderSbOut() {
       <div style="font-size:11px;color:rgba(255,255,255,.7);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</div>
       <span style="font-size:10px;font-weight:700;color:rgba(234,88,12,.9);flex-shrink:0;">-${v.qty} <span style="font-weight:400;opacity:.6;">${v.unit||''}</span></span>
     </div>`).join('');
+}
+
+let _pendingPOData = null;
+
+function previewPOBeforeSave(items, supplier, expDate) {
+  const catOrder = _config.catOrder || [];
+  const sorted = [...items].sort((a, b) => {
+    const sa = _stocks.find(s => s.name === a.itemName);
+    const sb = _stocks.find(s => s.name === b.itemName);
+    const ca = sa ? sa.cat : 'Other';
+    const cb = sb ? sb.cat : 'Other';
+    const ia = catOrder.indexOf(ca);
+    const ib = catOrder.indexOf(cb);
+    if (ia !== ib) return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+    return a.itemName.localeCompare(b.itemName);
+  });
+
+  const grouped = {};
+  sorted.forEach(item => {
+    const s = _stocks.find(x => x.name === item.itemName);
+    const cat = s ? s.cat : 'Other';
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push({ ...item, unit: s ? s.unit : 'Pcs' });
+  });
+
+  const catIcons = {
+    'Cells':'🔋','BMS':'⚡','Charger':'🔌','Nickel/Busbar':'🪙',
+    'Box':'📦','Wire':'🔩','Consumables':'🧰','Tools':'🔧','Packaging':'📦'
+  };
+
+  const dateStr = new Date().toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+
+  let itemsHTML = '';
+  catOrder.forEach(cat => {
+    if (!grouped[cat]) return;
+    itemsHTML += `
+      <tr class="cat-row"><td colspan="4">${catIcons[cat]||'📦'} ${cat}</td></tr>
+      ${grouped[cat].map((item, i) => `
+        <tr>
+          <td class="sl">${i+1}</td>
+          <td class="iname">${item.itemName}</td>
+          <td class="center">${item.unit}</td>
+          <td class="center qty">${item.qty}</td>
+        </tr>
+      `).join('')}
+    `;
+  });
+
+  const apiUrl  = API;
+  const itemsJson    = JSON.stringify(items);
+  const supplierJson = JSON.stringify(supplier);
+  const expDateJson  = JSON.stringify(expDate);
+
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <title>PO Preview — Approval Pending</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a2e; padding: 32px; font-size: 13px; }
+    .topbar { background: #0d1f3c; color: #fff; padding: 12px 24px; margin: -32px -32px 24px; display: flex; justify-content: space-between; align-items: center; }
+    .topbar-title { font-weight: 700; font-size: 14px; }
+    .topbar-note  { font-size: 11px; opacity: .7; }
+    .btn-row { display: flex; gap: 10px; }
+    .btn-confirm { background: #1D9E75; color: #fff; border: none; padding: 10px 24px; border-radius: 6px; font-weight: 700; cursor: pointer; font-size: 13px; }
+    .btn-cancel  { background: #dc2626; color: #fff; border: none; padding: 10px 24px; border-radius: 6px; font-weight: 700; cursor: pointer; font-size: 13px; }
+    .btn-print   { background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,.4); padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 12px; }
+    .warning-banner { background: #fff7ed; border: 1.5px solid #fed7aa; border-radius: 8px; padding: 12px 18px; margin-bottom: 20px; font-size: 13px; color: #92400e; font-weight: 600; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #0d1f3c; }
+    .company-name { font-size: 22px; font-weight: 800; color: #0d1f3c; }
+    .company-sub  { font-size: 11px; color: #6b7280; margin-top: 3px; }
+    .po-title h2  { font-size: 20px; font-weight: 800; color: #0d1f3c; text-align: right; }
+    .draft-badge  { font-size: 12px; color: #dc2626; font-weight: 700; text-align: right; margin-top: 4px; border: 1.5px solid #dc2626; padding: 2px 10px; border-radius: 20px; display: inline-block; }
+    .meta-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 22px; }
+    .meta-box { background: #f8faff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 14px; }
+    .meta-label { font-size: 9px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .7px; margin-bottom: 4px; }
+    .meta-value { font-size: 13px; font-weight: 600; color: #0d1f3c; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+    thead th { background: #0d1f3c; color: #fff; padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; }
+    thead th.center { text-align: center; }
+    .cat-row td { background: #f0f4ff; color: #2558e8; font-weight: 700; font-size: 12px; padding: 8px 14px; border-bottom: 1px solid #e5e7eb; }
+    tbody tr td { padding: 9px 14px; border-bottom: 1px solid #f0f2f5; }
+    .sl { color: #9ca3af; font-size: 11px; width: 36px; }
+    .iname { font-weight: 500; }
+    .center { text-align: center; }
+    .qty { font-weight: 700; color: #0d1f3c; font-size: 14px; }
+    .total-row { font-size: 13px; color: #6b7280; text-align: right; margin-top: -16px; margin-bottom: 20px; }
+    @media print { .topbar { display: none; } .warning-banner { display: none; } body { padding: 16px; } }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div>
+      <div class="topbar-title">⚠ DRAFT — Owner Approval Pending</div>
+      <div class="topbar-note">Approve karo tab PO save hoga</div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-print" onclick="window.print()">🖨 Print Draft</button>
+      <button class="btn-cancel" onclick="window.close()">✕ Cancel</button>
+      <button class="btn-confirm" onclick="confirmAndSavePO()">✓ Approve & Save PO</button>
+    </div>
+  </div>
+
+  <div class="warning-banner">
+    ⚠ Yeh sirf PREVIEW hai — PO abhi save nahi hua. "Approve & Save PO" click karne par PO confirm hoga.
+  </div>
+
+  <div class="header">
+    <div>
+      <div class="company-name">Litpax Technology Pvt. Ltd.</div>
+      <div class="company-sub">Lithium Battery Manufacturer</div>
+    </div>
+    <div class="po-title">
+      <h2>PURCHASE ORDER</h2>
+      <div class="draft-badge">🕐 DRAFT — Approval Pending</div>
+    </div>
+  </div>
+
+  <div class="meta-grid">
+    <div class="meta-box"><div class="meta-label">PO Date</div><div class="meta-value">${dateStr}</div></div>
+    <div class="meta-box"><div class="meta-label">Supplier</div><div class="meta-value">${supplier || '—'}</div></div>
+    <div class="meta-box"><div class="meta-label">Expected Delivery</div><div class="meta-value">${expDate ? new Date(expDate+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '—'}</div></div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:36px;">#</th>
+        <th>Item Name</th>
+        <th class="center" style="width:80px;">Unit</th>
+        <th class="center" style="width:80px;">Qty</th>
+      </tr>
+    </thead>
+    <tbody>${itemsHTML}</tbody>
+  </table>
+  <div class="total-row">Total Items: <b style="color:#0d1f3c;">${items.length}</b></div>
+
+  <script>
+    async function confirmAndSavePO() {
+      const btn = document.querySelector('.btn-confirm');
+      btn.disabled = true;
+      btn.textContent = '⏳ Saving...';
+      try {
+        const resp = await fetch('${apiUrl}', {
+          method: 'POST',
+          redirect: 'follow',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({
+            action: 'createPO',
+            supplier: ${supplierJson},
+            expectedDate: ${expDateJson},
+            items: ${itemsJson},
+            remarks: 'Auto PO from Reorder',
+          }),
+        });
+        const text = await resp.text();
+        const data = JSON.parse(text);
+        if (data.error) throw new Error(data.error);
+        document.querySelector('.warning-banner').style.background = '#f0fdf4';
+        document.querySelector('.warning-banner').style.borderColor = '#86efac';
+        document.querySelector('.warning-banner').style.color = '#166534';
+        document.querySelector('.warning-banner').innerHTML = '✅ PO Saved! PO ID: <b>' + data.poId + '</b> (' + data.itemCount + ' items)';
+        document.querySelector('.draft-badge').textContent = '✓ CONFIRMED — ' + data.poId;
+        document.querySelector('.draft-badge').style.color = '#166534';
+        document.querySelector('.draft-badge').style.borderColor = '#166534';
+        btn.textContent = '✓ Saved!';
+        setTimeout(() => window.print(), 600);
+      } catch(e) {
+        btn.disabled = false;
+        btn.textContent = '✓ Approve & Save PO';
+        alert('Error: ' + e.message);
+      }
+    }
+  <\/script>
+</body>
+</html>`);
+  win.document.close();
 }
 
 // ── PO PRINT ──
