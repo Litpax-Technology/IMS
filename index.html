@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Litpax IMS</title>
 <link rel="stylesheet" href="style.css?v=5">
+<link rel="stylesheet" href="agent.css"> 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
@@ -988,6 +989,42 @@
   </div>
 </div>
 
+  <!-- IMS AGENT -->
+<button id="ims-fab" onclick="imsToggle()" title="IMS Agent">
+  <div class="fab-logo">L</div>
+  <span class="fab-x">✕</span>
+</button>
+
+<div id="ims-popup">
+  <div id="ims-head">
+    <div class="h-logo">L</div>
+    <div>
+      <div class="h-name">IMS Agent</div>
+      <div class="h-sub">Litpax Inventory Assistant</div>
+    </div>
+    <div id="ims-dot"></div>
+  </div>
+  <div id="ims-msgs">
+    <div class="im b">
+      <div class="ib">Namaste! 👋 Stock, reorder, dispatch, WIP — kuch bhi poochho.</div>
+      <div class="its">Abhi</div>
+    </div>
+  </div>
+  <div id="ims-chips">
+    <span class="ic" onclick="imsAsk('BMS ka stock kitna hai?')">BMS stock</span>
+    <span class="ic" onclick="imsAsk('Reorder kya chahiye abhi?')">Reorder</span>
+    <span class="ic" onclick="imsAsk('Aaj inward kya hua?')">Aaj inward</span>
+    <span class="ic" onclick="imsAsk('WIP mein kya chal raha hai?')">WIP</span>
+    <span class="ic" onclick="imsAsk('Cells ka status kya hai?')">Cells</span>
+  </div>
+  <div id="ims-bar">
+    <input id="ims-inp" placeholder="Kuch bhi poochho..." onkeydown="if(event.key==='Enter') imsSend()" />
+    <button id="ims-send" onclick="imsSend()">↑</button>
+  </div>
+</div>
+
+
+<script src="agent.js"></script>     <!-- ADD THIS -->
 <script src="app.js?v=50"></script>
 </body>
 </html>
