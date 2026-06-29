@@ -1816,12 +1816,23 @@ function filterOpeningStock() {
   tb.innerHTML = filtered.map(item => {
     const existing = openMap[item.name] || {};
     const sid = safeId(item.name);
+    const isLocked = existing.qty !== undefined && existing.qty !== '';
+
+    const lockedStyle = 'background:var(--s2);color:var(--muted);cursor:not-allowed;';
+    const lockedAttr  = 'readonly onclick="toast(\'Opening stock lock ho chuka hai — change nahi ho sakta\',\'warn\')"';
+
     return `<tr>
-      <td style="font-weight:600;color:var(--navy);">${item.name} <span style="font-size:10px;color:var(--muted);">${item.unit||''}</span></td>
-      <td><input class="inp" id="sku-${sid}" value="${existing.sku||''}" placeholder="SKU001" style="width:100px;"></td>
+      <td style="font-weight:600;color:var(--navy);">
+        ${item.name} <span style="font-size:10px;color:var(--muted);">${item.unit||''}</span>
+        ${isLocked ? '<span class="badge b-ok" style="font-size:9px;margin-left:4px;">🔒 Locked</span>' : ''}
+      </td>
+      <td><input class="inp" id="sku-${sid}" value="${existing.sku||''}" placeholder="SKU001"
+        style="width:100px;${isLocked ? lockedStyle : ''}" ${isLocked ? lockedAttr : ''}></td>
       <td style="color:var(--muted);font-size:12px;">${item.unit||'—'}</td>
-      <td><input class="inp" id="op-${sid}" type="number" min="0" value="${existing.qty||0}" style="width:110px;font-family:var(--mono);font-weight:600;"></td>
-      <td><input class="inp" id="rem-${sid}" value="${existing.remarks||''}" placeholder="Optional" style="width:150px;"></td>
+      <td><input class="inp" id="op-${sid}" type="number" min="0" value="${existing.qty||0}"
+        style="width:110px;font-family:var(--mono);font-weight:600;${isLocked ? lockedStyle : ''}" ${isLocked ? lockedAttr : ''}></td>
+      <td><input class="inp" id="rem-${sid}" value="${existing.remarks||''}" placeholder="Optional"
+        style="width:150px;${isLocked ? lockedStyle : ''}" ${isLocked ? lockedAttr : ''}></td>
     </tr>`;
   }).join('');
 }
