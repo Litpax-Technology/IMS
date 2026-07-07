@@ -3,380 +3,209 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Litpax IMS — Owner Dashboard</title>
+<title>Litpax — Current Stock</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --navy:#0d1f3c; --accent:#2558e8; --green:#16a34a; --red:#dc2626;
-    --orange:#ea580c; --purple:#7c3aed; --teal:#0891b2;
-    --bg:#f2f5fb; --card:#ffffff; --border:#e5e9f2; --muted:#6b7280;
-    --mono:'JetBrains Mono',monospace; --display:'Sora',sans-serif;
+    --navy:#0d1f3c; --accent:#2558e8; --green:#16a34a; --red:#dc2626; --orange:#ea580c;
+    --purple:#7c3aed; --bg:#f2f5fb; --card:#fff; --border:#e5e9f2; --muted:#6b7280;
+    --mono:'JetBrains Mono',monospace;
   }
   *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);padding:22px;min-height:100vh;}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--navy);padding:18px;min-height:100vh;}
 
-  /* ── HEADER ── */
-  .top{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:20px;}
-  .brand h1{font-family:var(--display);font-size:21px;font-weight:800;letter-spacing:-.3px;}
-  .brand h1 span{color:var(--accent);}
-  .brand p{font-size:12px;color:var(--muted);margin-top:2px;}
-  .refresh-box{text-align:right;font-size:11px;color:var(--muted);}
-  .refresh-box .live{display:inline-flex;align-items:center;gap:6px;font-weight:600;color:var(--green);}
-  .live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
-  .live-dot.err{background:var(--red);animation:none;}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
-  .refresh-btn{margin-top:6px;background:#fff;border:1.5px solid var(--border);border-radius:8px;padding:6px 14px;font-family:'DM Sans';font-size:12px;font-weight:600;color:var(--navy);cursor:pointer;}
+  .top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;}
+  .top h1{font-size:19px;font-weight:800;letter-spacing:-.3px;}
+  .top h1 span{color:var(--accent);}
+  .upd{font-size:11px;color:var(--muted);text-align:right;}
+  .upd .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:5px;animation:pulse 2s infinite;}
+  .upd .dot.err{background:var(--red);animation:none;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+  .inp{background:#fff;border:1.5px solid var(--border);border-radius:9px;padding:9px 13px;font-family:'DM Sans';font-size:13px;color:var(--navy);outline:none;}
+  .inp:focus{border-color:var(--accent);}
+  #search{flex:1;min-width:180px;}
+  .refresh-btn{background:#fff;border:1.5px solid var(--border);border-radius:9px;padding:9px 16px;font-family:'DM Sans';font-size:13px;font-weight:600;color:var(--navy);cursor:pointer;}
   .refresh-btn:hover{border-color:var(--accent);color:var(--accent);}
 
-  /* ── SIGNATURE: BATTERY HEALTH GAUGE ── */
-  .hero{background:linear-gradient(120deg,#0d1f3c,#16305e);border-radius:16px;padding:22px 26px;display:flex;align-items:center;gap:28px;flex-wrap:wrap;margin-bottom:18px;color:#fff;}
-  .battery{position:relative;width:190px;height:78px;border:3px solid rgba(255,255,255,.85);border-radius:12px;flex-shrink:0;}
-  .battery::after{content:'';position:absolute;right:-13px;top:24px;width:10px;height:30px;background:rgba(255,255,255,.85);border-radius:0 4px 4px 0;}
-  .battery-fill{position:absolute;left:4px;top:4px;bottom:4px;border-radius:7px;width:0%;transition:width 1.2s cubic-bezier(.2,.8,.2,1);background:var(--green);}
-  .battery-pct{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:26px;font-weight:800;text-shadow:0 1px 3px rgba(0,0,0,.35);}
-  .hero-text h2{font-family:var(--display);font-size:17px;font-weight:700;margin-bottom:4px;}
-  .hero-text p{font-size:13px;color:rgba(255,255,255,.75);}
-  .hero-stats{margin-left:auto;display:flex;gap:26px;flex-wrap:wrap;}
-  .hstat{text-align:center;}
-  .hstat .v{font-family:var(--mono);font-size:24px;font-weight:800;}
-  .hstat .l{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:rgba(255,255,255,.65);margin-top:3px;}
-  .hstat .v.ok{color:#4ade80}.hstat .v.warn{color:#fb923c}.hstat .v.bad{color:#f87171}
+  .summary{font-size:12px;color:var(--muted);margin-bottom:12px;}
 
-  /* ── KPI GRID ── */
-  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px;}
-  .kpi{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;position:relative;overflow:hidden;}
-  .kpi::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--kc,var(--accent));}
-  .kpi .lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);}
-  .kpi .val{font-family:var(--mono);font-size:28px;font-weight:800;margin-top:6px;color:var(--kc,var(--navy));}
-  .kpi .sub{font-size:11px;color:var(--muted);margin-top:2px;}
+  .cat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden;}
+  .cat-head{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#f8faff;border-bottom:1px solid var(--border);cursor:pointer;user-select:none;}
+  .cat-head .l{display:flex;align-items:center;gap:8px;}
+  .cat-head h2{font-size:14px;font-weight:700;}
+  .cat-head .count{font-size:11px;color:var(--muted);}
+  .cat-head .total{font-family:var(--mono);font-weight:800;font-size:14px;color:var(--accent);}
+  .cat-head .arr{font-size:11px;color:var(--muted);margin-left:10px;}
 
-  /* ── CARDS / GRID ── */
-  .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px;}
-  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
-  .card .ch{padding:13px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
-  .card .ch h3{font-family:var(--display);font-size:13.5px;font-weight:700;}
-  .card .ch .meta{font-size:11px;color:var(--muted);}
-  .card .cb{padding:16px 18px;}
-  .span-4{grid-column:span 4}.span-6{grid-column:span 6}.span-8{grid-column:span 8}.span-12{grid-column:span 12}
-  @media(max-width:980px){.span-4,.span-6,.span-8{grid-column:span 12}.hero-stats{margin-left:0}}
+  .item-row{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);gap:10px;}
+  .item-row:last-child{border-bottom:none;}
+  .item-row:hover{background:#fafbff;}
+  .iname{font-weight:600;font-size:13.5px;flex:1;min-width:0;}
+  .iunit{font-size:11px;color:var(--muted);font-weight:400;}
+  .qty{font-family:var(--mono);font-weight:800;font-size:17px;flex-shrink:0;text-align:right;}
+  .qty small{font-size:10px;font-weight:500;color:var(--muted);}
+  .st{font-size:9.5px;font-weight:700;padding:3px 9px;border-radius:20px;flex-shrink:0;min-width:66px;text-align:center;}
+  .st.ok{background:#f0fdf4;color:var(--green);}
+  .st.ro{background:#fff7ed;color:var(--orange);}
+  .st.cr{background:#fef2f2;color:var(--red);}
+  .wip{font-size:10px;color:var(--purple);font-weight:600;}
 
-  /* ── ATTENTION LIST ── */
-  .att-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);gap:10px;}
-  .att-row:last-child{border-bottom:none;}
-  .att-name{font-weight:600;font-size:13px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .att-cat{font-size:10px;color:var(--muted);}
-  .att-qty{font-family:var(--mono);font-weight:800;font-size:14px;flex-shrink:0;}
-  .pill{font-size:9.5px;font-weight:700;padding:3px 9px;border-radius:20px;flex-shrink:0;}
-  .pill.cr{background:#fef2f2;color:var(--red);}
-  .pill.ro{background:#fff7ed;color:var(--orange);}
-
-  /* ── MOVEMENT ── */
-  .move{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
-  .mv{border:1px solid var(--border);border-radius:10px;padding:12px 14px;text-align:center;}
-  .mv .n{font-family:var(--mono);font-size:24px;font-weight:800;}
-  .mv .t{font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-top:3px;}
-
-  .empty{text-align:center;padding:30px 10px;color:var(--muted);font-size:13px;}
-  .empty .ei{font-size:26px;margin-bottom:6px;}
-  .loader{display:inline-block;width:16px;height:16px;border:2.5px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
+  .empty{text-align:center;padding:44px 10px;color:var(--muted);font-size:13px;}
+  .empty .ei{font-size:28px;margin-bottom:8px;}
+  .loader{display:inline-block;width:18px;height:18px;border:2.5px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
   @keyframes spin{to{transform:rotate(360deg)}}
-  canvas{max-height:260px;}
-  .foot{text-align:center;font-size:11px;color:var(--muted);margin-top:22px;padding-bottom:8px;}
-  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+  @media(max-width:560px){
+    body{padding:12px;}
+    .qty{font-size:15px;}
+    .st{min-width:auto;padding:3px 7px;}
+  }
+  @media(prefers-reduced-motion:reduce){*{animation:none!important}}
 </style>
 </head>
 <body>
 
 <div class="top">
-  <div class="brand">
-    <h1>Litpax <span>IMS</span> — Owner Dashboard</h1>
-    <p id="today-date">Loading date…</p>
-  </div>
-  <div class="refresh-box">
-    <div class="live"><span class="live-dot" id="live-dot"></span><span id="live-lbl">Connecting…</span></div>
-    <div id="last-upd" style="margin-top:4px;">—</div>
-    <button class="refresh-btn" onclick="loadAll()">↻ Refresh Now</button>
+  <h1>Litpax <span>Store Stock</span></h1>
+  <div class="upd">
+    <div><span class="dot" id="dot"></span><span id="dot-lbl">Connecting…</span></div>
+    <div id="last-upd" style="margin-top:3px;">—</div>
   </div>
 </div>
 
-<!-- SIGNATURE: STOCK HEALTH BATTERY -->
-<div class="hero">
-  <div class="battery">
-    <div class="battery-fill" id="bat-fill"></div>
-    <div class="battery-pct" id="bat-pct">—</div>
-  </div>
-  <div class="hero-text">
-    <h2>Stock Health</h2>
-    <p id="bat-sub">Kitne items healthy level pe hain</p>
-  </div>
-  <div class="hero-stats">
-    <div class="hstat"><div class="v ok" id="h-ok">—</div><div class="l">Healthy</div></div>
-    <div class="hstat"><div class="v warn" id="h-ro">—</div><div class="l">Reorder</div></div>
-    <div class="hstat"><div class="v bad" id="h-cr">—</div><div class="l">Critical</div></div>
-  </div>
+<div class="toolbar">
+  <input class="inp" id="search" placeholder="🔍 Item search karo…" oninput="render()">
+  <select class="inp" id="cat-f" onchange="render()"><option value="">All Categories</option></select>
+  <button class="refresh-btn" onclick="loadStock()">↻ Refresh</button>
 </div>
 
-<!-- KPI CARDS -->
-<div class="kpis">
-  <div class="kpi" style="--kc:var(--accent)"><div class="lbl">Total Items</div><div class="val" id="k-total">—</div><div class="sub">Master list</div></div>
-  <div class="kpi" style="--kc:var(--purple)"><div class="lbl">WIP Items</div><div class="val" id="k-wip">—</div><div class="sub">Production mein</div></div>
-  <div class="kpi" style="--kc:var(--orange)"><div class="lbl">Pending Requests</div><div class="val" id="k-req">—</div><div class="sub">Material requests</div></div>
-  <div class="kpi" style="--kc:var(--teal)"><div class="lbl">Pending POs</div><div class="val" id="k-po">—</div><div class="sub">Awaiting delivery</div></div>
-  <div class="kpi" style="--kc:var(--green)"><div class="lbl">Dispatch Today</div><div class="val" id="k-dis">—</div><div class="sub" id="k-dis-sub">units</div></div>
-</div>
-
-<div class="grid">
-
-  <!-- TODAY'S MOVEMENT -->
-  <div class="card span-4">
-    <div class="ch"><h3>📦 Aaj Ka Movement</h3><span class="meta" id="mv-date"></span></div>
-    <div class="cb">
-      <div class="move">
-        <div class="mv"><div class="n" style="color:var(--green)" id="mv-in">—</div><div class="t">Inward Entries</div></div>
-        <div class="mv"><div class="n" style="color:var(--orange)" id="mv-out">—</div><div class="t">Outward Entries</div></div>
-        <div class="mv"><div class="n" style="color:var(--accent)" id="mv-dis">—</div><div class="t">Dispatches</div></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- CATEGORY DOUGHNUT -->
-  <div class="card span-4">
-    <div class="ch"><h3>🗂 Items by Category</h3></div>
-    <div class="cb" id="cat-wrap"><canvas id="catChart"></canvas></div>
-  </div>
-
-  <!-- ATTENTION LIST -->
-  <div class="card span-4">
-    <div class="ch"><h3>⚠️ Attention Required</h3><span class="meta" id="att-count"></span></div>
-    <div class="cb" id="att-list"><div class="empty"><span class="loader"></span></div></div>
-  </div>
-
-  <!-- REORDER CHART -->
-  <div class="card span-8">
-    <div class="ch"><h3>📉 Critical &amp; Reorder Items — Stock vs ROP</h3></div>
-    <div class="cb" id="ro-wrap"><canvas id="roChart"></canvas></div>
-  </div>
-
-  <!-- TOP WIP -->
-  <div class="card span-4">
-    <div class="ch"><h3>🏭 Top WIP</h3><span class="meta">Production floor pe</span></div>
-    <div class="cb" id="wip-list"><div class="empty"><span class="loader"></span></div></div>
-  </div>
-
-  <!-- TODAY'S DISPATCH DETAIL -->
-  <div class="card span-12">
-    <div class="ch"><h3>🚚 Aaj Ke Dispatch</h3><span class="meta" id="dis-count"></span></div>
-    <div class="cb" id="dis-list"><div class="empty"><span class="loader"></span></div></div>
-  </div>
-
-</div>
-
-<div class="foot">Litpax Technology Pvt. Ltd. — read-only dashboard · auto-refresh har 5 minute</div>
+<div class="summary" id="summary"></div>
+<div id="content"><div class="empty"><span class="loader"></span><div style="margin-top:10px;">Stock load ho raha hai…</div></div></div>
 
 <script>
-// ═══ CONFIG — same GAS URL as IMS app.js ═══
+// ═══ Same GAS URL as IMS app.js ═══
 const API = 'https://script.google.com/macros/s/AKfycby2VJa8pHD443hbxK009Mc4sXepMu_ZK13cdN4WmUeeY6bFo1YmK-Eoe_4RQioJ8LpG/exec';
-const REFRESH_MIN = 5;
 
-let _catChart = null, _roChart = null;
+const CAT_ORDER = ['Cells','BMS','Charger','Nickel/Busbar','Box','Wire','Consumables','Tools','Packaging'];
+const CAT_ICONS = {'Cells':'🔋','BMS':'⚡','Charger':'🔌','Nickel/Busbar':'🪙','Box':'📦','Wire':'🔩','Consumables':'🧰','Tools':'🔧','Packaging':'📦'};
 
-function today(){ return new Date().toISOString().slice(0,10); }
+let _stocks = [];
+let _openCats = {}; // sab default open
+
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-async function api(action, body){
-  let r;
-  if (body){
-    r = await fetch(API, { method:'POST', redirect:'follow', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action, ...body }) });
-  } else {
-    r = await fetch(`${API}?action=${action}`, { redirect:'follow' });
-  }
-  const d = JSON.parse(await r.text());
-  if (d.error) throw new Error(d.error);
-  return d;
-}
-
-function setLive(ok, lbl){
-  const dot = document.getElementById('live-dot');
-  document.getElementById('live-lbl').textContent = lbl;
-  dot.className = 'live-dot' + (ok ? '' : ' err');
-}
-
-// ═══ MAIN LOADER ═══
-async function loadAll(){
-  document.getElementById('today-date').textContent =
-    new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-  document.getElementById('mv-date').textContent =
-    new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
-  setLive(true,'Refreshing…');
-
+async function loadStock(){
+  document.getElementById('dot-lbl').textContent = 'Refreshing…';
   try{
-    const [d, inRows, outRows, disRows] = await Promise.all([
-      api('getDashboard'),
-      api('getInward',  { date: today() }).catch(()=>[]),
-      api('getOutward', { date: today() }).catch(()=>[]),
-      api('getDispatch',{}).catch(()=>[]),
-    ]);
+    const r = await fetch(`${API}?action=getStockSummary`, { redirect:'follow' });
+    const d = JSON.parse(await r.text());
+    if (d.error) throw new Error(d.error);
+    _stocks = d;
 
-    const stocks = d.stocks || [];
-    const okC = stocks.filter(s=>s.status==='OK').length;
-    const roC = stocks.filter(s=>s.status==='Reorder').length;
-    const crC = stocks.filter(s=>s.status==='Critical').length;
-    const total = stocks.length || d.totalItems || 0;
+    // category filter dropdown fill (ek baar)
+    const sel = document.getElementById('cat-f');
+    if (sel.options.length <= 1){
+      const cats = [...new Set(_stocks.map(s=>s.cat||'Other'))].sort((a,b)=>{
+        const ai=CAT_ORDER.indexOf(a), bi=CAT_ORDER.indexOf(b);
+        if(ai===-1&&bi===-1) return a.localeCompare(b);
+        if(ai===-1) return 1; if(bi===-1) return -1;
+        return ai-bi;
+      });
+      cats.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; sel.appendChild(o); });
+    }
 
-    // ── Battery health gauge ──
-    const pct = total ? Math.round(okC/total*100) : 0;
-    const fill = document.getElementById('bat-fill');
-    fill.style.width = Math.max(pct,4) + '%';
-    fill.style.background = pct>=70 ? 'var(--green)' : pct>=40 ? 'var(--orange)' : 'var(--red)';
-    document.getElementById('bat-pct').textContent = pct + '%';
-    document.getElementById('bat-sub').textContent = `${okC} of ${total} items healthy stock level pe hain`;
-    document.getElementById('h-ok').textContent = okC;
-    document.getElementById('h-ro').textContent = roC;
-    document.getElementById('h-cr').textContent = crC;
-
-    // ── KPIs ──
-    document.getElementById('k-total').textContent = total;
-    document.getElementById('k-wip').textContent   = (d.wipItems||[]).length;
-    document.getElementById('k-req').textContent   = d.pendingRequests || 0;
-    document.getElementById('k-po').textContent    = d.pendingIndents || 0;
-
-    // ── Today's movement ──
-    const manualOut = outRows.filter(r => !String(r.remarks||'').startsWith('Dispatch:'));
-    document.getElementById('mv-in').textContent  = inRows.length;
-    document.getElementById('mv-out').textContent = manualOut.length;
-    const todayDis = disRows.filter(r => r.date === today());
-    const disUnits = todayDis.reduce((s,r)=> s + (r.qtyProduced||0), 0);
-    document.getElementById('mv-dis').textContent = todayDis.length;
-    document.getElementById('k-dis').textContent  = disUnits;
-    document.getElementById('k-dis-sub').textContent = todayDis.length + ' entries';
-
-    renderAttention(stocks);
-    renderCatChart(stocks);
-    renderRoChart(stocks);
-    renderWip(stocks);
-    renderDispatch(todayDis);
-
-    setLive(true,'Live');
+    render();
+    document.getElementById('dot').className = 'dot';
+    document.getElementById('dot-lbl').textContent = 'Live';
     document.getElementById('last-upd').textContent =
-      'Updated: ' + new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+      'Updated: ' + new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
   } catch(e){
-    setLive(false,'Connection error');
-    document.getElementById('last-upd').textContent = e.message;
+    document.getElementById('dot').className = 'dot err';
+    document.getElementById('dot-lbl').textContent = 'Error';
+    document.getElementById('content').innerHTML =
+      `<div class="empty"><div class="ei">❌</div>${esc(e.message)}<br><br><button class="refresh-btn" onclick="loadStock()">↻ Dobara Try Karo</button></div>`;
   }
 }
 
-// ═══ ATTENTION LIST ═══
-function renderAttention(stocks){
-  const bad = stocks.filter(s=>s.status!=='OK')
-    .sort((a,b)=> (a.status==='Critical'?0:1) - (b.status==='Critical'?0:1))
-    .slice(0,8);
-  const el = document.getElementById('att-list');
-  document.getElementById('att-count').textContent = bad.length ? bad.length + ' items' : '';
-  if (!bad.length){
-    el.innerHTML = `<div class="empty"><div class="ei">✅</div>Sab stocks healthy hain — koi action nahi chahiye</div>`;
+function render(){
+  const q  = document.getElementById('search').value.toLowerCase();
+  const cf = document.getElementById('cat-f').value;
+  const el = document.getElementById('content');
+
+  const fl = _stocks.filter(s =>
+    (!q  || s.name.toLowerCase().includes(q)) &&
+    (!cf || (s.cat||'Other') === cf)
+  );
+
+  document.getElementById('summary').textContent =
+    fl.length ? `${fl.length} items` + (q||cf ? ` (filtered from ${_stocks.length})` : '') : '';
+
+  if (!fl.length){
+    el.innerHTML = `<div class="empty"><div class="ei">📭</div>Koi item nahi mila</div>`;
     return;
   }
-  el.innerHTML = bad.map(s=>`
-    <div class="att-row">
-      <div style="flex:1;min-width:0;">
-        <div class="att-name">${esc(s.name)}</div>
-        <div class="att-cat">${esc(s.cat||'')} · ROP ${s.reorderPoint}</div>
-      </div>
-      <span class="att-qty" style="color:${s.status==='Critical'?'var(--red)':'var(--orange)'}">${s.currentStock} <span style="font-size:10px;font-weight:500;color:var(--muted)">${esc(s.unit||'')}</span></span>
-      <span class="pill ${s.status==='Critical'?'cr':'ro'}">${s.status==='Critical'?'CRITICAL':'REORDER'}</span>
-    </div>`).join('');
-}
 
-// ═══ CATEGORY DOUGHNUT ═══
-function renderCatChart(stocks){
-  const cv = document.getElementById('catChart');
-  if (!cv || !stocks.length) return;
-  const map = {};
-  stocks.forEach(s=>{ const c=s.cat||'Other'; map[c]=(map[c]||0)+1; });
-  const colors = ['#2558e8','#16a34a','#ea580c','#7c3aed','#dc2626','#0891b2','#d97706','#6b7280','#0d9488'];
-  if (_catChart) _catChart.destroy();
-  _catChart = new Chart(cv,{
-    type:'doughnut',
-    data:{ labels:Object.keys(map), datasets:[{ data:Object.values(map), backgroundColor:colors, borderWidth:2, borderColor:'#fff', hoverOffset:5 }] },
-    options:{ responsive:true, cutout:'62%',
-      plugins:{ legend:{ position:'bottom', labels:{ font:{size:11,family:'DM Sans'}, boxWidth:11, padding:9 } } } }
+  // category-wise group
+  const grouped = {};
+  fl.forEach(s=>{
+    const c = s.cat || 'Other';
+    if (!grouped[c]) grouped[c] = [];
+    grouped[c].push(s);
   });
-}
 
-// ═══ REORDER BAR ═══
-function renderRoChart(stocks){
-  const wrap = document.getElementById('ro-wrap');
-  const items = stocks.filter(s=>s.status!=='OK').slice(0,14);
-  if (!items.length){
-    wrap.innerHTML = `<div class="empty"><div class="ei">✅</div>Koi critical ya reorder item nahi</div>`;
-    return;
-  }
-  if (!document.getElementById('roChart')) wrap.innerHTML = '<canvas id="roChart"></canvas>';
-  const cv = document.getElementById('roChart');
-  if (_roChart) _roChart.destroy();
-  _roChart = new Chart(cv,{
-    type:'bar',
-    data:{
-      labels: items.map(s=> s.name.length>16 ? s.name.slice(0,16)+'…' : s.name),
-      datasets:[
-        { label:'Current Stock', data: items.map(s=>s.currentStock),
-          backgroundColor: items.map(s=> s.status==='Critical' ? 'rgba(220,38,38,.85)' : 'rgba(234,88,12,.85)'),
-          borderRadius:5, borderSkipped:false },
-        { label:'Reorder Point', data: items.map(s=>s.reorderPoint),
-          backgroundColor:'rgba(37,88,232,.15)', borderColor:'rgba(37,88,232,.6)', borderWidth:1.5,
-          borderRadius:5, borderSkipped:false },
-      ]
-    },
-    options:{ responsive:true,
-      plugins:{ legend:{ position:'top', labels:{ font:{size:11,family:'DM Sans'}, boxWidth:12 } } },
-      scales:{
-        x:{ grid:{display:false}, ticks:{ font:{size:10,family:'DM Sans'}, maxRotation:38 } },
-        y:{ beginAtZero:true, grid:{ color:'rgba(0,0,0,.04)' }, ticks:{ font:{size:10,family:'DM Sans'} } }
-      } }
+  const cats = Object.keys(grouped).sort((a,b)=>{
+    const ai=CAT_ORDER.indexOf(a), bi=CAT_ORDER.indexOf(b);
+    if(ai===-1&&bi===-1) return a.localeCompare(b);
+    if(ai===-1) return 1; if(bi===-1) return -1;
+    return ai-bi;
   });
-}
 
-// ═══ TOP WIP ═══
-function renderWip(stocks){
-  const wip = stocks.filter(s=>(s.wip||0)>0).sort((a,b)=>b.wip-a.wip).slice(0,8);
-  const el = document.getElementById('wip-list');
-  if (!wip.length){
-    el.innerHTML = `<div class="empty"><div class="ei">🏭</div>Production floor pe kuch nahi hai</div>`;
-    return;
-  }
-  el.innerHTML = wip.map(s=>`
-    <div class="att-row">
-      <div style="flex:1;min-width:0;">
-        <div class="att-name">${esc(s.name)}</div>
-        <div class="att-cat">${esc(s.cat||'')}</div>
+  el.innerHTML = cats.map(cat=>{
+    const items = grouped[cat].sort((a,b)=>a.name.localeCompare(b.name));
+    const total = items.reduce((s,i)=>s+(i.currentStock||0),0);
+    const unit  = items[0] ? (items[0].unit||'') : '';
+    const isOpen = _openCats[cat] !== false; // default open
+    return `
+    <div class="cat-card">
+      <div class="cat-head" onclick="toggleCat('${cat.replace(/'/g,"\\'")}')">
+        <div class="l">
+          <span>${CAT_ICONS[cat]||'📦'}</span>
+          <h2>${esc(cat)}</h2>
+          <span class="count">${items.length} items</span>
+        </div>
+        <div>
+          <span class="total">${total} <small style="font-size:10px;font-weight:500;color:var(--muted)">${esc(unit)}</small></span>
+          <span class="arr">${isOpen?'▲':'▼'}</span>
+        </div>
       </div>
-      <span class="att-qty" style="color:var(--purple)">${s.wip} <span style="font-size:10px;font-weight:500;color:var(--muted)">${esc(s.unit||'')}</span></span>
-    </div>`).join('');
-}
-
-// ═══ TODAY'S DISPATCH ═══
-function renderDispatch(rows){
-  const el = document.getElementById('dis-list');
-  document.getElementById('dis-count').textContent = rows.length ? rows.length + ' entries' : '';
-  if (!rows.length){
-    el.innerHTML = `<div class="empty"><div class="ei">🚚</div>Aaj koi dispatch nahi hua abhi tak</div>`;
-    return;
-  }
-  el.innerHTML = rows.map(r=>`
-    <div class="att-row">
-      <div style="flex:1;min-width:0;">
-        <div class="att-name">${esc(r.bomModel)}</div>
-        <div class="att-cat">${esc(r.dispatchTo||'—')}${r.orderRef ? ' · '+esc(r.orderRef) : ''} · by ${esc(r.by||'—')}</div>
+      <div style="display:${isOpen?'block':'none'};">
+        ${items.map(s=>{
+          const stCls = s.status==='Critical'?'cr':s.status==='Reorder'?'ro':'ok';
+          const stTxt = s.status==='Critical'?'CRITICAL':s.status==='Reorder'?'REORDER':'OK';
+          const qColor = s.status==='Critical'?'var(--red)':s.status==='Reorder'?'var(--orange)':'var(--navy)';
+          return `<div class="item-row">
+            <div class="iname">${esc(s.name)} <span class="iunit">${esc(s.unit||'')}</span>
+              ${(s.wip||0)>0 ? `<div class="wip">🏭 WIP: ${s.wip}</div>` : ''}
+            </div>
+            <span class="st ${stCls}">${stTxt}</span>
+            <span class="qty" style="color:${qColor}">${s.currentStock}</span>
+          </div>`;
+        }).join('')}
       </div>
-      <span class="att-qty" style="color:var(--green)">×${r.qtyProduced}</span>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
-// ═══ INIT + AUTO REFRESH ═══
-loadAll();
-setInterval(loadAll, REFRESH_MIN * 60 * 1000);
+function toggleCat(cat){
+  _openCats[cat] = _openCats[cat] === false ? true : false;
+  render();
+}
+
+loadStock();
+setInterval(loadStock, 5*60*1000); // auto-refresh 5 min
 </script>
 </body>
 </html>
