@@ -14,7 +14,7 @@ const DEPTS = ['Volt Wing','Ampere Wing','Volt x Ampere Wing','Mega Grid','Catho
 const ROLES = {
   admin:   { pin: 'IMS@Litpax', name: 'Admin',   homePage: 'dashboard',    pages: ['dashboard','inward','outward','dispatch','wip','requests','items','opening','bom','indent','stock','reorder','closing','adc'] },
   ajay:    { pin: '0001', name: 'Ajay',    homePage: 'ajay-dash',    pages: ['ajay-dash','inward','outward','requests','items','opening','bom','indent','stock','reorder'] },
-  sandeep: { pin: '0002', name: 'Sandeep', homePage: 'sandeep-dash', pages: ['sandeep-dash','dispatch','received','wip','stock','items','bom'] },
+  sandeep: { pin: '0002', name: 'Nishant', homePage: 'sandeep-dash', pages: ['sandeep-dash','dispatch','received','wip','stock','items','bom'] },
 };
 
 let _currentRole = null;
@@ -644,7 +644,7 @@ async function selectDispatchType(type) {
     await populateBomSelect('dis-bom');
     document.getElementById('dis-qty').value  = 1;
     document.getElementById('dis-date').value = today();
-    document.getElementById('dis-by').value   = 'Sandeep';
+    document.getElementById('dis-by').value   = 'Nishant';
     document.getElementById('dis-to').value   = '';
     document.getElementById('dis-ref').value  = '';
     document.getElementById('dis-remarks').value = '';
@@ -655,7 +655,7 @@ async function selectDispatchType(type) {
     document.getElementById('dd-btn').style.display  = 'block';
     document.getElementById('dis-btn').style.display = 'none';
     document.getElementById('dd-date').value = today();
-    document.getElementById('dd-by').value   = 'Sandeep';
+    document.getElementById('dd-by').value   = 'Nishant';
     document.getElementById('dd-qty').value  = '';
     document.getElementById('dd-to').value   = '';
     document.getElementById('dd-invoice').value = '';
@@ -3155,7 +3155,7 @@ async function loadSandeepDash() {
   const hr = now.getHours();
   const g = hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
   const grEl = document.getElementById('sandeep-greeting');
-  if (grEl) grEl.textContent = `${g}, Sandeep 👋`;
+  if (grEl) grEl.textContent = `${g}, Nishant 👋`;
   const dtEl = document.getElementById('sandeep-date');
   if (dtEl) dtEl.textContent = now.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
 
