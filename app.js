@@ -1194,9 +1194,37 @@ async function openBomEdit(bomName) {
   }
 }
 
+function buildGroupedItemOptions() {
+  const catOrder = _config.catOrder || ['Cells','BMS','Charger','Nickel/Busbar','Box','Wire','Consumables','Tools','Packaging'];
+  const catIcons = {'Cells':'🔋','BMS':'⚡','Charger':'🔌','Nickel/Busbar':'🪙','Box':'📦','Wire':'🔩','Consumables':'🧰','Tools':'🔧','Packaging':'📦'};
+
+  // category-wise group banao
+  const grouped = {};
+  _items.forEach(i => {
+    const cat = i.cat || 'Other';
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push(i);
+  });
+
+  // catOrder ke hisaab se sort — jo catOrder me nahi wo aakhir me
+  const cats = Object.keys(grouped).sort((a, b) => {
+    const ia = catOrder.indexOf(a), ib = catOrder.indexOf(b);
+    if (ia === -1 && ib === -1) return a.localeCompare(b);
+    if (ia === -1) return 1;
+    if (ib === -1) return -1;
+    return ia - ib;
+  });
+
+  return cats.map(cat => {
+    const items = grouped[cat].sort((a, b) => a.name.localeCompare(b.name));
+    const opts = items.map(i => `<option value="${i.name}">${i.name}</option>`).join('');
+    return `<optgroup label="${catIcons[cat] || '📦'} ${cat}">${opts}</optgroup>`;
+  }).join('');
+}
+
 function renderBomRows() {
   const wrap = document.getElementById('bom-rows-wrap');
-  const itemOpts = _items.map(i => `<option value="${i.name}">${i.name}</option>`).join('');
+  const itemOpts = buildGroupedItemOptions();
   wrap.innerHTML = _bomRows.map((row, i) => `
     <div class="bom-row" id="brow-${i}">
       <select class="inp" onchange="_bomRows[${i}].component=this.value">
