@@ -865,6 +865,7 @@ function filterItems() {
       <td>${stBadge(item.status)}</td>
       <td style="white-space:nowrap;">
         <button class="btn bg bsm" onclick="editItem('${item.name.replace(/'/g,"\\'")}')">Edit</button>
+        <button class="btn bg bsm" onclick="openRename('${item.name.replace(/'/g,"\\'")}')">Rename</button>
         <button class="btn brd bsm" onclick="delItem('${item.name.replace(/'/g,"\\'")}')">Del</button>
       </td>
     </tr>`;
@@ -1117,6 +1118,29 @@ async function delItem(name) {
     _items = []; _stocks = [];
     loadItems();
   } catch(e) { toast(e.message, 'err'); }
+}
+
+function openRename(name) {
+  document.getElementById('rn-old').value = name;
+  document.getElementById('rn-new').value = name;
+  document.getElementById('rename-modal').classList.add('open');
+}
+
+async function saveRename() {
+  const oldName = document.getElementById('rn-old').value.trim();
+  const newName = document.getElementById('rn-new').value.trim();
+  if (!newName)            { toast('Naya naam daalo', 'err'); return; }
+  if (oldName === newName) { toast('Naam same hai — kuch change nahi', 'warn'); return; }
+  const btn = document.getElementById('rn-btn');
+  btn.disabled = true; btn.textContent = 'Renaming...';
+  try {
+    const r = await api('renameItemEverywhere', { oldName, newName });
+    toast(`✓ Renamed — ${r.cellsUpdated} jagah update hui`, 'ok');
+    closeM('rename-modal');
+    _items = []; _stocks = [];
+    loadItems();
+  } catch(e) { toast(e.message, 'err'); }
+  finally { btn.disabled = false; btn.textContent = 'Rename Everywhere'; }
 }
 
 // ── BOM MANAGER ──
