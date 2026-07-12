@@ -989,6 +989,32 @@
   </div>
 </div>
 
+  <!-- RENAME ITEM MODAL -->
+<div class="ov" id="rename-modal">
+  <div class="modal" style="max-width:440px;">
+    <div class="mh"><h2>✏️ Rename Item</h2><button class="mclose" onclick="closeM('rename-modal')">✕</button></div>
+    <div class="mb">
+      <div style="background:#fff7ed;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--amber);">
+        ⚠ Naam saari sheets me badlega — Inward, Outward, Dispatch, BOM, sab jagah. Stock aur history safe rahegi.
+      </div>
+      <div class="fg">
+        <div class="fi full">
+          <label class="inp-label">Purana Naam</label>
+          <input class="inp" id="rn-old" readonly style="background:var(--s2);color:var(--muted);">
+        </div>
+        <div class="fi full">
+          <label class="inp-label">Naya Naam *</label>
+          <input class="inp" id="rn-new" placeholder="Naya item naam">
+        </div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bg" onclick="closeM('rename-modal')">Cancel</button>
+      <button class="btn bp" id="rn-btn" onclick="saveRename()">Rename Everywhere</button>
+    </div>
+  </div>
+</div>
+
   <!-- IMS AGENT -->
 <button id="ims-fab" onclick="imsToggle()" title="IMS Agent">
   <div class="fab-logo">L</div>
