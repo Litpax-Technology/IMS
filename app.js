@@ -753,14 +753,17 @@ async function saveDirectDispatch() {
   }
 }
 
+let _disPreviewSeq = 0;
 async function updDispatchPreview() {
   const bomName = document.getElementById('dis-bom').value;
-  const qty     = Number(document.getElementById('dis-qty').value) || 1;
   const preview = document.getElementById('dis-preview');
   const btn     = document.getElementById('dis-btn');
   if (!bomName) { preview.innerHTML = ''; return; }
+  const seq = ++_disPreviewSeq;
   try {
     const items = await api('getBomItems', { bomName });
+    if (seq !== _disPreviewSeq) return;                        // purani call — naya keystroke aa chuka, skip
+    const qty = Number(document.getElementById('dis-qty').value) || 1;   // await ke BAAD padho
     if (!items.length) { preview.innerHTML = '<div style="color:var(--muted);font-size:12px;margin-top:10px;">No components found for this BOM</div>'; return; }
     const stockMap = {};
     _stocks.forEach(s => { stockMap[s.name] = s; });
