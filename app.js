@@ -161,9 +161,10 @@ function fmtDT(ts) {
 }
 
 // ── API ──
-async function api(action, body) {
+async function api(action, body, _retryCount) {
+  _retryCount = _retryCount || 0;
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s max wait
+  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s per attempt
   try {
     let r;
     if (body) {
@@ -178,15 +179,18 @@ async function api(action, body) {
       r = await fetch(`${API}?action=${action}`, { redirect: 'follow', signal: controller.signal });
     }
     const text = await r.text();
-    // JSON nahi hai → backend ne HTML/error page bheja
     if (!text.trim().startsWith('{') && !text.trim().startsWith('[')) {
-      throw new Error('Server response invalid — dobara try karo');
+      throw new Error('Server response invalid');
     }
     const d = JSON.parse(text);
     if (d.error) throw new Error(d.error);
     return d;
   } catch(e) {
-    if (e.name === 'AbortError') throw new Error('Request timeout — 20s me response nahi aaya, dobara try karo');
+    // Timeout ya invalid response — ek baar retry karo (max 1 retry)
+    if (_retryCount < 1) {
+      return api(action, body, _retryCount + 1);
+    }
+    if (e.name === 'AbortError') throw new Error('Request timeout — dobara try karo');
     throw new Error(e.message || 'Network error');
   } finally {
     clearTimeout(timeoutId);
