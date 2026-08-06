@@ -161,42 +161,49 @@ function fmtDT(ts) {
 }
 
 // ── API ──
-async function api(action, body, _retryCount) {
-  _retryCount = _retryCount || 0;
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s per attempt
-  try {
-    let r;
-    if (body) {
-      r = await fetch(API, {
-        method: 'POST',
-        redirect: 'follow',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action, ...body }),
-        signal: controller.signal,
-      });
-    } else {
-      r = await fetch(`${API}?action=${action}`, { redirect: 'follow', signal: controller.signal });
-    }
-    const text = await r.text();
-    if (!text.trim().startsWith('{') && !text.trim().startsWith('[')) {
-      throw new Error('Server response invalid');
-    }
-    const d = JSON.parse(text);
-    if (d.error) throw new Error(d.error);
-    return d;
-  } catch(e) {
-    // Timeout ya invalid response — ek baar retry karo (max 1 retry)
-    if (_retryCount < 1) {
-      return api(action, body, _retryCount + 1);
-    }
-    if (e.name === 'AbortError') throw new Error('Request timeout — dobara try karo');
-    throw new Error(e.message || 'Network error');
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
+// ── API ──
+const _pendingCalls = {};
 
+async function api(action, body) {
+  const key = action + JSON.stringify(body || {});
+  if (_pendingCalls[key]) return _pendingCalls[key]; // same request already in-flight — usi ka wait karo
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 25000);
+
+  const promise = (async () => {
+    try {
+      let r;
+      if (body) {
+        r = await fetch(API, {
+          method: 'POST',
+          redirect: 'follow',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({ action, ...body }),
+          signal: controller.signal,
+        });
+      } else {
+        r = await fetch(`${API}?action=${action}`, { redirect: 'follow', signal: controller.signal });
+      }
+      const text = await r.text();
+      if (!text.trim().startsWith('{') && !text.trim().startsWith('[')) {
+        throw new Error('Server response invalid — dobara try karo');
+      }
+      const d = JSON.parse(text);
+      if (d.error) throw new Error(d.error);
+      return d;
+    } catch(e) {
+      if (e.name === 'AbortError') throw new Error('Request timeout — dobara try karo');
+      throw new Error(e.message || 'Network error');
+    } finally {
+      clearTimeout(timeoutId);
+      delete _pendingCalls[key];
+    }
+  })();
+
+  _pendingCalls[key] = promise;
+  return promise;
+}
 // ── INIT ──
 window.onload = async function() {
   const setVal = (id, val) => { const el = document.getElementById(id); if(el) el.value = val; };
