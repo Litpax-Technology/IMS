@@ -3,7 +3,7 @@
 // API URL: change here if redeployed
 // ============================================================
 
-const API = 'https://script.google.com/macros/s/AKfycbw7cmyi32TrMZgH37T8L3Zvhp0Ii3Mp_iyUA94oxZZzf3txIIiVhW_ROU0j4OtgSxg/exec';
+const API = 'https://script.google.com/macros/s/AKfycbxDqjwsQiti8WjjHBpU7_GLcQqLDmXCp32hF0Bw76AV4frFBkdh_yNBSuNbzLWx9cjx/exec';
 
 function setEl(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
 function showEl(id, show) { const el = document.getElementById(id); if (el) el.style.display = show ? 'inline' : 'none'; }
