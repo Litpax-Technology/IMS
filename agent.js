@@ -2,7 +2,7 @@
 // Litpax IMS Agent — agent.js v3
 // ============================================================
 
-const IMS_API = 'https://script.google.com/macros/s/AKfycbyZHEt-HnYmukg9eWzo-LjsJo64Ggpm4x9on8sdBCyuYixDnsOek0__Ufpqeidlaq4/exec';
+const IMS_API = 'https://script.google.com/macros/s/AKfycbyT9pyRRzFhDJmUc1R-7xkegqXYLKJEaJpNou7MYTyQ9kuJgBQNh7HL7awRsJgy-pWd/exec';
 
 let _imsOpen    = false;
 let _imsLoading = false;
