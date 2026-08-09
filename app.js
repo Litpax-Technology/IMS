@@ -12,7 +12,7 @@ const DEPTS = ['Volt Wing','Ampere Wing','Volt x Ampere Wing','Mega Grid','Catho
 
 // ── ROLES & PINS ──
 const ROLES = {
-  admin:   { pin: '4321', name: 'Admin',   homePage: 'dashboard',    pages: ['dashboard','inward','outward','dispatch','wip','requests','items','opening','bom','indent','stock','reorder','closing','adc'] },
+  admin:   { pin: '4321', name: 'Admin',   homePage: 'dashboard',    pages: ['dashboard','inward','outward','dispatch','wip','requests','items','opening','bom','indent','stock','reorder','closing','adc','ledger'] },
   ajay:    { pin: '0001', name: 'Ajay',    homePage: 'ajay-dash',    pages: ['ajay-dash','inward','outward','requests','items','opening','bom','indent','stock','reorder'] },
   sandeep: { pin: '0002', name: 'Nishant', homePage: 'sandeep-dash', pages: ['sandeep-dash','dispatch','received','wip','stock','items','bom'] },
 };
@@ -258,6 +258,7 @@ function showPage(id) {
   if (id === 'requests')     loadRequests();
   if (id === 'wip')          loadWip();
   if (id === 'adc')          initADC();
+  if (id === 'ledger')       initLedger();
   if (id === 'received')     { const d = document.getElementById('recv-date'); if(d) d.value = today(); loadReceived(); }
 }
 
@@ -3406,4 +3407,143 @@ function renderCategoryChart(stocks) {
       }
     }
   });
+}
+
+// ============================================================
+// STOCK LEDGER — item-wise running balance
+// ============================================================
+let _ledgerCache = null;
+
+async function initLedger() {
+  _ledgerCache = null;                    // page khulte hi fresh data — baaki sab instant
+  const sel = document.getElementById('ldg-item');
+  if (!_stocks.length) {
+    try { _stocks = await api('getStockSummary'); } catch(e) {}
+  }
+  const items = [..._stocks].sort((a,b) => a.name.localeCompare(b.name, 'en', { sensitivity:'base' }));
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">-- Select Item --</option>' +
+    items.map(s => `<option value="${htmlEnc(s.name)}">${s.name}</option>`).join('');
+  if (cur) sel.value = cur;
+}
+
+async function loadLedgerData() {
+  if (_ledgerCache) return _ledgerCache;
+  const [inRows, outRows, opening] = await Promise.all([
+    api('getInward', {}),
+    api('getOutward', {}),
+    api('getOpeningStock'),
+  ]);
+  const openMap = {};
+  (opening || []).forEach(o => { openMap[o.name] = Number(o.qty) || 0; });
+  _ledgerCache = { inward: inRows || [], outward: outRows || [], opening: openMap };
+  return _ledgerCache;
+}
+
+function clearLedgerDates() {
+  document.getElementById('ldg-from').value = '';
+  document.getElementById('ldg-to').value = '';
+  renderLedger();
+}
+
+async function renderLedger() {
+  const item    = document.getElementById('ldg-item').value;
+  const tb      = document.getElementById('ldg-tb');
+  const em      = document.getElementById('ldg-empty');
+  const summary = document.getElementById('ldg-summary');
+  if (!item) {
+    tb.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px;">Item select karo</td></tr>`;
+    summary.innerHTML = ''; em.style.display = 'none';
+    return;
+  }
+  tb.innerHTML = `<tr class="lrow"><td colspan="6"><span class="loader"></span></td></tr>`;
+  em.style.display = 'none';
+  try {
+    const { inward, outward, opening } = await loadLedgerData();
+    const fromVal = document.getElementById('ldg-from').value;
+    const toVal   = document.getElementById('ldg-to').value;
+    const from = fromVal ? new Date(fromVal + 'T00:00:00') : new Date(0);
+    const to   = toVal   ? new Date(toVal + 'T23:59:59')   : new Date(8640000000000000);
+
+    // IN (inward) + OUT (outward) combine
+    let entries = [];
+    inward.filter(r => r.itemName === item).forEach(r => {
+      entries.push({ date: new Date(r.date), type: 'IN', qty: Number(r.qty) || 0,
+        ref: r.supplier || r.invoice || r.remarks || 'Inward' });
+    });
+    outward.filter(r => r.itemName === item).forEach(r => {
+      entries.push({ date: new Date(r.date), type: 'OUT', qty: Number(r.qty) || 0,
+        ref: r.department || r.issuedTo || r.remarks || 'Issue to Production' });
+    });
+    entries = entries.filter(e => !isNaN(e.date)).sort((a,b) => a.date - b.date);
+
+    // range se PEHLE ka net = opening balance
+    let openingBal = opening[item] || 0;
+    entries.forEach(e => { if (e.date < from) openingBal += (e.type === 'IN' ? e.qty : -e.qty); });
+
+    let running = openingBal, totalIn = 0, totalOut = 0, rowsHtml = '', shown = 0;
+    entries.forEach(e => {
+      if (e.date < from || e.date > to) return;
+      running += (e.type === 'IN' ? e.qty : -e.qty);
+      if (e.type === 'IN') totalIn += e.qty; else totalOut += e.qty;
+      shown++;
+      rowsHtml += `<tr>
+        <td style="color:var(--muted);font-size:12px;">${e.date.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</td>
+        <td>${e.type === 'IN' ? '<span class="badge b-ok">📥 IN</span>' : '<span class="badge b-ro">📤 OUT</span>'}</td>
+        <td style="font-size:12px;">${htmlEnc(e.ref || '—')}</td>
+        <td style="font-family:var(--mono);color:var(--green);font-weight:600;">${e.type === 'IN' ? '+' + e.qty : ''}</td>
+        <td style="font-family:var(--mono);color:var(--red);font-weight:600;">${e.type === 'OUT' ? '-' + e.qty : ''}</td>
+        <td style="font-family:var(--mono);font-weight:700;font-size:15px;">${running}</td>
+      </tr>`;
+    });
+
+    const openingRow = `<tr style="background:var(--s2);">
+      <td style="color:var(--muted);font-size:12px;">${fromVal ? 'Before ' + fmtD(fromVal) : 'Opening'}</td>
+      <td><span class="badge b-dep">🏁 OPEN</span></td>
+      <td style="font-size:12px;color:var(--muted);">Opening balance</td>
+      <td></td><td></td>
+      <td style="font-family:var(--mono);font-weight:700;font-size:15px;">${openingBal}</td>
+    </tr>`;
+
+    tb.innerHTML = openingRow + rowsHtml;
+    em.style.display = 'none';
+
+    const s = _stocks.find(x => x.name === item);
+    const unit = s ? (s.unit || '') : '';
+    summary.innerHTML = `<div class="cl-sum" style="margin-bottom:14px;">
+      <div class="sc bl"><div class="sc-bar"></div><div class="sc-icon">🏁</div><div class="sc-label">Opening</div><div class="sc-val">${openingBal}</div></div>
+      <div class="sc gn"><div class="sc-bar"></div><div class="sc-icon">📥</div><div class="sc-label">Total IN</div><div class="sc-val">${totalIn}</div></div>
+      <div class="sc rd"><div class="sc-bar"></div><div class="sc-icon">📤</div><div class="sc-label">Total OUT</div><div class="sc-val">${totalOut}</div></div>
+      <div class="sc or"><div class="sc-bar"></div><div class="sc-icon">📦</div><div class="sc-label">Closing</div><div class="sc-val">${running} <span style="font-size:11px;">${unit}</span></div></div>
+    </div>`;
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+function printLedger() {
+  const item = document.getElementById('ldg-item').value;
+  if (!item) { toast('Pehle item select karo', 'err'); return; }
+  const tbHtml = document.getElementById('ldg-tb').innerHTML;
+  const fromV  = document.getElementById('ldg-from').value;
+  const toV    = document.getElementById('ldg-to').value;
+  const period = (fromV || toV) ? `${fromV ? fmtD(fromV) : 'Start'} to ${toV ? fmtD(toV) : 'Today'}` : 'All Time';
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html><html><head><title>Stock Ledger — ${item}</title>
+  <style>
+    body{font-family:'Segoe UI',sans-serif;padding:24px;color:#1a1a2e;}
+    h2{font-size:18px;margin-bottom:4px;} p{font-size:12px;color:#666;margin-bottom:16px;}
+    table{width:100%;border-collapse:collapse;font-size:12px;}
+    thead th{background:#0d1f3c;color:#fff;padding:8px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;}
+    tbody td{padding:7px 12px;border-bottom:1px solid #e5e7eb;}
+    tbody tr:nth-child(even){background:#f9fafb;}
+    .badge{font-size:10px;padding:2px 6px;border-radius:4px;background:#eef;}
+    .footer{margin-top:20px;font-size:10px;color:#999;text-align:right;}
+  </style></head><body>
+    <h2>Stock Ledger — ${item}</h2>
+    <p>Period: <b>${period}</b> &nbsp;|&nbsp; Generated: <b>${new Date().toLocaleDateString('en-IN')}</b> &nbsp;|&nbsp; Litpax Technology Pvt. Ltd.</p>
+    <table><thead><tr><th>Date</th><th>Type</th><th>Particulars</th><th>IN</th><th>OUT</th><th>Balance</th></tr></thead>
+    <tbody>${tbHtml}</tbody></table>
+    <div class="footer">Litpax IMS — Stock Ledger Report</div>
+  </body></html>`);
+  win.document.close();
+  setTimeout(() => win.print(), 400);
 }
