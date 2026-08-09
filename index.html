@@ -82,6 +82,7 @@
       <div class="ng">
         <div class="ng-label">Reports</div>
         <div class="ni" onclick="showPage('stock')" data-page="stock"><span class="ic">📈</span><span>Stock Summary</span></div>
+        <div class="ni" onclick="showPage('ledger')" data-page="ledger"><span class="ic">📒</span><span>Stock Ledger</span></div>
         <div class="ni" onclick="showPage('reorder')" data-page="reorder"><span class="ic">⚠️</span><span>Reorder</span><span class="nbadge" id="nb" style="display:none">0</span></div>
         <div class="ni" onclick="showPage('closing')" data-page="closing"><span class="ic">🗓️</span><span>Daily Closing</span></div>
         <div class="ni" onclick="showPage('adc')" data-page="adc"><span class="ic">📉</span><span>ADC Calculate</span></div>
@@ -597,6 +598,29 @@
             <tbody id="req-tb"><tr class="lrow"><td colspan="10"><span class="loader"></span></td></tr></tbody>
         </table></div>
         <div id="req-empty" class="empty" style="display:none"><div class="ei">🔔</div><div class="et">Koi pending request nahi</div></div>
+      </div>
+    </div>
+
+  <!-- STOCK LEDGER -->
+    <div class="page" id="page-ledger">
+      <div class="tb">
+        <div class="pt"><h1>Stock Ledger</h1><p>Item-wise running balance — opening se abhi tak</p></div>
+        <div class="ta" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <select class="inp" id="ldg-item" style="width:220px;" onchange="renderLedger()"><option value="">-- Select Item --</option></select>
+          <input type="date" class="inp" id="ldg-from" style="width:145px;" onchange="renderLedger()">
+          <span style="font-size:12px;color:var(--muted);">to</span>
+          <input type="date" class="inp" id="ldg-to" style="width:145px;" onchange="renderLedger()">
+          <button class="btn bg bsm" onclick="clearLedgerDates()">All Dates</button>
+          <button class="btn bp bsm" onclick="printLedger()">🖨 Print</button>
+        </div>
+      </div>
+      <div id="ldg-summary"></div>
+      <div class="card">
+        <div class="tw"><table>
+          <thead><tr><th>Date</th><th>Type</th><th>Particulars</th><th>IN</th><th>OUT</th><th>Balance</th></tr></thead>
+          <tbody id="ldg-tb"><tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px;">Item select karo</td></tr></tbody>
+        </table></div>
+        <div id="ldg-empty" class="empty" style="display:none"><div class="ei">📒</div><div class="et">No entries in this range</div></div>
       </div>
     </div>
 
