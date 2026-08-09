@@ -606,6 +606,7 @@
       <div class="tb">
         <div class="pt"><h1>Stock Ledger</h1><p>Item-wise running balance — opening se abhi tak</p></div>
         <div class="ta" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <select class="inp cat-filter-select" id="ldg-cat" style="width:160px;" onchange="filterLedgerItems()"><option value="">All Categories</option></select>
           <select class="inp" id="ldg-item" style="width:220px;" onchange="renderLedger()"><option value="">-- Select Item --</option></select>
           <input type="date" class="inp" id="ldg-from" style="width:145px;" onchange="renderLedger()">
           <span style="font-size:12px;color:var(--muted);">to</span>
