@@ -3416,15 +3416,31 @@ let _ledgerCache = null;
 
 async function initLedger() {
   _ledgerCache = null;                    // page khulte hi fresh data — baaki sab instant
-  const sel = document.getElementById('ldg-item');
   if (!_stocks.length) {
     try { _stocks = await api('getStockSummary'); } catch(e) {}
   }
-  const items = [..._stocks].sort((a,b) => a.name.localeCompare(b.name, 'en', { sensitivity:'base' }));
+  // category filter fill (agar config se auto-fill na hua ho)
+  const catSel = document.getElementById('ldg-cat');
+  if (catSel && catSel.options.length <= 1) {
+    const cats = [...new Set(_stocks.map(s => s.cat).filter(Boolean))].sort();
+    catSel.innerHTML = '<option value="">All Categories</option>' +
+      cats.map(c => `<option value="${c}">${c}</option>`).join('');
+  }
+  filterLedgerItems();
+}
+
+function filterLedgerItems() {
+  const cat = document.getElementById('ldg-cat').value;
+  const sel = document.getElementById('ldg-item');
   const cur = sel.value;
+  const items = _stocks
+    .filter(s => !cat || s.cat === cat)
+    .sort((a,b) => a.name.localeCompare(b.name, 'en', { sensitivity:'base' }));
   sel.innerHTML = '<option value="">-- Select Item --</option>' +
     items.map(s => `<option value="${htmlEnc(s.name)}">${s.name}</option>`).join('');
-  if (cur) sel.value = cur;
+  // agar purana selected item नई list mein hai to rakho, warna table reset
+  if (cur && items.some(s => s.name === cur)) { sel.value = cur; }
+  else { renderLedger(); }
 }
 
 async function loadLedgerData() {
