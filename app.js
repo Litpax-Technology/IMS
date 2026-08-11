@@ -3484,8 +3484,11 @@ async function renderLedger() {
     // IN (inward) + OUT (outward) combine
     let entries = [];
     inward.filter(r => r.itemName === item).forEach(r => {
-      entries.push({ date: new Date(r.date), type: 'IN', qty: Number(r.qty) || 0,
-        ref: r.supplier || r.invoice || r.remarks || 'Inward' });
+      const party = (r.supplier || '').toString().trim();
+      const inv   = (r.invoice  || '').toString().trim();
+      const label = [party, inv ? 'Inv: ' + inv : ''].filter(Boolean).join(' · ')
+                    || (r.remarks || '').toString().trim() || 'Inward';
+      entries.push({ date: new Date(r.date), type: 'IN', qty: Number(r.qty) || 0, ref: label });
     });
     outward.filter(r => r.itemName === item).forEach(r => {
       entries.push({ date: new Date(r.date), type: 'OUT', qty: Number(r.qty) || 0,
