@@ -169,7 +169,7 @@ async function api(action, body) {
   if (_pendingCalls[key]) return _pendingCalls[key]; // same request already in-flight — usi ka wait karo
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 25000);
+  const timeoutId = setTimeout(() => controller.abort(), 60000);
 
   const promise = (async () => {
     try {
