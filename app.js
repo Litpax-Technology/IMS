@@ -3,7 +3,7 @@
 // API URL: change here if redeployed
 // ============================================================
 
-const API = 'https://script.google.com/macros/s/AKfycbwBgU4EZhvWrxaeO984gmY0gq4TMlveEvokuWWl8-C62Oggk3bEQqHchmdRvPMR88Pm/exec';
+const API = 'https://script.google.com/macros/s/AKfycbzMrVtI2s4eD1Cox19AnKyiWh-bU55DvID5rFUg7nJCFHbti-kuAZrezBS9l77nKbI/exec';
 
 function setEl(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
 function showEl(id, show) { const el = document.getElementById(id); if (el) el.style.display = show ? 'inline' : 'none'; }
@@ -787,13 +787,20 @@ async function updDispatchPreview() {
     if (seq !== _disPreviewSeq) return;                        // purani call — naya keystroke aa chuka, skip
     const qty = Number(document.getElementById('dis-qty').value) || 1;   // await ke BAAD padho
     if (!items.length) { preview.innerHTML = '<div style="color:var(--muted);font-size:12px;margin-top:10px;">No components found for this BOM</div>'; return; }
+        const normKey = (str) => String(str || '')
+      .replace(/[\u2018\u2019\u2032]/g, "'")
+      .replace(/[\u201C\u201D\u2033]/g, '"')
+      .replace(/\u00A0/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim().toLowerCase();
+
     const stockMap = {};
-    _stocks.forEach(s => { stockMap[s.name] = s; });
+    _stocks.forEach(s => { stockMap[normKey(s.name)] = s; });
 
     let hasShortage = false;
     const rows = items.map(bi => {
       const needed = bi.qty * qty;
-      const s = stockMap[bi.component];
+      const s = stockMap[normKey(bi.component)];
       const storeQty = s ? s.currentStock : 0;
       const wipQty   = s ? (s.wip || 0) : 0;
       const avail    = storeQty + wipQty;
