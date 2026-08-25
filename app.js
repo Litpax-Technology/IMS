@@ -84,6 +84,7 @@ function doLogin() {
   sessionStorage.setItem('lpx_role', _currentRole);
   sessionStorage.setItem('lpx_name', ROLES[_currentRole].name);
   showApp();
+}
 
 function showApp() {
   document.getElementById('login-screen').style.display = 'none';
