@@ -719,3 +719,16 @@ select.inp option { font-family: var(--sans); }
 
 /* ── MISC UTIL ── */
 .rop-val { font-family: var(--mono); font-weight: 700; color: var(--accent); }
+
+/* Logout button — light sidebar fix */
+#logout-btn button {
+  background: #fff !important;
+  border: 1.5px solid var(--border) !important;
+  color: var(--red) !important;
+  transition: all .15s ease;
+}
+#logout-btn button:hover {
+  background: #fef2f2 !important;
+  border-color: #fecaca !important;
+  color: var(--red) !important;
+}
