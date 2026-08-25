@@ -83,10 +83,14 @@ function doLogin() {
   _pinLocked   = false;
   clearInterval(_lockTimer);
   _currentRole = _selectedRole;
+  // Redirect roles (SOMS)
+  if (ROLES[_currentRole].redirect) {
+    window.location.href = ROLES[_currentRole].redirect;
+    return;
+  }
   sessionStorage.setItem('lpx_role', _currentRole);
   sessionStorage.setItem('lpx_name', ROLES[_currentRole].name);
   showApp();
-}
 
 function showApp() {
   document.getElementById('login-screen').style.display = 'none';
