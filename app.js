@@ -15,6 +15,8 @@ const ROLES = {
   admin:   { pin: '4321', name: 'Admin',   homePage: 'dashboard',    pages: ['dashboard','inward','outward','dispatch','wip','requests','items','opening','bom','indent','stock','reorder','closing','adc','ledger'] },
   ajay:    { pin: '0001', name: 'Ajay',    homePage: 'ajay-dash',    pages: ['ajay-dash','inward','outward','requests','items','opening','bom','indent','stock','reorder'] },
   sandeep: { pin: '0002', name: 'Nishant', homePage: 'sandeep-dash', pages: ['sandeep-dash','dispatch','received','wip','stock','items','bom'] },
+  purchase:  { pin: '1111', name: 'Purchase',  redirect: 'https://litpax-technology.github.io/SOMS/' },
+  transport: { pin: '2222', name: 'Transport', redirect: 'https://litpax-technology.github.io/SOMS/' }
 };
 
 let _currentRole = null;
