@@ -720,6 +720,51 @@ select.inp option { font-family: var(--sans); }
 /* ── MISC UTIL ── */
 .rop-val { font-family: var(--mono); font-weight: 700; color: var(--accent); }
 
+/* ══════════════════════════════════════════
+   PRO TOUCHES  (v6.1) — safe to delete this whole block to revert
+   ══════════════════════════════════════════ */
+
+/* 1 ── Sticky table headers ── */
+.tw { max-height: calc(100vh - 230px); overflow-y: auto; }
+thead th { position: sticky; top: 0; z-index: 2; }
+
+/* 2 ── Custom scrollbar (thin, soft) ── */
+* { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 20px;
+  border: 2px solid var(--s1);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--accent2); }
+
+/* 3 ── Status dots inside badges ── */
+.badge::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
+}
+.b-ok::before,  .b-in::before  { background: var(--green); box-shadow: 0 0 5px rgba(16,185,129,.6); }
+.b-cr::before,  .b-out::before { background: var(--red);   box-shadow: 0 0 5px rgba(239,68,68,.6); }
+.b-ro::before                  { background: var(--orange); }
+.b-rm::before                  { background: var(--accent); }
+.b-dep::before                 { background: var(--purple); }
+.b-con::before                 { background: #db2777; }
+.b-pkg::before                 { background: var(--light); }
+
+/* 4 ── Skeleton loader (ready — use .skel class in place of .lrow) ── */
+.skel-line {
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #eef2f9 25%, #e2e8f0 37%, #eef2f9 63%);
+  background-size: 400px 100%;
+  animation: shimmer 1.3s ease-in-out infinite;
+}
+.skel td { padding: 12px 14px; }
+
 /* Logout button — light sidebar fix */
 #logout-btn button {
   background: #fff !important;
