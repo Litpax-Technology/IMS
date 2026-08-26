@@ -167,50 +167,56 @@ function fmtDT(ts) {
   catch(e) { return ts; }
 }
 
-// ── API ──
-// ── API ──
+
+// ── API (auto-retry: Apps Script ke random 404 ko chup-chaap handle karta hai) ──
 const _pendingCalls = {};
 
 async function api(action, body) {
   const key = action + JSON.stringify(body || {});
-  if (_pendingCalls[key]) return _pendingCalls[key]; // same request already in-flight — usi ka wait karo
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 60000);
+  if (_pendingCalls[key]) return _pendingCalls[key]; // same request in-flight — usi ka wait
 
   const promise = (async () => {
-    try {
-      let r;
-      if (body) {
-        r = await fetch(API, {
-          method: 'POST',
-          redirect: 'follow',
-          headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify({ action, ...body }),
-          signal: controller.signal,
-        });
-      } else {
-        r = await fetch(`${API}?action=${action}`, { redirect: 'follow', signal: controller.signal });
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
+      try {
+        let r;
+        if (body) {
+          r = await fetch(API, {
+            method: 'POST',
+            redirect: 'follow',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({ action, ...body }),
+            signal: controller.signal,
+          });
+        } else {
+          r = await fetch(`${API}?action=${action}`, { redirect: 'follow', signal: controller.signal });
+        }
+        const text = await r.text();
+        if (!text.trim().startsWith('{') && !text.trim().startsWith('[')) {
+          throw new Error('__retry__');            // 404 / HTML aaya — retry
+        }
+        const d = JSON.parse(text);
+        if (d.error) throw new Error(d.error);       // asli business error — turant fail
+        return d;
+      } catch (e) {
+        const retryable = e.message === '__retry__' || e.name === 'AbortError';
+        if (!retryable) throw e;                      // real error → band
+        if (attempt < 3) {
+          await new Promise(res => setTimeout(res, attempt * 600)); // 0.6s, 1.2s backoff
+        }
+      } finally {
+        clearTimeout(timeoutId);
       }
-      const text = await r.text();
-      if (!text.trim().startsWith('{') && !text.trim().startsWith('[')) {
-        throw new Error('Server response invalid — dobara try karo');
-      }
-      const d = JSON.parse(text);
-      if (d.error) throw new Error(d.error);
-      return d;
-    } catch(e) {
-      if (e.name === 'AbortError') throw new Error('Request timeout — dobara try karo');
-      throw new Error(e.message || 'Network error');
-    } finally {
-      clearTimeout(timeoutId);
-      delete _pendingCalls[key];
     }
+    throw new Error('Server thodi der busy hai — dobara try karo');
   })();
 
   _pendingCalls[key] = promise;
-  return promise;
+  return promise.finally(() => { delete _pendingCalls[key]; });
 }
+
+
 // ── INIT ──
 window.onload = async function() {
   const setVal = (id, val) => { const el = document.getElementById(id); if(el) el.value = val; };
