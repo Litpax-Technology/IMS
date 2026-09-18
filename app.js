@@ -192,7 +192,7 @@ async function api(action, body) {
   if (_pendingCalls[key]) return _pendingCalls[key]; // same request in-flight — usi ka wait
 
   const promise = (async () => {
-    for (let attempt = 1; attempt <= 3; attempt++) {
+    for (let attempt = 1; attempt <= 5; attempt++) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 60000);
       try {
@@ -218,8 +218,8 @@ async function api(action, body) {
       } catch (e) {
         const retryable = e.message === '__retry__' || e.name === 'AbortError';
         if (!retryable) throw e;                      // real error → band
-        if (attempt < 3) {
-          await new Promise(res => setTimeout(res, attempt * 600)); // 0.6s, 1.2s backoff
+        if (attempt < 5) {
+          await new Promise(res => setTimeout(res, attempt * 150)); // 0.15s, 0.3s, 0.45s, 0.6s — fast retry
         }
       } finally {
         clearTimeout(timeoutId);
