@@ -384,7 +384,7 @@ function renderInward(rows) {
 }
 
 function openInwardModal() {
-  if (!_stocks.length && !_items.length) {
+  if (!_stocks.length) {
     api('getStockSummary').then(d => { _stocks = d; _items = d; }).catch(() => {});
   }
   document.getElementById('in-cat').value = '';
@@ -516,7 +516,7 @@ function clearOutFilters() {
 }
 
 function openOutwardModal() {
-  if (!_stocks.length && !_items.length) {
+  if (!_stocks.length) {
     api('getStockSummary').then(d => { _stocks = d; _items = d; }).catch(() => {});
   }
   document.getElementById('out-cat').value = '';
