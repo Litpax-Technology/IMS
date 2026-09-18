@@ -187,12 +187,25 @@ function fmtDT(ts) {
 // ── API (auto-retry: Apps Script ke random 404 ko chup-chaap handle karta hai) ──
 const _pendingCalls = {};
 
+// AFTER
+const _writeActions = [
+  'addInward','addOutward','addDispatch','addDirectDispatch','updateDispatch','deleteDispatch',
+  'addItem','updateItem','deleteItem','renameItemEverywhere',
+  'saveBomItems','addBomModel','deleteBomModel',
+  'createPO','addPOItem','receivePOItem','cancelPO','cancelPOItem',
+  'addRequest','addRequestBulk','closeRequest','cancelRequest',
+  'setOpeningStock','saveSnapshot','migrateCategories'
+];
+
 async function api(action, body) {
   const key = action + JSON.stringify(body || {});
   if (_pendingCalls[key]) return _pendingCalls[key]; // same request in-flight — usi ka wait
 
+  const isWrite = _writeActions.includes(action);
+  const maxAttempts = isWrite ? 1 : 3;   // write = koi retry nahi (duplicate se bachaav)
+
   const promise = (async () => {
-    for (let attempt = 1; attempt <= 5; attempt++) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 60000);
       try {
