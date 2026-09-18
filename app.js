@@ -950,7 +950,10 @@ const CAT_UNITS  = new Proxy({}, { get: (_, k) => _config.catUnits[k] });
 async function loadConfig() {
   try {
     const cfg = await api('getConfig');
-applyConfigToUI();
+    if (cfg && Array.isArray(cfg.catOrder) && cfg.catOrder.length) {
+      _config = { ..._config, ...cfg };
+    }
+    applyConfigToUI();
   } catch(e) {
     applyConfigToUI();
   }
