@@ -256,7 +256,8 @@ window.onload = async function() {
   setVal('in-date-f', today());
   setVal('out-date-f', today());
   setDot('loading', 'Connecting...');
-  await loadConfig();
+
+  // Session restore PEHLE — config fail ho tab bhi login bacha rahe
   const savedRole = sessionStorage.getItem('lpx_role');
   if (savedRole && ROLES[savedRole]) {
     _currentRole = savedRole;
@@ -265,6 +266,8 @@ window.onload = async function() {
     document.getElementById('login-screen').style.display = 'flex';
     document.getElementById('app-shell').style.display = 'none';
   }
+
+  try { await loadConfig(); } catch(e) {}
 };
 
 // ── CONNECTION ──
