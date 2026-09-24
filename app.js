@@ -1581,14 +1581,59 @@ function filterStock() {
   }).join('');
 }
 
+// ── NON-MOVING HELPER — 30 din se koi IN/OUT nahi ──
+let _nonMovingSet = null;   // Set of item names jo non-moving hain
+
+async function computeNonMoving() {
+  const [inRows, outRows] = await Promise.all([
+    api('getInward', {}),
+    api('getOutward', {}),
+  ]);
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 30);
+
+  // har item ki last movement date
+  const lastMove = {};
+  const bump = (name, dateStr) => {
+    const d = new Date(dateStr);
+    if (isNaN(d)) return;
+    if (!lastMove[name] || d > lastMove[name]) lastMove[name] = d;
+  };
+  inRows.forEach(r => bump(r.itemName, r.date));
+  outRows.forEach(r => bump(r.itemName, r.date));
+
+  const set = new Set();
+  const lastMap = {};
+  _stocks.forEach(s => {
+    const lm = lastMove[s.name];
+    lastMap[s.name] = lm || null;
+    // non-moving = koi movement 30 din ke andar nahi (kabhi na hui ho to bhi)
+    if (!lm || lm < cutoff) set.add(s.name);
+  });
+  _nonMovingSet = set;
+  _nonMovingLast = lastMap;
+  return set;
+}
+
+let _nonMovingLast = {};
+
 // ── REORDER ──
+// AFTER
 async function loadReorder() {
   document.getElementById('ro-content').innerHTML = `<div class="empty"><div class="ei">⏳</div><div class="et">Loading...</div></div>`;
   try {
     if (!_stocks.length) _stocks = await api('getStockSummary');
-    const cr  = _stocks.filter(s => s.status === 'Critical');
-    const ro  = _stocks.filter(s => s.status === 'Reorder');
-    const ok  = _stocks.filter(s => s.status === 'OK');
+    await computeNonMoving();
+    const nm = _nonMovingSet || new Set();
+
+    // Critical/Reorder me se non-moving HATA do
+    const cr  = _stocks.filter(s => s.status === 'Critical' && !nm.has(s.name));
+    const ro  = _stocks.filter(s => s.status === 'Reorder'  && !nm.has(s.name));
+    const ok  = _stocks.filter(s => s.status === 'OK'       && !nm.has(s.name));
+    // Non-moving = saare items jo 30 din se static
+    const nmItems = _stocks.filter(s => nm.has(s.name))
+                           .sort((a,b) => a.name.localeCompare(b.name));
+
     let html  = '';
     if (!cr.length && !ro.length) {
       html = `<div class="empty"><div class="ei">✅</div><div class="et">All stocks healthy!</div><div class="es">${ok.length} items — koi reorder nahi chahiye</div></div>`;
@@ -1597,6 +1642,25 @@ async function loadReorder() {
       if (ro.length) html += `<div class="sdiv" style="color:var(--orange);margin-top:18px;">🟠 Reorder Required (${ro.length})</div><div class="ro-grid">${ro.map(roCard).join('')}</div>`;
       if (ok.length) html += `<div class="sdiv" style="color:var(--green);margin-top:18px;">✅ Healthy (${ok.length} items)</div>`;
     }
+
+    // ── NON-MOVING SECTION ──
+    if (nmItems.length) {
+      html += `<div class="sdiv" style="color:var(--muted);margin-top:24px;">💤 Non-Moving Items — 1 month se koi IN/OUT nahi (${nmItems.length})</div>`;
+      html += `<div class="card"><div class="tw"><table>
+        <thead><tr><th>Item Name</th><th>Category</th><th>Current Stock</th><th>Last Movement</th></tr></thead>
+        <tbody>${nmItems.map(s => {
+          const lm = _nonMovingLast[s.name];
+          const lmStr = lm ? lm.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '<span style="color:var(--red);">Never</span>';
+          return `<tr>
+            <td style="font-weight:600;color:var(--navy);">${s.name}</td>
+            <td>${catBadge(s.cat)}</td>
+            <td style="font-family:var(--mono);font-weight:700;">${s.currentStock} <span style="font-size:10px;color:var(--muted);">${s.unit||''}</span></td>
+            <td style="font-size:12px;color:var(--muted);">${lmStr}</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div></div>`;
+    }
+
     document.getElementById('ro-content').innerHTML = html;
   } catch(e) { toast(e.message, 'err'); }
 }
@@ -2251,8 +2315,13 @@ async function openCreatePO() {
   document.getElementById('create-po-modal').classList.add('open');
 
   try {
+// AFTER
     if (!_stocks.length) _stocks = await api('getStockSummary');
-    const reorderItems = _stocks.filter(s => s.status === 'Critical' || s.status === 'Reorder');
+    if (!_nonMovingSet) { try { await computeNonMoving(); } catch(e) {} }
+    const nm = _nonMovingSet || new Set();
+    const movingReorder = _stocks.filter(s => (s.status === 'Critical' || s.status === 'Reorder') && !nm.has(s.name));
+    const nonMovingReorder = _stocks.filter(s => (s.status === 'Critical' || s.status === 'Reorder') && nm.has(s.name));
+    const reorderItems = [...movingReorder, ...nonMovingReorder];
 
     if (!reorderItems.length) {
       list.innerHTML = `<div class="empty" style="padding:20px;"><div class="ei">✅</div><div class="et">Koi reorder item nahi hai!</div></div>`;
@@ -2286,7 +2355,7 @@ async function openCreatePO() {
               const isCr = s.status === 'Critical';
               return `<tr>
                 <td style="padding:10px 12px;border-bottom:1px solid var(--border);">
-                  <div style="font-weight:600;color:var(--navy);font-size:13px;">${s.name}</div>
+<div style="font-weight:600;color:var(--navy);font-size:13px;">${s.name} ${nm.has(s.name) ? '<span class="badge b-ro" style="font-size:9px;">💤 Non-Moving</span>' : ''}</div>
                   <div style="font-size:11px;color:var(--muted);margin-top:2px;">ROP: ${s.reorderPoint} | Max: ${s.maxL || 0} ${s.unit}</div>
                 </td>
                 <td style="padding:10px 12px;border-bottom:1px solid var(--border);text-align:center;">${stBadge(s.status)}</td>
