@@ -13,8 +13,8 @@ const DEPTS = ['Volt Wing','Ampere Wing','Volt x Ampere Wing','Mega Grid','Catho
 // ── ROLES & PINS ──
 // PINs ab yahan NAHI hain — backend verify karta hai (source me kuch nahi dikhta)
 const ROLES = {
-admin:   { name: 'Admin',   homePage: 'dashboard', pages: ['dashboard','inward','outward','dispatch','wip','requests','items','opening','bom','indent','stock','reorder','closing','adc','ledger'] },
-  ajay:    { name: 'Ajay',    homePage: 'inward',    pages: ['inward','outward','requests','items','opening','bom','indent','stock','reorder'] },
+admin:   { name: 'Admin',   homePage: 'dashboard', pages: ['dashboard','inward','outward','dispatch','wip','items','opening','bom','indent','stock','reorder','closing','adc','ledger'] },
+  ajay:    { name: 'Ajay',    homePage: 'inward',    pages: ['inward','outward','items','opening','bom','indent','stock','reorder'] },
   sandeep: { name: 'Nishant', homePage: 'dispatch',  pages: ['dispatch','received','wip','stock','items','bom'] },
   purchase:  { name: 'Purchase',  redirect: 'https://litpax-technology.github.io/SOMS/?pin=1111' },
   transport: { name: 'Transport', redirect: 'https://litpax-technology.github.io/SOMS/?pin=2222' },
@@ -298,7 +298,6 @@ function showPage(id) {
   if (id === 'closing')      { document.getElementById('cl-date').value = today(); genClosing(); }
   if (id === 'opening')      loadOpeningStock();
   if (id === 'indent')       loadIndents();
-  if (id === 'requests')     loadRequests();
   if (id === 'wip')          loadWip();
   if (id === 'adc')          initADC();
   if (id === 'ledger')       initLedger();
@@ -599,11 +598,6 @@ async function saveOutward() {
     toast('Outward saved ✓', 'ok');
     closeM('outward-modal');
     _stocks = [];
-    if (window._pendingReqId) {
-      api('closeRequest', { id: window._pendingReqId, closedBy: document.getElementById('out-by').value || 'Ajay' })
-        .then(() => { window._pendingReqId = null; loadRequests(); })
-        .catch(() => {});
-    }
     loadOutward();
     loadDash();
   } catch(e) { toast(e.message, 'err'); }
