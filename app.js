@@ -13,9 +13,9 @@ const DEPTS = ['Volt Wing','Ampere Wing','Volt x Ampere Wing','Mega Grid','Catho
 // ── ROLES & PINS ──
 // PINs ab yahan NAHI hain — backend verify karta hai (source me kuch nahi dikhta)
 const ROLES = {
-  admin:   { name: 'Admin',   homePage: 'dashboard',    pages: ['dashboard','inward','outward','dispatch','wip','requests','items','opening','bom','indent','stock','reorder','closing','adc','ledger'] },
-  ajay:    { name: 'Ajay',    homePage: 'ajay-dash',    pages: ['ajay-dash','inward','outward','requests','items','opening','bom','indent','stock','reorder'] },
-  sandeep: { name: 'Nishant', homePage: 'sandeep-dash', pages: ['sandeep-dash','dispatch','received','wip','stock','items','bom'] },
+admin:   { name: 'Admin',   homePage: 'dashboard', pages: ['dashboard','inward','outward','dispatch','wip','requests','items','opening','bom','indent','stock','reorder','closing','adc','ledger'] },
+  ajay:    { name: 'Ajay',    homePage: 'inward',    pages: ['inward','outward','requests','items','opening','bom','indent','stock','reorder'] },
+  sandeep: { name: 'Nishant', homePage: 'dispatch',  pages: ['dispatch','received','wip','stock','items','bom'] },
   purchase:  { name: 'Purchase',  redirect: 'https://litpax-technology.github.io/SOMS/?pin=1111' },
   transport: { name: 'Transport', redirect: 'https://litpax-technology.github.io/SOMS/?pin=2222' },
 };
@@ -288,8 +288,6 @@ function showPage(id) {
     if (n.getAttribute('onclick') === `showPage('${id}')`) n.classList.add('active');
   });
   if (id === 'dashboard')    loadDash();
-  if (id === 'ajay-dash')    loadAjayDash();
-  if (id === 'sandeep-dash') loadSandeepDash();
   if (id === 'inward')       loadInward();
   if (id === 'outward')      loadOutward();
   if (id === 'dispatch')     { const d = document.getElementById('dis-filter-date'); if(d && !d.value) d.value = today(); loadDispatch(); }
@@ -345,8 +343,6 @@ async function loadDash() {
     greetEl.textContent = `${greeting}, ${rname} 👋`;
   }
   setEl('dash-date', now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }));
-  if (_currentRole === 'ajay') { await loadAjayDash(); return; }
-  if (_currentRole === 'sandeep') { await loadSandeepDash(); return; }
   try {
     const d = await api('getDashboard');
     _stocks = d.stocks || [];
@@ -3073,96 +3069,6 @@ async function cancelRequest(id) {
   } catch(e) { toast(e.message, 'err'); }
 }
 
-// ── AJAY DASHBOARD ──
-function toggleAjayOK() {
-  const list = document.getElementById('aj-ok-list');
-  const arrow = document.getElementById('aj-ok-arrow');
-  if (!list) return;
-  if (list.style.display === 'none') { list.style.display = 'block'; if (arrow) arrow.textContent = '▲ Hide'; }
-  else { list.style.display = 'none'; if (arrow) arrow.textContent = '▼ Show'; }
-}
-
-async function loadAjayDash() {
-  const now = new Date();
-  const hr = now.getHours();
-  const g = hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
-  const grEl = document.getElementById('ajay-greeting');
-  if (grEl) grEl.textContent = `${g}, Ajay 👋`;
-  const dtEl = document.getElementById('ajay-date');
-  if (dtEl) dtEl.textContent = now.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-
-  try {
-    const d = await api('getDashboard');
-    _stocks = d.stocks || [];
-    const crit  = _stocks.filter(s => s.status === 'Critical');
-    const reord = _stocks.filter(s => s.status === 'Reorder');
-    setEl('aj-total', d.totalItems || 0);
-    setEl('aj-critical', crit.length);
-    setEl('aj-reorder', reord.length);
-    setEl('aj-req-count', d.pendingRequests || 0);
-
-    const nb = document.getElementById('nb');
-    if (nb) { nb.style.display = d.reorderCount>0?'inline':'none'; nb.textContent = d.reorderCount; }
-    const nbr = document.getElementById('nb-req');
-    if (nbr) { nbr.style.display = d.pendingRequests>0?'inline':'none'; nbr.textContent = d.pendingRequests; }
-    const ajrb = document.getElementById('aj-req-badge');
-    if (ajrb) { ajrb.style.display = d.pendingRequests>0?'inline':'none'; ajrb.textContent = d.pendingRequests; }
-
-    const inRows = await api('getInward', { date: today() });
-    const inL = document.getElementById('aj-inward-list');
-    const inC = document.getElementById('aj-in-count');
-    const inMap = {};
-    inRows.forEach(r => { if(!inMap[r.itemName]) inMap[r.itemName]={qty:0,unit:r.unit}; inMap[r.itemName].qty += r.qty; });
-    const inItems = Object.entries(inMap).sort((a,b)=>a[0].localeCompare(b[0]));
-    if (inC) inC.textContent = inItems.length ? inItems.length + ' items' : '';
-    if (inL) inL.innerHTML = inItems.length
-      ? inItems.map(([name, v]) => `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 16px;border-bottom:1px solid var(--border);">
-          <div style="font-weight:600;font-size:13px;color:var(--navy);">${name}</div>
-          <span style="font-family:var(--mono);font-weight:700;color:var(--green);">+${v.qty} <span style="font-size:11px;font-weight:400;color:var(--muted);">${v.unit||''}</span></span>
-        </div>`).join('')
-      : `<div class="empty" style="padding:20px;"><div class="ei">📥</div><div class="et">No inward today</div></div>`;
-
-    const outRows = await api('getOutward', { date: today() });
-    const outL = document.getElementById('aj-outward-list');
-    const outC = document.getElementById('aj-out-count');
-    const manual = outRows.filter(r => !(r.remarks||'').startsWith('Dispatch:'));
-    const outMap = {};
-    manual.forEach(r => { if(!outMap[r.itemName]) outMap[r.itemName]={qty:0,unit:r.unit}; outMap[r.itemName].qty += r.qty; });
-    const outItems = Object.entries(outMap).sort((a,b)=>a[0].localeCompare(b[0]));
-    if (outC) outC.textContent = outItems.length ? outItems.length + ' items' : '';
-    if (outL) outL.innerHTML = outItems.length
-      ? outItems.map(([name, v]) => `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 16px;border-bottom:1px solid var(--border);">
-          <div style="font-weight:600;font-size:13px;color:var(--navy);">${name}</div>
-          <span style="font-family:var(--mono);font-weight:700;color:var(--orange);">-${v.qty} <span style="font-size:11px;font-weight:400;color:var(--muted);">${v.unit||''}</span></span>
-        </div>`).join('')
-      : `<div class="empty" style="padding:20px;"><div class="ei">📤</div><div class="et">No outward today</div></div>`;
-
-    const reqs = await api('getRequests', { status: 'Pending' });
-    const reqW = document.getElementById('aj-requests');
-    if (reqW) {
-      if (ajrb) { ajrb.style.display = reqs.length>0?'inline':'none'; ajrb.textContent = reqs.length; }
-      setEl('aj-req-count', reqs.length || d.pendingRequests || 0);
-      reqW.innerHTML = reqs.length
-        ? reqs.map(r => `
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);background:#f8faff;">
-            <div>
-              <div style="font-weight:600;font-size:13px;">${r.itemName}</div>
-              <div style="font-size:11px;color:var(--muted);">${r.department||'—'} · ${r.requestedBy||'—'}</div>
-            </div>
-            <div style="display:flex;align-items:center;gap:8px;">
-              <span style="font-family:var(--mono);font-weight:700;color:var(--accent);">${r.qty}</span>
-              <button class="btn bgn bsm" onclick="fulfillRequest('${r.id}','${r.itemName.replace(/'/g,"\\'")}',${r.qty},'${r.department||''}','${(r.requestedBy||'').replace(/'/g,"\\'")}')">✓ Issue</button>
-            </div>
-          </div>`).join('')
-        : `<div class="empty" style="padding:20px;"><div class="ei">✅</div><div class="et">No pending requests</div></div>`;
-    }
-
-    setDot('ok', 'Connected');
-  } catch(e) { toast(e.message, 'err'); setDot('err', 'Error'); }
-}
-
 // ── RECEIVED FROM STORE (Sandeep) ──
 async function loadReceived() {
   const dateEl = document.getElementById('recv-date');
@@ -3301,139 +3207,6 @@ function filterWip() {
         ${s.wip > 0 ? `<span style="font-size:10px;color:var(--purple);margin-left:4px;">In Production</span>` : ''}
       </td>
     </tr>`).join('');
-}
-
-// ── SANDEEP DASHBOARD ──
-async function loadSandeepDash() {
-  const now = new Date();
-  const hr = now.getHours();
-  const g = hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
-  const grEl = document.getElementById('sandeep-greeting');
-  if (grEl) grEl.textContent = `${g}, Nishant 👋`;
-  const dtEl = document.getElementById('sandeep-date');
-  if (dtEl) dtEl.textContent = now.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-
-  function catSection(id, cat, icon, items, renderDetail) {
-    const total = items.reduce((s,i) => s + (i.qty||i.wip||0), 0);
-    const unit  = items[0] ? (items[0].unit||'') : '';
-    return `<div style="border-bottom:1px solid var(--border);">
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;cursor:pointer;background:var(--s2);"
-        onclick="const d=document.getElementById('${id}');const a=document.getElementById('arr-${id}');if(d.style.display==='none'){d.style.display='block';a.textContent='▲';}else{d.style.display='none';a.textContent='▼';}">
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span>${icon}</span>
-          <span style="font-weight:700;font-size:13px;color:var(--navy);">${cat}</span>
-          <span style="font-size:11px;color:var(--muted);">${items.length} items</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;">
-          <span style="font-family:var(--mono);font-weight:700;font-size:15px;color:var(--navy);">${total} <span style="font-size:11px;font-weight:400;color:var(--muted);">${unit}</span></span>
-          <span id="arr-${id}" style="font-size:11px;color:var(--muted);">▼</span>
-        </div>
-      </div>
-      <div id="${id}" style="display:none;">${renderDetail(items)}</div>
-    </div>`;
-  }
-
-  try {
-    // 1) Dashboard — sequential
-    const d = await api('getDashboard');
-    _stocks = d.stocks || [];
-
-    // 2) Issue section
-    const issueEl = document.getElementById('sd-issue-section');
-    const issueSummEl = document.getElementById('sd-issue-summary');
-    try {
-      const outRows = await api('getOutward', { date: today() });
-      const issued = outRows.filter(r => !(r.remarks||'').startsWith('Dispatch:'));
-      const catMap = {};
-      issued.forEach(r => {
-        const s = _stocks.find(x => x.name === r.itemName);
-        const cat = s ? s.cat : 'Other';
-        if (!catMap[cat]) catMap[cat] = {};
-        if (!catMap[cat][r.itemName]) catMap[cat][r.itemName] = { qty: 0, unit: r.unit };
-        catMap[cat][r.itemName].qty += r.qty;
-      });
-      const cats = Object.keys(catMap).sort();
-      if (issueSummEl) issueSummEl.textContent = issued.length ? `${cats.length} categories, ${issued.length} entries` : '';
-      if (!cats.length) {
-        if (issueEl) issueEl.innerHTML = `<div class="empty" style="padding:24px;"><div class="ei">📤</div><div class="et">Nothing received today</div></div>`;
-      } else {
-        const html = cats.map(cat => {
-          const items = Object.entries(catMap[cat]).sort((a,b)=>a[0].localeCompare(b[0])).map(([name,v])=>({name,qty:v.qty,unit:v.unit}));
-          return catSection(`sd-iss-${cat}`, cat, getCatIcon(cat), items, (items) =>
-            items.map(i => `<div style="display:flex;justify-content:space-between;padding:8px 16px 8px 32px;border-bottom:1px solid var(--border);font-size:13px;">
-              <span style="color:var(--t2);">${i.name}</span>
-              <span style="font-family:var(--mono);font-weight:700;color:var(--orange);">${i.qty} <span style="font-size:11px;font-weight:400;color:var(--muted);">${i.unit||''}</span></span>
-            </div>`).join('')
-          );
-        }).join('');
-        if (issueEl) issueEl.innerHTML = html;
-      }
-    } catch(e) {}
-
-    // 3) WIP section
-    const wipEl  = document.getElementById('sd-wip-section');
-    const wipSummEl = document.getElementById('sd-wip-summary');
-    try {
-      const freshStocks = await api('getStockSummary');
-      const wipItems = freshStocks.filter(s => (s.wip || 0) > 0);
-      const wipCatMap = {};
-      wipItems.forEach(s => {
-        const cat = s.cat || 'Other';
-        if (!wipCatMap[cat]) wipCatMap[cat] = [];
-        wipCatMap[cat].push({ name: s.name, qty: s.wip, unit: s.unit });
-      });
-      const wipCats = Object.keys(wipCatMap).sort();
-      if (wipSummEl) wipSummEl.textContent = wipItems.length ? `${wipItems.length} items in production` : 'Nothing in WIP';
-      if (!wipCats.length) {
-        if (wipEl) wipEl.innerHTML = `<div class="empty" style="padding:24px;"><div class="ei">🏭</div><div class="et">Nothing in WIP</div></div>`;
-      } else {
-        const html = wipCats.map(cat => {
-          const items = wipCatMap[cat];
-          return catSection(`sd-wip-${cat}`, cat, getCatIcon(cat), items, (items) =>
-            items.map(i => `<div style="display:flex;justify-content:space-between;padding:8px 16px 8px 32px;border-bottom:1px solid var(--border);font-size:13px;">
-              <span style="color:var(--t2);">${i.name}</span>
-              <span style="font-family:var(--mono);font-weight:700;color:var(--purple);">${i.qty} <span style="font-size:11px;font-weight:400;color:var(--muted);">${i.unit||''}</span></span>
-            </div>`).join('')
-          );
-        }).join('');
-        if (wipEl) wipEl.innerHTML = html;
-      }
-    } catch(e) {}
-
-    // 4) Dispatch section
-    const disEl  = document.getElementById('sd-dispatch-section');
-    const disSummEl = document.getElementById('sd-dispatch-summary');
-    try {
-      const disRows = await api('getDispatch', {});
-      const todayDis = disRows.filter(r => r.date === today());
-      if (disSummEl) disSummEl.textContent = todayDis.length ? `${todayDis.length} dispatched today` : 'No dispatch today';
-      if (!todayDis.length) {
-        if (disEl) disEl.innerHTML = `<div class="empty" style="padding:24px;"><div class="ei">🚚</div><div class="et">No dispatch today</div></div>`;
-      } else {
-        const bomMap = {};
-        todayDis.forEach(r => {
-          if (!bomMap[r.bomModel]) bomMap[r.bomModel] = { qty: 0, entries: [] };
-          bomMap[r.bomModel].qty += r.qtyProduced;
-          bomMap[r.bomModel].entries.push(r);
-        });
-        const html = Object.entries(bomMap).map(([model, v]) => {
-          const items = [{name: model, qty: v.qty, unit: 'units'}];
-          return catSection(`sd-dis-${model.replace(/\s/g,'_')}`, model, '🔋', items, () =>
-            v.entries.map(r => `<div style="display:flex;justify-content:space-between;padding:8px 16px 8px 32px;border-bottom:1px solid var(--border);font-size:13px;">
-              <div>
-                <div style="font-weight:600;color:var(--navy);">${r.bomModel}</div>
-                <div style="font-size:11px;color:var(--muted);">${r.dispatchTo||'—'} · ${r.by||'—'}</div>
-              </div>
-              <span style="font-family:var(--mono);font-weight:700;color:var(--green);">×${r.qtyProduced}</span>
-            </div>`).join('')
-          );
-        }).join('');
-        if (disEl) disEl.innerHTML = html;
-      }
-    } catch(e) {}
-
-    setDot('ok', 'Connected');
-  } catch(e) { toast(e.message, 'err'); setDot('err', 'Error'); }
 }
 
 // ── ADMIN DASHBOARD CHARTS ──
