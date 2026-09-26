@@ -449,6 +449,13 @@ async function saveInward() {
   const date     = document.getElementById('in-date').value;
   if (!itemName) { toast('Please select an item', 'err'); return; }
   if (!qty || qty <= 0) { toast('Enter a valid quantity', 'err'); return; }
+  const inPurposeChk = document.querySelector('input[name="in-purpose"]:checked')?.value || 'Raw Material';
+  const invoiceVal   = document.getElementById('in-invoice').value.trim();
+  if (inPurposeChk === 'Raw Material' && !invoiceVal) {
+    toast('PO / Invoice No. mandatory hai', 'err');
+    document.getElementById('in-invoice').focus();
+    return;
+  }
   const btn = document.getElementById('in-btn');
   btn.disabled = true; btn.textContent = 'Saving...';
   try {
@@ -457,7 +464,7 @@ async function saveInward() {
       itemName, qty, date,
       purpose:  inPurpose,
       supplier: inPurpose === 'Raw Material' ? document.getElementById('in-supplier').value : '',
-      invoice:  document.getElementById('in-invoice').value,
+      invoice:  invoiceVal,
       by:       document.getElementById('in-by').value || 'Ajay',
       remarks:  document.getElementById('in-remarks').value,
     });
