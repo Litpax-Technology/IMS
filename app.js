@@ -3052,6 +3052,7 @@ function renderRequests() {
 
 function fulfillRequest(reqId, itemName, qty, department, requestedBy) {
   window._pendingReqId = reqId;
+  _reqIds.outward = newReqId();
   document.getElementById('outward-modal').classList.add('open');
   showPage('outward');
 
