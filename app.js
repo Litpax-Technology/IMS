@@ -403,6 +403,7 @@ function renderInward(rows) {
 }
 
 function openInwardModal() {
+  _reqIds.inward = newReqId();
   if (!_stocks.length) {
     api('getStockSummary').then(d => { _stocks = d; _items = d; }).catch(() => {});
   }
@@ -543,6 +544,7 @@ function clearOutFilters() {
 }
 
 function openOutwardModal() {
+  _reqIds.outward = newReqId();
   if (!_stocks.length) {
     api('getStockSummary').then(d => { _stocks = d; _items = d; }).catch(() => {});
   }
@@ -693,6 +695,7 @@ async function deleteDispatch(id, model) {
 }
 
 async function openDispatchModal() {
+  _reqIds.dis = newReqId(); _reqIds.dd = newReqId();
   resetDispatchType();
   if (!_stocks.length) {
     try { const d = await api('getDashboard'); _stocks = d.stocks || []; _items = _stocks; } catch(e) {}
@@ -2205,6 +2208,7 @@ async function loadPOItems(poId) {
 let _currentPOReceive = null;
 
 function openReceivePOItemModal(poId, itemName, orderedQty, supplier) {
+  _reqIds.recv = newReqId();
   _currentPOReceive = { poId, itemName, orderedQty, supplier };
   document.getElementById('recv-info').innerHTML = `
     <div style="font-weight:600;font-size:14px;margin-bottom:4px;">${itemName}</div>
@@ -2960,6 +2964,7 @@ function printPO(items, supplier, expDate, poId) {
 }
 
 function openAddPOItemModal(poId) {
+  _reqIds.poi = newReqId();
   document.getElementById('add-poi-id').value = poId;
   document.getElementById('add-poi-cat').value = '';
   document.getElementById('add-poi-item').innerHTML = '<option value="">-- Select Category first --</option>';
