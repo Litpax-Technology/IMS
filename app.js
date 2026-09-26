@@ -227,10 +227,14 @@ async function api(action, body) {
         }
         const d = JSON.parse(text);
         if (d.error) throw new Error(d.error);       // asli business error — turant fail
+        setDot('ok', 'Connected');
         return d;
       } catch (e) {
-        const retryable = e.message === '__retry__' || e.name === 'AbortError';
-        if (!retryable) throw e;                      // real error → band
+        if (e.name === 'AbortError') {               // 60s me jawab nahi — dobara mat bhejo
+          setDot('err', 'Slow');
+          throw new Error('Server 60s me respond nahi kiya — dobara try karo');
+        }
+        if (e.message !== '__retry__') throw e;      // real error → band
         if (attempt < 5) {
           await new Promise(res => setTimeout(res, attempt * 150)); // 0.15s, 0.3s, 0.45s, 0.6s — fast retry
         }
@@ -238,6 +242,7 @@ async function api(action, body) {
         clearTimeout(timeoutId);
       }
     }
+    setDot('err', 'Offline');
     throw new Error('Server thodi der busy hai — dobara try karo');
   })();
 
@@ -2191,7 +2196,7 @@ function openReceivePOItemModal(poId, itemName, orderedQty, supplier) {
     <div style="font-weight:600;font-size:14px;margin-bottom:4px;">${itemName}</div>
     <div style="color:var(--muted);font-size:12px;">PO: <b style="color:var(--accent);">${poId}</b> &nbsp;|&nbsp; Ordered: <b style="font-family:var(--mono);color:var(--navy);">${orderedQty}</b></div>`;
   document.getElementById('recv-qty').value      = orderedQty;
-  document.getElementById('recv-date').value     = today();
+  document.getElementById('recv-m-date').value   = today();
   document.getElementById('recv-invoice').value  = '';
   document.getElementById('recv-supplier').value = supplier || '';
   document.getElementById('recv-by').value       = 'Ajay';
@@ -2201,7 +2206,7 @@ function openReceivePOItemModal(poId, itemName, orderedQty, supplier) {
 async function confirmReceive() {
   if (!_currentPOReceive) return;
   const qty      = Number(document.getElementById('recv-qty').value);
-  const date     = document.getElementById('recv-date').value;
+  const date     = document.getElementById('recv-m-date').value;
   const invoice  = document.getElementById('recv-invoice').value;
   const supplier = document.getElementById('recv-supplier').value;
   const by       = document.getElementById('recv-by').value || 'Ajay';
