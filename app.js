@@ -183,6 +183,8 @@ function fmtDT(ts) {
   catch(e) { return ts; }
 }
 
+function newReqId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+const _reqIds = {};
 
 // ── API (auto-retry: Apps Script ke random 404 ko chup-chaap handle karta hai) ──
 const _pendingCalls = {};
@@ -203,6 +205,7 @@ async function api(action, body) {
 
   const isWrite = _writeActions.includes(action);
   const maxAttempts = isWrite ? 1 : 3;   // write = koi retry nahi (duplicate se bachaav)
+  if (isWrite && body && !body.reqId) body = { ...body, reqId: newReqId() };
 
   const promise = (async () => {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -461,6 +464,7 @@ async function saveInward() {
   try {
     const inPurpose = document.querySelector('input[name="in-purpose"]:checked')?.value || 'Raw Material';
     await api('addInward', {
+      reqId: _reqIds.inward,
       itemName, qty, date,
       purpose:  inPurpose,
       supplier: inPurpose === 'Raw Material' ? document.getElementById('in-supplier').value : '',
@@ -601,6 +605,7 @@ async function saveOutward() {
   try {
     const outPurpose = document.querySelector('input[name="out-purpose"]:checked')?.value || 'Production';
     await api('addOutward', {
+      reqId: _reqIds.outward,
       itemName, qty, date, department,
       purpose:  outPurpose,
       issuedTo: document.getElementById('out-issuedto').value,
@@ -803,6 +808,7 @@ async function saveDirectDispatch() {
   btn.disabled = true; btn.textContent = 'Processing...';
   try {
     const r = await api('addDirectDispatch', {
+      reqId: _reqIds.dd,
       itemName, qty, date, dispatchTo,
       invoiceNo: document.getElementById('dd-invoice').value,
       orderRef:  document.getElementById('dd-ref').value,
@@ -886,6 +892,7 @@ async function saveDispatch() {
   btn.disabled = true; btn.textContent = 'Processing...';
   try {
     const r = await api('addDispatch', {
+      reqId: _reqIds.dis,
       bomModel, qtyProduced, date,
       dispatchTo: document.getElementById('dis-to').value,
       orderRef:   document.getElementById('dis-ref').value,
@@ -2222,6 +2229,7 @@ async function confirmReceive() {
   btn.disabled = true; btn.textContent = 'Processing...';
   try {
     await api('receivePOItem', {
+      reqId: _reqIds.recv,
       poId:     _currentPOReceive.poId,
       itemName: _currentPOReceive.itemName,
       qty, date, invoice, supplier, by,
@@ -2693,6 +2701,7 @@ function previewPOBeforeSave(items, supplier, expDate) {
   const itemsJson    = JSON.stringify(items);
   const supplierJson = JSON.stringify(supplier);
   const expDateJson  = JSON.stringify(expDate);
+  const poReqIdJson  = JSON.stringify(newReqId());
 
   const win = window.open('', '_blank');
   win.document.write(`<!DOCTYPE html>
@@ -2791,6 +2800,7 @@ function previewPOBeforeSave(items, supplier, expDate) {
           headers: { 'Content-Type': 'text/plain' },
           body: JSON.stringify({
             action: 'createPO',
+            reqId: ${poReqIdJson},
             supplier: ${supplierJson},
             expectedDate: ${expDateJson},
             items: ${itemsJson},
@@ -2979,7 +2989,7 @@ async function saveAddPOItem() {
   const btn = document.getElementById('add-poi-btn');
   btn.disabled = true; btn.textContent = 'Adding...';
   try {
-    await api('addPOItem', { poId, itemName, qty });
+    await api('addPOItem', { reqId: _reqIds.poi, poId, itemName, qty });
     toast('Item added ✓', 'ok');
     closeM('add-po-item-modal');
     loadPOItems(poId);
