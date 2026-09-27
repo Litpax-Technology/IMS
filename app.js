@@ -17,7 +17,7 @@ admin:   { name: 'Admin',   homePage: 'dashboard', pages: ['dashboard','inward',
   ajay:    { name: 'Ajay',    homePage: 'inward',    pages: ['inward','outward','items','opening','bom','indent','stock','reorder'] },
   sandeep: { name: 'Nishant', homePage: 'dispatch',  pages: ['dispatch','received','wip','stock','items','bom'] },
   purchase:  { name: 'Purchase',  redirect: 'https://litpax-technology.github.io/SOMS/?pin=1111' },
-  transport: { name: 'Transport', redirect: 'https://litpax-technology.github.io/SOMS/?pin=2222' },
+
 };
 
 let _currentRole = null;
