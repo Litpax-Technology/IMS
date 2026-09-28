@@ -718,6 +718,7 @@ async function selectDispatchType(type) {
     document.getElementById('dis-battery-step').style.display = 'block';
     document.getElementById('dis-btn').style.display = 'block';
     document.getElementById('dd-btn').style.display  = 'none';
+    _disCellVar = 'Main'; _disBmsVar = 'Main'; _disLastModel = '';
     await populateBomSelect('dis-bom');
     document.getElementById('dis-qty').value  = 1;
     document.getElementById('dis-date').value = today();
@@ -832,17 +833,38 @@ async function saveDirectDispatch() {
 }
 
 let _disPreviewSeq = 0;
+let _disCellVar = 'Main', _disBmsVar = 'Main', _disLastModel = '';
+
+function setDisVar(kind, val) {
+  if (kind === 'cell') _disCellVar = val; else _disBmsVar = val;
+  updDispatchPreview();
+}
+
 async function updDispatchPreview() {
   const bomName = document.getElementById('dis-bom').value;
   const preview = document.getElementById('dis-preview');
   const btn     = document.getElementById('dis-btn');
   if (!bomName) { preview.innerHTML = ''; return; }
+  if (bomName !== _disLastModel) { _disCellVar = 'Main'; _disBmsVar = 'Main'; _disLastModel = bomName; }
   const seq = ++_disPreviewSeq;
   try {
-    const items = await api('getBomItems', { bomName });
+    const items = await api('getBomItems', { bomName, cellVar: _disCellVar, bmsVar: _disBmsVar });
     if (seq !== _disPreviewSeq) return;                        // purani call — naya keystroke aa chuka, skip
     const qty = Number(document.getElementById('dis-qty').value) || 1;   // await ke BAAD padho
-    if (!items.length) { preview.innerHTML = '<div style="color:var(--muted);font-size:12px;margin-top:10px;">No components found for this BOM</div>'; return; }
+
+    // Main/Backup toggle — sirf tab jab Master me backup ho
+    const mdl = _boms.find(x => x.bomName === bomName) || {};
+    const tog = (kind, label, mainN, backN, cur) => backN ? `
+      <div style="display:flex;align-items:center;gap:8px;margin-top:6px;font-size:12px;">
+        <span style="min-width:40px;color:var(--muted);font-weight:600;">${label}</span>
+        <select class="inp" style="font-size:12px;padding:4px 8px;" onchange="setDisVar('${kind}',this.value)">
+          <option value="Main" ${cur === 'Main' ? 'selected' : ''}>Main — ${htmlEnc(mainN || '—')}</option>
+          <option value="Backup" ${cur === 'Backup' ? 'selected' : ''}>Backup — ${htmlEnc(backN)}</option>
+        </select>
+      </div>` : '';
+    const varHtml = tog('cell', 'Cell', mdl.cell1, mdl.cell2, _disCellVar) + tog('bms', 'BMS', mdl.bms1, mdl.bms2, _disBmsVar);
+
+    if (!items.length) { preview.innerHTML = varHtml + '<div style="color:var(--red);font-size:12px;margin-top:10px;">Master me is model ka Cell/BMS nahi bhara</div>'; if (btn) btn.disabled = true; return; }
         const normKey = (str) => String(str || '')
       .replace(/[\u2018\u2019\u2032]/g, "'")
       .replace(/[\u201C\u201D\u2033]/g, '"')
@@ -870,7 +892,7 @@ async function updDispatchPreview() {
       </div>`;
     });
 
-    preview.innerHTML = `<div class="bom-preview">
+    preview.innerHTML = varHtml + `<div class="bom-preview">
       <div class="bp-title">Components required (×${qty})</div>
       ${rows.join('')}
       ${hasShortage ? `<div style="margin-top:10px;padding:8px 10px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;font-size:12px;color:var(--red);font-weight:600;">⛔ Insufficient stock — dispatch nahi ho sakta</div>` : ''}
@@ -897,6 +919,7 @@ async function saveDispatch() {
     const r = await api('addDispatch', {
       reqId: _reqIds.dis,
       bomModel, qtyProduced, date,
+      cellVar: _disCellVar, bmsVar: _disBmsVar,
       dispatchTo: document.getElementById('dis-to').value,
       orderRef:   document.getElementById('dis-ref').value,
       by:         document.getElementById('dis-by').value || 'Sandeep',
@@ -1236,6 +1259,15 @@ async function loadBom() {
   } catch(e) { toast(e.message, 'err'); }
 }
 
+async function refreshMaster() {
+  try {
+    const r = await api('refreshMaster');
+    toast(`✓ Master se ${r.models} models reload hue`, 'ok');
+    _boms = []; _stocks = [];
+    loadBom();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
 function filterBom() {
   const s  = document.getElementById('bom-search').value.toLowerCase();
   const fl = _boms.filter(b => !s || b.bomName.toLowerCase().includes(s) || (b.alias || '').toLowerCase().includes(s));
@@ -1243,17 +1275,32 @@ function filterBom() {
   const em = document.getElementById('bom-empty');
   if (!fl.length) { tb.innerHTML = ''; em.style.display = 'block'; return; }
   em.style.display = 'none';
-  tb.innerHTML = fl.map(b => `<tr>
-    <td style="font-weight:600;color:var(--navy);">${b.bomName}</td>
+  tb.innerHTML = fl.map(b => {
+    const isM = b.source === 'Master';
+    let comp = '—';
+    if (isM) {
+      const lines = [];
+      if (b.cell1) lines.push(`${htmlEnc(b.cell1)} ×${b.q1 || 0}`);
+      if (b.cell2) lines.push(`<span style="color:var(--muted);">Backup: ${htmlEnc(b.cell2)} ×${b.q2 || b.q1 || 0}</span>`);
+      if (b.bms1)  lines.push(htmlEnc(b.bms1));
+      if (b.bms2)  lines.push(`<span style="color:var(--muted);">Backup: ${htmlEnc(b.bms2)}</span>`);
+      comp = lines.length ? lines.join('<br>') : '<span style="color:var(--red);">Cell/BMS nahi bhara</span>';
+    }
+    return `<tr>
+    <td style="font-weight:600;color:var(--navy);">${b.bomName}
+      <span class="badge ${isM ? 'b-ok' : 'b-ro'}" style="font-size:9px;margin-left:4px;">${isM ? 'Master' : 'Legacy'}</span></td>
     <td><span style="font-family:var(--mono);font-size:11px;color:var(--muted);">${b.alias || '—'}</span></td>
     <td style="font-size:12px;">${b.produces || '—'}</td>
-    <td><span style="font-family:var(--mono);font-size:12px;color:var(--accent);">—</span></td>
+    <td style="font-size:11px;line-height:1.5;">${comp}</td>
     <td><span class="badge ${b.active === 'YES' ? 'b-ok' : 'b-ro'}">${b.active === 'YES' ? 'Active' : 'Inactive'}</span></td>
     <td style="white-space:nowrap;">
-      <button class="btn bg bsm" onclick="openBomEdit('${b.bomName.replace(/'/g,"\\'")}')">Edit BOM</button>
-      <button class="btn brd bsm" onclick="delBom('${b.bomName.replace(/'/g,"\\'")}')">Del</button>
+      ${isM
+        ? `<span style="font-size:11px;color:var(--muted);">Master Sheet me edit karo</span>`
+        : `<button class="btn bg bsm" onclick="openBomEdit('${b.bomName.replace(/'/g,"\\'")}')">Edit BOM</button>
+           <button class="btn brd bsm" onclick="delBom('${b.bomName.replace(/'/g,"\\'")}')">Del</button>`}
     </td>
-  </tr>`).join('');
+  </tr>`;
+  }).join('');
 }
 
 function openBomAddModal() {
@@ -1961,8 +2008,9 @@ async function populateBomSelect(id) {
   const sel = document.getElementById(id);
   try {
     if (!_boms.length) _boms = await api('getBomModels');
-    sel.innerHTML = _boms.map(b => `<option value="${b.bomName}">${b.bomName}</option>`).join('');
-    if (_boms.length) updDispatchPreview();
+    const list = _boms.filter(b => b.source === 'Master' && b.active === 'YES');
+    sel.innerHTML = list.map(b => `<option value="${htmlEnc(b.bomName)}">${b.bomName}${b.alias ? ' — ' + b.alias : ''}</option>`).join('');
+    if (list.length) updDispatchPreview();
   } catch(e) {
     sel.innerHTML = '<option>No BOM models found</option>';
   }
