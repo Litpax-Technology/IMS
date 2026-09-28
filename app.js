@@ -1279,12 +1279,10 @@ function filterBom() {
     const isM = b.source === 'Master';
     let comp = '—';
     if (isM) {
-      const lines = [];
-      if (b.cell1) lines.push(`${htmlEnc(b.cell1)} ×${b.q1 || 0}`);
-      if (b.cell2) lines.push(`<span style="color:var(--muted);">Backup: ${htmlEnc(b.cell2)} ×${b.q2 || b.q1 || 0}</span>`);
-      if (b.bms1)  lines.push(htmlEnc(b.bms1));
-      if (b.bms2)  lines.push(`<span style="color:var(--muted);">Backup: ${htmlEnc(b.bms2)}</span>`);
-      comp = lines.length ? lines.join('<br>') : '<span style="color:var(--red);">Cell/BMS nahi bhara</span>';
+      const lines = (b.items || []).map(x => x.role === 'Backup'
+        ? `<span style="color:var(--muted);">Backup: ${htmlEnc(x.item)} ×${x.qty}</span>`
+        : `${htmlEnc(x.item)} ×${x.qty}`);
+      comp = lines.length ? lines.join('<br>') : '<span style="color:var(--red);">BOM nahi bhara</span>';
     }
     return `<tr>
     <td style="font-weight:600;color:var(--navy);">${b.bomName}
