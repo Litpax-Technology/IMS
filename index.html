@@ -570,7 +570,7 @@
         </div>
         <div class="fi full" id="in-stock-info" style="display:none"><div class="stock-info">Stock: <strong id="in-cs">—</strong> &nbsp;|&nbsp; ROP: <strong id="in-rp">—</strong> &nbsp;|&nbsp; In Transit: <strong id="in-mit">—</strong></div></div>
         <div class="fi"><label class="inp-label">Quantity *</label><input class="inp" id="in-qty" type="number" min="1" placeholder="0"></div>
-        <div class="fi"><label class="inp-label">Date *</label><input class="inp" id="in-date" type="date"></div>
+        <div class="fi"><label class="inp-label">Date 🔒</label><input class="inp" id="in-date" type="date" readonly style="background:var(--s2);color:var(--muted);cursor:not-allowed;"></div>
         <div class="fi full">
           <label class="inp-label">Purpose *</label>
           <div style="display:flex;gap:10px;">
@@ -626,7 +626,7 @@
           </div>
         </div>
         <div class="fi"><label class="inp-label">Quantity *</label><input class="inp" id="out-qty" type="number" min="1" placeholder="0"></div>
-        <div class="fi"><label class="inp-label">Date *</label><input class="inp" id="out-date" type="date"></div>
+        <div class="fi"><label class="inp-label">Date 🔒</label><input class="inp" id="out-date" type="date" readonly style="background:var(--s2);color:var(--muted);cursor:not-allowed;"></div>
         <div class="fi"><label class="inp-label">Department *</label>
           <select class="inp" id="out-dept">
             <option value="">Select Department</option>
@@ -841,7 +841,7 @@
       <div id="recv-info" style="background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:10px 14px;margin-bottom:14px;font-size:13px;"></div>
       <div class="fg">
         <div class="fi"><label class="inp-label">Received Qty *</label><input class="inp" id="recv-qty" type="number" min="1" placeholder="0"></div>
-        <div class="fi"><label class="inp-label">Received Date *</label><input class="inp" id="recv-m-date" type="date"></div>
+  <div class="fi"><label class="inp-label">Received Date 🔒</label><input class="inp" id="recv-m-date" type="date" readonly style="background:var(--s2);color:var(--muted);cursor:not-allowed;"></div>
         <div class="fi full"><label class="inp-label">Invoice No.</label><input class="inp" id="recv-invoice" placeholder="INV-001"></div>
         <div class="fi full"><label class="inp-label">Supplier / Party</label><input class="inp" id="recv-supplier" placeholder="Supplier name"></div>
         <div class="fi full"><label class="inp-label">Recorded By</label><input class="inp" id="recv-by" placeholder="Ajay"></div>
