@@ -568,7 +568,7 @@
             <option value="">-- Select Category first --</option>
           </select>
         </div>
-        <div class="fi full" id="in-stock-info" style="display:none"><div class="stock-info">Stock: <strong id="in-cs">—</strong> &nbsp;|&nbsp; ROP: <strong id="in-rp">—</strong> &nbsp;|&nbsp; In Transit: <strong id="in-mit">—</strong></div></div>
+        <div class="fi full" id="in-stock-info" style="display:none"><div class="stock-info">Stock: <strong id="in-cs">—</strong> &nbsp;|&nbsp; ROP: <strong id="in-rp">—</strong> &nbsp;|&nbsp; In Transit: <strong id="in-mit">—</strong></div><div id="in-item-pic"></div>
         <div class="fi"><label class="inp-label">Quantity *</label><input class="inp" id="in-qty" type="number" min="1" placeholder="0"></div>
         <div class="fi"><label class="inp-label">Date 🔒</label><input class="inp" id="in-date" type="date" readonly style="background:var(--s2);color:var(--muted);cursor:not-allowed;"></div>
         <div class="fi full">
@@ -613,7 +613,7 @@
             <option value="">-- Select Category first --</option>
           </select>
         </div>
-        <div class="fi full" id="out-stock-info" style="display:none"><div class="stock-info">Available: <strong id="out-cs">—</strong> &nbsp;|&nbsp; ROP: <strong id="out-rp">—</strong></div></div>
+        <div class="fi full" id="out-stock-info" style="display:none"><div class="stock-info">Available: <strong id="out-cs">—</strong> &nbsp;|&nbsp; ROP: <strong id="out-rp">—</strong></div><div id="out-item-pic"></div></div>
         <div class="fi full">
           <label class="inp-label">Purpose *</label>
           <div style="display:flex;gap:10px;">
@@ -775,6 +775,14 @@
           <div class="fi"><label class="inp-label">Safety Factor</label><input class="inp" id="f-sf" type="number" min="1" step="0.1" placeholder="1.2" oninput="updROP()"></div>
           <div class="fi full"><label class="inp-label">Material In Transit</label><input class="inp" id="f-mit" type="number" min="0" placeholder="0"></div>
           <div class="fi full"><label class="inp-label">Remarks</label><input class="inp" id="f-remarks" placeholder="Optional"></div>
+          <div class="fi full"><label class="inp-label">Description</label><textarea class="inp" id="f-desc" rows="2" placeholder="Size, colour, connector type, pehchaan..."></textarea></div>
+          <div class="fi full">
+            <label class="inp-label">Photo</label>
+            <div style="display:flex;gap:12px;align-items:center;">
+              <img id="f-img-prev" class="item-thumb lg" style="display:none;" alt="">
+              <input type="file" id="f-img" accept="image/*" class="inp" onchange="previewItemImg(this)">
+            </div>
+          </div>
         </div>
         <div class="rop-box" style="margin-top:14px;">
           <div class="rl">Reorder Point = ADC × Lead Time × Safety Factor</div>
@@ -957,7 +965,18 @@
   </div>
 </div>
 
-
+<!-- ITEM VIEW MODAL -->
+<div class="ov" id="item-view" onclick="if(event.target===this)closeM('item-view')">
+  <div class="modal" style="max-width:520px;">
+    <div class="mh"><h2 id="iv-name">Item</h2><button class="mclose" onclick="closeM('item-view')">✕</button></div>
+    <div class="mb">
+      <img id="iv-img" class="iv-img" alt="">
+      <div id="iv-noimg" class="iv-noimg">📦</div>
+      <div id="iv-meta" style="margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12px;"></div>
+      <div id="iv-desc" style="margin-top:10px;font-size:13px;line-height:1.5;white-space:pre-wrap;"></div>
+    </div>
+  </div>
+</div>
 
 
 <script src="app.js?v=50"></script>
