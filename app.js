@@ -171,6 +171,67 @@ let _clDate  = '';
 // ── UTILS ──
 function htmlEnc(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
+// ── ITEM PHOTO HELPERS ──
+function imgUrl(id, w) { return id ? `https://drive.google.com/thumbnail?id=${id}&sz=w${w || 400}` : ''; }
+
+function compressImage(file, maxW = 800, q = 0.7) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const s = Math.min(1, maxW / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      res(c.toDataURL('image/jpeg', q).split(',')[1]);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('Photo read nahi hui (format support nahi)')); };
+    img.src = url;
+  });
+}
+
+function previewItemImg(input) {
+  const prev = document.getElementById('f-img-prev');
+  const f = input.files && input.files[0];
+  if (!f) return;
+  prev.src = URL.createObjectURL(f);
+  prev.style.display = 'block';
+}
+
+function setItemImgFields(item) {
+  document.getElementById('f-desc').value = item ? (item.desc || '') : '';
+  document.getElementById('f-img').value = '';
+  const prev = document.getElementById('f-img-prev');
+  if (item && item.imgId) { prev.src = imgUrl(item.imgId, 200); prev.style.display = 'block'; }
+  else { prev.removeAttribute('src'); prev.style.display = 'none'; }
+}
+
+function renderItemPic(boxId, s) {
+  const el = document.getElementById(boxId);
+  if (!el) return;
+  if (!s || (!s.imgId && !s.desc)) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="item-pic-box">
+    ${s.imgId ? `<img src="${imgUrl(s.imgId, 160)}" data-n="${htmlEnc(s.name)}" onclick="viewItem(this.dataset.n)" alt="">` : ''}
+    <div class="d">${s.desc ? htmlEnc(s.desc) : ''}</div>
+  </div>`;
+}
+
+function viewItem(name) {
+  const s = _stocks.find(x => x.name === name) || _items.find(x => x.name === name);
+  if (!s) return;
+  document.getElementById('iv-name').textContent = s.name;
+  document.getElementById('iv-meta').innerHTML =
+    `${catBadge(s.cat)} <span style="color:var(--muted);">Stock: <b style="color:var(--navy);font-family:var(--mono);">${s.currentStock ?? '—'} ${s.unit || ''}</b></span>`;
+  document.getElementById('iv-desc').textContent = s.desc || 'Description nahi daala gaya';
+  const img = document.getElementById('iv-img'), no = document.getElementById('iv-noimg');
+  if (s.imgId) { img.src = imgUrl(s.imgId, 1000); img.style.display = 'block'; no.style.display = 'none'; }
+  else { img.removeAttribute('src'); img.style.display = 'none'; no.style.display = 'flex'; }
+  document.getElementById('item-view').classList.add('open');
+}
+
 function today() {
   const d = new Date();
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
