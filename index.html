@@ -166,8 +166,8 @@
       </div>
       <div class="card">
         <div class="tw"><table>
-            <thead><tr><th>Date</th><th>Item Name</th><th>Qty</th><th>Unit</th><th>Supplier</th><th>Invoice/PO</th><th>By</th><th>Remarks</th></tr></thead>
-            <tbody id="in-tb"><tr class="lrow"><td colspan="8"><span class="loader"></span></td></tr></tbody>
+            <thead><tr><th>Date</th><th>Item Name</th><th>Qty</th><th>Unit</th><th>Supplier</th><th>Invoice/PO</th><th>By</th><th>Remarks</th><th>Photo</th></tr></thead>
+            <tbody id="in-tb"><tr class="lrow"><td colspan="9"><span class="loader"></span></td></tr></tbody>
         </table></div>
         <div id="in-empty" class="empty" style="display:none"><div class="ei">📥</div><div class="et">No inward records</div></div>
       </div>
@@ -586,6 +586,15 @@
         <div class="fi"><label class="inp-label">Invoice / PO No.</label><input class="inp" id="in-invoice" placeholder="INV-001"></div>
         <div class="fi"><label class="inp-label">Recorded By</label><input class="inp" id="in-by" placeholder="Ajay"></div>
         <div class="fi"><label class="inp-label">Remarks</label><input class="inp" id="in-remarks" placeholder="Optional"></div>
+        <div class="fi full">
+          <label class="inp-label">Stock Photo * <span style="font-size:10px;color:var(--muted);">(counting ki photo — max 3)</span></label>
+          <div class="in-photo-row">
+            <div id="in-photo-list" class="in-photo-list"></div>
+            <label class="in-photo-add" id="in-photo-add">📷<br>Add Photo
+              <input type="file" id="in-photo" accept="image/*" multiple style="display:none;" onchange="addInwardPhotos(this)">
+            </label>
+          </div>
+        </div>
       </div>
     </div>
     <div class="mf"><button class="btn bg" onclick="closeM('inward-modal')">Cancel</button><button class="btn bgn" id="in-btn" onclick="saveInward()">Save Inward</button></div>
@@ -977,7 +986,20 @@
     </div>
   </div>
 </div>
-
+<!-- PHOTO GALLERY MODAL -->
+<div class="ov" id="photo-view" onclick="if(event.target===this)closeM('photo-view')">
+  <div class="modal" style="max-width:640px;">
+    <div class="mh"><h2 id="pv-title">Photos</h2><button class="mclose" onclick="closeM('photo-view')">✕</button></div>
+    <div class="mb">
+      <div class="pv-stage">
+        <button class="pv-nav" id="pv-prev" onclick="pvMove(-1)">‹</button>
+        <img id="pv-img" class="iv-img" alt="">
+        <button class="pv-nav" id="pv-next" onclick="pvMove(1)">›</button>
+      </div>
+      <div id="pv-meta" style="margin-top:10px;font-size:12px;color:var(--muted);text-align:center;"></div>
+    </div>
+  </div>
+</div>
 
 <script src="app.js?v=50"></script>
 </body>
