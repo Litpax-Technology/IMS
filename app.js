@@ -3,7 +3,7 @@
 // API URL: change here if redeployed
 // ============================================================
 
-const API = 'https://script.google.com/macros/s/AKfycby-6J5GLKSbuA1Vho311Z_fLW6SXv9BBq5Y7qEl8TRrmjo13qLgkLjknshDsCUWsOc1/exec';
+const API = 'https://script.google.com/macros/s/AKfycbzeyRbr8fEJhEzSyEHGUvzx5SZcOZ0220q5WLhm9JNOgnRYSxylmWymmp216MDEDCs/exec';
 
 function setEl(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
 function showEl(id, show) { const el = document.getElementById(id); if (el) el.style.display = show ? 'inline' : 'none'; }
@@ -260,7 +260,7 @@ const _writeActions = [
   'saveBomItems','addBomModel','deleteBomModel',
   'createPO','addPOItem','receivePOItem','cancelPO','cancelPOItem',
   'addRequest','addRequestBulk','closeRequest','cancelRequest',
-  'setOpeningStock','saveSnapshot','migrateCategories','uploadItemImage'
+  'setOpeningStock','saveSnapshot','migrateCategories','uploadItemImage','uploadInwardPhoto'
 ];
 
 async function api(action, body) {
@@ -443,7 +443,7 @@ async function loadDash() {
 // ── INWARD ──
 async function loadInward() {
   const dateF = document.getElementById('in-date-f').value;
-  document.getElementById('in-tb').innerHTML = `<tr class="lrow"><td colspan="8"><span class="loader"></span></td></tr>`;
+  document.getElementById('in-tb').innerHTML = `<tr class="lrow"><td colspan="9"><span class="loader"></span></td></tr>`;
   try {
     const rows = await api('getInward', dateF ? { date: dateF } : {});
     renderInward(rows);
@@ -463,6 +463,7 @@ function renderInward(rows) {
     <td style="font-family:var(--mono);font-size:11px;color:var(--muted);">${r.invoice || '—'}</td>
     <td style="font-size:12px;color:var(--muted);">${r.by || '—'}</td>
     <td style="font-size:12px;color:var(--muted);">${r.remarks || '—'}</td>
+    <td>${photoBtn(r)}</td>
   </tr>`).join('');
 }
 
@@ -480,6 +481,7 @@ function openInwardModal() {
   document.getElementById('in-by').value = 'Ajay';
   document.getElementById('in-remarks').value = '';
   document.getElementById('in-stock-info').style.display = 'none';
+  resetInPhotos();
   document.getElementById('inward-modal').classList.add('open');
 }
 
@@ -525,9 +527,18 @@ async function saveInward() {
     document.getElementById('in-invoice').focus();
     return;
   }
+
   const btn = document.getElementById('in-btn');
   btn.disabled = true; btn.textContent = 'Saving...';
   try {
+    const photoIds = [];
+    for (let i = 0; i < _inPhotos.length; i++) {
+      btn.textContent = `Photo ${i + 1}/${_inPhotos.length} upload...`;
+      const data = await compressImage(_inPhotos[i].file, 1200, 0.75);
+      const up = await api('uploadInwardPhoto', { data, mime: 'image/jpeg' });
+      photoIds.push(up.id);
+    }
+    btn.textContent = 'Saving...';
     const inPurpose = document.querySelector('input[name="in-purpose"]:checked')?.value || 'Raw Material';
     await api('addInward', {
       reqId: _reqIds.inward,
@@ -537,6 +548,7 @@ async function saveInward() {
       invoice:  invoiceVal,
       by:       document.getElementById('in-by').value || 'Ajay',
       remarks:  document.getElementById('in-remarks').value,
+      photos:   photoIds.join(','),
     });
     toast('Inward saved ✓', 'ok');
     closeM('inward-modal');
@@ -551,6 +563,77 @@ function updInwardPurpose() {
   const purpose = document.querySelector('input[name="in-purpose"]:checked')?.value;
   const supWrap = document.getElementById('in-supplier-wrap');
   if (supWrap) supWrap.style.display = purpose === 'From Production' ? 'none' : '';
+}
+
+// ── INWARD PHOTOS ──
+let _inPhotos = [];               // [{ file, url }]
+const IN_PHOTO_MAX = 3;
+
+function renderInPhotos() {
+  const list = document.getElementById('in-photo-list');
+  if (!list) return;
+  list.innerHTML = _inPhotos.map((p, i) =>
+    `<div class="in-photo-th"><img src="${p.url}" alt=""><button type="button" onclick="removeInwardPhoto(${i})">✕</button></div>`
+  ).join('');
+  document.getElementById('in-photo-add').style.display = _inPhotos.length >= IN_PHOTO_MAX ? 'none' : '';
+}
+
+function addInwardPhotos(input) {
+  const files = [...(input.files || [])];
+  input.value = '';
+  for (const f of files) {
+    if (_inPhotos.length >= IN_PHOTO_MAX) { toast(`Max ${IN_PHOTO_MAX} photos`, 'warn'); break; }
+    if (f.type && !f.type.startsWith('image/')) continue;
+    _inPhotos.push({ file: f, url: URL.createObjectURL(f) });
+  }
+  renderInPhotos();
+}
+
+function removeInwardPhoto(i) {
+  const p = _inPhotos[i];
+  if (p) URL.revokeObjectURL(p.url);
+  _inPhotos.splice(i, 1);
+  renderInPhotos();
+}
+
+function resetInPhotos() {
+  _inPhotos.forEach(p => URL.revokeObjectURL(p.url));
+  _inPhotos = [];
+  renderInPhotos();
+}
+
+// Table / Ledger ke liye 📷 button
+function photoBtn(r) {
+  const ids = String(r.photos || '').split(',').filter(Boolean);
+  if (!ids.length) return '<span style="color:var(--light);">—</span>';
+  return `<button class="ph-btn" data-ids="${htmlEnc(ids.join(','))}" data-t="${htmlEnc((r.itemName || '') + ' · ' + fmtD(r.date))}" onclick="openPhotos(this.dataset.ids,this.dataset.t)">📷 ${ids.length}</button>`;
+}
+
+// ── PHOTO GALLERY ──
+let _pvIds = [], _pvIdx = 0;
+
+function openPhotos(ids, title) {
+  _pvIds = String(ids || '').split(',').filter(Boolean);
+  if (!_pvIds.length) return;
+  _pvIdx = 0;
+  document.getElementById('pv-title').textContent = title || 'Photos';
+  pvShow();
+  document.getElementById('photo-view').classList.add('open');
+}
+
+function pvShow() {
+  const id = _pvIds[_pvIdx];
+  document.getElementById('pv-img').src = imgUrl(id, 1600);
+  const multi = _pvIds.length > 1;
+  document.getElementById('pv-prev').style.display = multi ? '' : 'none';
+  document.getElementById('pv-next').style.display = multi ? '' : 'none';
+  document.getElementById('pv-meta').innerHTML =
+    `${_pvIdx + 1} / ${_pvIds.length} &nbsp;·&nbsp; <a href="https://drive.google.com/file/d/${id}/view" target="_blank" rel="noopener">Full size ↗</a>`;
+}
+
+function pvMove(d) {
+  _pvIdx = (_pvIdx + d + _pvIds.length) % _pvIds.length;
+  pvShow();
 }
 
 // ── OUTWARD ──
@@ -3530,7 +3613,7 @@ async function renderLedger() {
       const inv   = (r.invoice  || '').toString().trim();
       const label = [party, inv ? 'Inv: ' + inv : ''].filter(Boolean).join(' · ')
                     || (r.remarks || '').toString().trim() || 'Inward';
-      entries.push({ date: new Date(r.date), type: 'IN', qty: Number(r.qty) || 0, ref: label });
+      entries.push({ date: new Date(r.date), type: 'IN', qty: Number(r.qty) || 0, ref: label, photos: r.photos || '', ds: r.date });
     });
     outward.filter(r => r.itemName === item).forEach(r => {
       entries.push({ date: new Date(r.date), type: 'OUT', qty: Number(r.qty) || 0,
@@ -3551,7 +3634,7 @@ async function renderLedger() {
       rowsHtml += `<tr>
         <td style="color:var(--muted);font-size:12px;">${e.date.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</td>
         <td>${e.type === 'IN' ? '<span class="badge b-ok">📥 IN</span>' : '<span class="badge b-ro">📤 OUT</span>'}</td>
-        <td style="font-size:12px;">${htmlEnc(e.ref || '—')}</td>
+        <td style="font-size:12px;">${htmlEnc(e.ref || '—')} ${e.photos ? photoBtn({ photos: e.photos, itemName: item, date: e.ds }) : ''}</td>
         <td style="font-family:var(--mono);color:var(--green);font-weight:600;">${e.type === 'IN' ? '+' + e.qty : ''}</td>
         <td style="font-family:var(--mono);color:var(--red);font-weight:600;">${e.type === 'OUT' ? '-' + e.qty : ''}</td>
         <td style="font-family:var(--mono);font-weight:700;font-size:15px;">${running}</td>
