@@ -199,7 +199,7 @@ const _writeActions = [
   'saveBomItems','addBomModel','deleteBomModel',
   'createPO','addPOItem','receivePOItem','cancelPO','cancelPOItem',
   'addRequest','addRequestBulk','closeRequest','cancelRequest',
-  'setOpeningStock','saveSnapshot','migrateCategories'
+  'setOpeningStock','saveSnapshot','migrateCategories','uploadItemImage'
 ];
 
 async function api(action, body) {
@@ -446,6 +446,7 @@ async function updInwardInfo() {
     document.getElementById('in-cs').textContent  = `${s.currentStock} ${s.unit || ''}`;
     document.getElementById('in-rp').textContent  = `${s.reorderPoint} ${s.unit || ''}`;
     document.getElementById('in-mit').textContent = `${s.mit || 0} ${s.unit || ''}`;
+    renderItemPic('in-item-pic', s);
     inf.style.display = 'block';
   }
 }
@@ -593,6 +594,7 @@ async function updOutwardInfo() {
   if (s) {
     document.getElementById('out-cs').textContent = `${s.currentStock} ${s.unit || ''}`;
     document.getElementById('out-rp').textContent = `${s.reorderPoint} ${s.unit || ''}`;
+    renderItemPic('out-item-pic', s);
     inf.style.display = 'block';
   }
 }
@@ -963,7 +965,13 @@ function filterItems() {
     const pct = item.maxL > 0 ? Math.min(100, Math.round(item.currentStock / item.maxL * 100)) : 0;
     const bc  = item.status === 'OK' ? 'var(--green)' : item.status === 'Reorder' ? 'var(--orange)' : 'var(--red)';
     return `<tr>
-      <td><div style="font-weight:600;color:var(--navy);">${item.name}</div></td>
+      <td><div class="item-cell" data-n="${htmlEnc(item.name)}" onclick="viewItem(this.dataset.n)">
+        ${item.imgId ? `<img class="item-thumb" src="${imgUrl(item.imgId, 120)}" loading="lazy" alt="">` : `<span class="item-thumb ph">📦</span>`}
+        <div>
+          <div style="font-weight:600;color:var(--navy);">${item.name}</div>
+          ${item.desc ? `<div class="item-desc-mini">${htmlEnc(item.desc)}</div>` : ''}
+        </div>
+      </div></td>
       <td>${catBadge(item.cat)}</td>
       <td style="color:var(--muted);font-size:12px;">${item.unit || '—'}</td>
       <td style="font-family:var(--mono);">${item.adc || 0}</td>
@@ -1141,6 +1149,7 @@ function openItemModal(name) {
     document.getElementById('f-sf').value    = item.sf || 1.2;
     document.getElementById('f-mit').value   = item.mit || 0;
     document.getElementById('f-remarks').value = item.remarks || '';
+    setItemImgFields(item);
   } else {
     document.getElementById('im-title').textContent = 'Add Item';
     document.getElementById('cat-grid').style.display = 'grid';
@@ -1155,6 +1164,7 @@ function openItemModal(name) {
     document.getElementById('f-sf').value      = '1.2';
     document.getElementById('f-mit').value     = '0';
     document.getElementById('f-remarks').value = '';
+    setItemImgFields(null);
   }
   updROP();
   document.getElementById('item-modal').classList.add('open');
@@ -1207,11 +1217,22 @@ async function saveItem() {
     adc, lt, sf, moq, maxL,
     mit:  Number(document.getElementById('f-mit').value) || 0,
     remarks: document.getElementById('f-remarks').value,
+    desc:    (document.getElementById('f-desc') || {}).value || '',
   };
   if (_editItemName) payload.originalName = _editItemName;
   try {
     await api(_editItemName ? 'updateItem' : 'addItem', payload);
-    toast(_editItemName ? 'Item updated ✓' : 'Item added ✓', 'ok');
+    let imgErr = '';
+    const imgFile = document.getElementById('f-img')?.files?.[0];
+    if (imgFile) {
+      btn.textContent = 'Photo upload...';
+      try {
+        const data = await compressImage(imgFile);
+        await api('uploadItemImage', { name, data, mime: 'image/jpeg' });
+      } catch (ie) { imgErr = ie.message; }
+    }
+    if (imgErr) toast('Item save hua, par photo fail: ' + imgErr, 'warn');
+    else toast(_editItemName ? 'Item updated ✓' : 'Item added ✓', 'ok');
     closeM('item-modal');
     _items = []; _stocks = [];
     loadItems();
@@ -1514,7 +1535,7 @@ function renderStockTree(stocks) {
               const pct = m.maxL > 0 ? Math.min(100, Math.round(m.currentStock/m.maxL*100)) : 0;
               const bc = m.status==='OK' ? 'var(--green)' : m.status==='Reorder' ? 'var(--orange)' : 'var(--red)';
               return `<div class="tree-model-row">
-                <span class="tree-model-name">${m.name}</span>
+                <span class="tree-model-name" style="cursor:pointer;" data-n="${htmlEnc(m.name)}" onclick="viewItem(this.dataset.n)">${m.imgId ? '📷 ' : ''}${m.name}</span>
                 <span style="color:var(--muted);">${m.unit||'—'}</span>
                 <span style="font-family:var(--mono);color:var(--orange);">${m.reorderPoint}</span>
                 <span style="font-family:var(--mono);color:var(--navy);">${m.maxL||0}</span>
@@ -1557,7 +1578,7 @@ function renderStockTree(stocks) {
               const pct = m.maxL > 0 ? Math.min(100, Math.round(m.currentStock/m.maxL*100)) : 0;
               const bc = m.status==='OK' ? 'var(--green)' : m.status==='Reorder' ? 'var(--orange)' : 'var(--red)';
               return `<div class="tree-model-row">
-                <span class="tree-model-name">${m.name}</span>
+                <span class="tree-model-name" style="cursor:pointer;" data-n="${htmlEnc(m.name)}" onclick="viewItem(this.dataset.n)">${m.imgId ? '📷 ' : ''}${m.name}</span>
                 <span style="color:var(--muted);">${m.unit||'—'}</span>
                 <span style="font-family:var(--mono);color:var(--orange);">${m.reorderPoint}</span>
                 <span style="font-family:var(--mono);color:var(--navy);">${m.maxL||0}</span>
