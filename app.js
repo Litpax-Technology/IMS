@@ -3,12 +3,16 @@
 // API URL: change here if redeployed
 // ============================================================
 
-const API = 'https://script.google.com/macros/s/AKfycbyWK1PWaovG5VoBAByQbLniLhm_tf3zBbvi5_0QMBRkClC4d-7bPKjV6a_MfbFeH3bQ/exec';
+const API = 'https://script.google.com/macros/s/AKfycbxNQ184Neih44RBL2xH2ydXXzFtwVk9ekjFKjUNgSuXo2raQPBMQz1uct8LBJXiKCeW/exec';
 
 function setEl(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
 function showEl(id, show) { const el = document.getElementById(id); if (el) el.style.display = show ? 'inline' : 'none'; }
 
 const DEPTS = ['Volt Wing','Ampere Wing','Volt x Ampere Wing','Mega Grid','Cathodic Wing','Future Cell','Phoenix Wing','Other'];
+
+// ── INWARD APPROVAL — in categories ka Raw Material inward Accountant ke paas jaata hai ──
+const APPROVAL_CATS = ['Cells', 'BMS', 'Nickel/Busbar'];
+function needsApprovalUI(cat, purpose) { return (purpose || 'Raw Material') === 'Raw Material' && APPROVAL_CATS.includes(cat); }
 
 // ── ROLES & PINS ──
 // PINs ab yahan NAHI hain — backend verify karta hai (source me kuch nahi dikhta)
@@ -447,6 +451,7 @@ async function loadInward() {
   try {
     const rows = await api('getInward', dateF ? { date: dateF } : {});
     renderInward(rows);
+    loadInwardApprovals();
   } catch(e) { toast(e.message, 'err'); }
 }
 function renderInward(rows) {
@@ -462,9 +467,36 @@ function renderInward(rows) {
     <td>${r.supplier || '—'}</td>
     <td style="font-family:var(--mono);font-size:11px;color:var(--muted);">${r.invoice || '—'}</td>
     <td style="font-size:12px;color:var(--muted);">${r.by || '—'}</td>
-    <td style="font-size:12px;color:var(--muted);">${r.remarks || '—'}</td>
+    <td style="font-size:12px;color:var(--muted);">${r.remarks || '—'}${r.approvedBy ? `<div><span class="badge b-ok" style="font-size:9px;">✓ Approved — ${htmlEnc(r.approvedBy)}</span></div>` : ''}</td>
     <td>${photoBtn(r)}</td>
   </tr>`).join('');
+}
+
+async function loadInwardApprovals() {
+  const card = document.getElementById('in-apr-card');
+  const tb   = document.getElementById('in-apr-tb');
+  if (!card || !tb) return;
+  try {
+    const d = await api('getPendingInwards', {});
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 15);
+    const rows = (d.data || []).filter(p => p.status === 'Pending' ||
+      (p.status === 'Rejected' && new Date(p.actionAt) >= cutoff));
+    if (!rows.length) { card.style.display = 'none'; return; }
+    card.style.display = '';
+    const pend = rows.filter(p => p.status === 'Pending').length;
+    setEl('in-apr-count', `${pend} pending · ${rows.length - pend} rejected (15 din)`);
+    tb.innerHTML = rows.map(p => `<tr>
+      <td style="color:var(--muted);font-size:12px;">${fmtD(p.date)}</td>
+      <td style="font-weight:500;">${htmlEnc(p.itemName)} ${catBadge(p.cat)}</td>
+      <td style="font-family:var(--mono);font-weight:700;">${p.qty} <span style="font-size:10px;color:var(--muted);">${p.unit || ''}</span></td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--muted);">${htmlEnc(p.source === 'PO' ? p.poId : (p.invoice || '—'))}</td>
+      <td>${p.status === 'Pending' ? '<span class="badge b-dep">⏳ Pending</span>' : '<span class="badge b-cr">✕ Rejected</span>'}</td>
+      <td style="font-size:12px;">${p.status === 'Rejected'
+        ? `<b style="color:var(--red);">${htmlEnc(p.reason)}</b>${p.actionBy ? ' — ' + htmlEnc(p.actionBy) : ''}<div style="font-size:10px;color:var(--muted);">Theek karke dobara entry karo</div>`
+        : `<span style="color:var(--muted);">${htmlEnc(p.remarks || '—')}</span>`}</td>
+      <td>${photoBtn(p)}</td>
+    </tr>`).join('');
+  } catch (e) { card.style.display = 'none'; }
 }
 
 function openInwardModal() {
@@ -482,11 +514,13 @@ function openInwardModal() {
   document.getElementById('in-remarks').value = '';
   document.getElementById('in-stock-info').style.display = 'none';
   resetInPhotos();
+  updInwardBillHint();
   document.getElementById('inward-modal').classList.add('open');
 }
 
 function filterInwardItems() {
   const cat = document.getElementById('in-cat').value;
+  updInwardBillHint();
   const sel = document.getElementById('in-item');
   sel.innerHTML = '<option value="">-- Select Item --</option>';
   document.getElementById('in-stock-info').style.display = 'none';
@@ -528,6 +562,10 @@ async function saveInward() {
     return;
   }
 
+  const inCat = document.getElementById('in-cat').value;
+  if (needsApprovalUI(inCat, inPurposeChk) && !_inPhotos.length &&
+      !confirm('📄 Bill ki photo upload nahi ki — Accountant ko verify karne me dikkat hogi.\n\nFir bhi bina photo ke bhejein?')) return;
+
   const btn = document.getElementById('in-btn');
   btn.disabled = true; btn.textContent = 'Saving...';
   try {
@@ -540,7 +578,7 @@ async function saveInward() {
     }
     btn.textContent = 'Saving...';
     const inPurpose = document.querySelector('input[name="in-purpose"]:checked')?.value || 'Raw Material';
-    await api('addInward', {
+    const res = await api('addInward', {
       reqId: _reqIds.inward,
       itemName, qty, date,
       purpose:  inPurpose,
@@ -550,7 +588,8 @@ async function saveInward() {
       remarks:  document.getElementById('in-remarks').value,
       photos:   photoIds.join(','),
     });
-    toast('Inward saved ✓', 'ok');
+    if (res && res.pending) toast('⏳ Accountant approval ke liye bhej diya — approve hote hi stock me aa jayega', 'warn');
+    else toast('Inward saved ✓', 'ok');
     closeM('inward-modal');
     _stocks = [];
     loadInward();
@@ -563,6 +602,14 @@ function updInwardPurpose() {
   const purpose = document.querySelector('input[name="in-purpose"]:checked')?.value;
   const supWrap = document.getElementById('in-supplier-wrap');
   if (supWrap) supWrap.style.display = purpose === 'From Production' ? 'none' : '';
+  updInwardBillHint();
+}
+
+function updInwardBillHint() {
+  const cat = document.getElementById('in-cat')?.value || '';
+  const purpose = document.querySelector('input[name="in-purpose"]:checked')?.value || 'Raw Material';
+  const el = document.getElementById('in-bill-hint');
+  if (el) el.style.display = needsApprovalUI(cat, purpose) ? '' : 'none';
 }
 
 // ── INWARD PHOTOS ──
@@ -600,6 +647,54 @@ function resetInPhotos() {
   _inPhotos.forEach(p => URL.revokeObjectURL(p.url));
   _inPhotos = [];
   renderInPhotos();
+}
+
+// ── PO RECEIVE PHOTOS ──
+let _recvPhotos = [];
+
+function renderRecvPhotos() {
+  const list = document.getElementById('recv-photo-list');
+  if (!list) return;
+  list.innerHTML = _recvPhotos.map((p, i) =>
+    `<div class="in-photo-th"><img src="${p.url}" alt=""><button type="button" onclick="removeRecvPhoto(${i})">✕</button></div>`
+  ).join('');
+  document.getElementById('recv-photo-add').style.display = _recvPhotos.length >= IN_PHOTO_MAX ? 'none' : '';
+}
+
+function addRecvPhotos(input) {
+  const files = [...(input.files || [])];
+  input.value = '';
+  for (const f of files) {
+    if (_recvPhotos.length >= IN_PHOTO_MAX) { toast(`Max ${IN_PHOTO_MAX} photos`, 'warn'); break; }
+    if (f.type && !f.type.startsWith('image/')) continue;
+    _recvPhotos.push({ file: f, url: URL.createObjectURL(f) });
+  }
+  renderRecvPhotos();
+}
+
+function removeRecvPhoto(i) {
+  const p = _recvPhotos[i];
+  if (p) URL.revokeObjectURL(p.url);
+  _recvPhotos.splice(i, 1);
+  renderRecvPhotos();
+}
+
+function resetRecvPhotos() {
+  _recvPhotos.forEach(p => URL.revokeObjectURL(p.url));
+  _recvPhotos = [];
+  renderRecvPhotos();
+}
+
+function updRecvBillHint(itemName) {
+  const el = document.getElementById('recv-bill-hint');
+  const show = cat => {
+    if (_currentPOReceive && _currentPOReceive.itemName === itemName) _currentPOReceive.cat = cat || '';
+    if (el) el.style.display = needsApprovalUI(cat, 'Raw Material') ? '' : 'none';
+  };
+  const it = _stocks.find(s => s.name === itemName) || _items.find(s => s.name === itemName);
+  if (it) { show(it.cat); return; }
+  if (el) el.style.display = 'none';
+  api('getStockSummary').then(d => { _stocks = d; _items = d; const x = d.find(s => s.name === itemName); show(x ? x.cat : ''); }).catch(() => {});
 }
 
 // Table / Ledger ke liye 📷 button
@@ -2345,7 +2440,11 @@ async function loadPOItems(poId) {
   if (!wrap) return;
   try {
     const po = _pos.find(p => p.poId === poId);
-    const items = await api('getPOItems', { poId });
+    const [items, pend] = await Promise.all([
+      api('getPOItems', { poId }),
+      api('getPendingInwards', { poId, status: 'Pending' }).catch(() => ({ data: [] })),
+    ]);
+    const pendSet = new Set((pend.data || []).map(p => String(p.itemName).toLowerCase()));
     if (!items.length) {
       wrap.innerHTML = `
         <div style="color:var(--muted);font-size:12px;padding:8px 0;">No items found</div>
@@ -2398,8 +2497,8 @@ async function loadPOItems(poId) {
                 ${item.receivedDate ? `<div>${fmtD(item.receivedDate)}</div>` : '—'}
               </td>
               <td style="padding:10px 12px;white-space:nowrap;">
-                ${item.status === 'Pending' ? `
-                  <button class="btn bgn bsm" style="font-size:11px;padding:4px 10px;" onclick="openReceivePOItemModal('${poId}','${item.itemName.replace(/'/g,"\\'")}',${item.orderedQty},'${po ? po.supplier||'' : ''}')">✓ Receive</button>
+                ${item.status === 'Pending' && pendSet.has(item.itemName.toLowerCase()) ? '<span class="badge b-dep">⏳ Approval Pending</span>' : item.status === 'Pending' ? `
+                  <button class="btn bgn bsm" style="font-size:11px;padding:4px 10px;" onclick="openReceivePOItemModal(
                   <button class="btn brd bsm" style="font-size:11px;padding:4px 8px;margin-left:4px;" onclick="cancelPOItemConfirm('${poId}','${item.itemName.replace(/'/g,"\\'")}')">✕</button>
                 ` : '—'}
               </td>
@@ -2432,6 +2531,8 @@ function openReceivePOItemModal(poId, itemName, orderedQty, supplier) {
   document.getElementById('recv-invoice').value  = '';
   document.getElementById('recv-supplier').value = supplier || '';
   document.getElementById('recv-by').value       = 'Ajay';
+  resetRecvPhotos();
+  updRecvBillHint(itemName);
   document.getElementById('receive-modal').classList.add('open');
 }
 
@@ -2443,16 +2544,28 @@ async function confirmReceive() {
   const supplier = document.getElementById('recv-supplier').value;
   const by       = document.getElementById('recv-by').value || 'Ajay';
   if (!qty || qty <= 0) { toast('Valid qty daalo', 'err'); return; }
+  if (needsApprovalUI(_currentPOReceive.cat, 'Raw Material') && !_recvPhotos.length &&
+      !confirm('📄 Bill ki photo upload nahi ki — Accountant ko verify karne me dikkat hogi.\n\nFir bhi bina photo ke bhejein?')) return;
   const btn = document.getElementById('recv-btn');
   btn.disabled = true; btn.textContent = 'Processing...';
   try {
-    await api('receivePOItem', {
+    const photoIds = [];
+    for (let i = 0; i < _recvPhotos.length; i++) {
+      btn.textContent = `Photo ${i + 1}/${_recvPhotos.length} upload...`;
+      const data = await compressImage(_recvPhotos[i].file, 1200, 0.75);
+      const up = await api('uploadInwardPhoto', { data, mime: 'image/jpeg' });
+      photoIds.push(up.id);
+    }
+    btn.textContent = 'Processing...';
+    const res = await api('receivePOItem', {
       reqId: _reqIds.recv,
       poId:     _currentPOReceive.poId,
       itemName: _currentPOReceive.itemName,
       qty, date, invoice, supplier, by,
+      photos:   photoIds.join(','),
     });
-    toast(`✓ ${_currentPOReceive.itemName} received — stock updated`, 'ok');
+    if (res && res.pending) toast(`⏳ ${_currentPOReceive.itemName} — Accountant approval ke liye bhej diya`, 'warn');
+    else toast(`✓ ${_currentPOReceive.itemName} received — stock updated`, 'ok');
     closeM('receive-modal');
     _currentPOReceive = null;
     _stocks = [];
