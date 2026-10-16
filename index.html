@@ -164,6 +164,13 @@
           </div>
         </div>
       </div>
+      <div class="card" id="in-apr-card" style="margin-bottom:12px;display:none;">
+        <div class="ch"><h2>⏳ Accountant Approval Status</h2><div class="ta"><span id="in-apr-count" style="font-size:12px;color:var(--muted);"></span></div></div>
+        <div class="tw"><table>
+          <thead><tr><th>Date</th><th>Item</th><th>Qty</th><th>Invoice / PO</th><th>Status</th><th>Remarks / Reason</th><th>Photo</th></tr></thead>
+          <tbody id="in-apr-tb"></tbody>
+        </table></div>
+      </div>
       <div class="card">
         <div class="tw"><table>
             <thead><tr><th>Date</th><th>Item Name</th><th>Qty</th><th>Unit</th><th>Supplier</th><th>Invoice/PO</th><th>By</th><th>Remarks</th><th>Photo</th></tr></thead>
@@ -586,8 +593,13 @@
         <div class="fi"><label class="inp-label">Invoice / PO No.</label><input class="inp" id="in-invoice" placeholder="INV-001"></div>
         <div class="fi"><label class="inp-label">Recorded By</label><input class="inp" id="in-by" placeholder="Ajay"></div>
         <div class="fi"><label class="inp-label">Remarks</label><input class="inp" id="in-remarks" placeholder="Optional"></div>
+        <div class="fi full" id="in-bill-hint" style="display:none;">
+          <div style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:8px;padding:10px 14px;font-size:12.5px;color:#92400e;font-weight:600;">
+            📄 Bill ki photo zaroor upload karo — ye entry Accountant approval ke liye jayegi. Approve hone ke baad hi stock me aayegi.
+          </div>
+        </div>
         <div class="fi full">
-          <label class="inp-label">Stock Photo <span style="font-size:10px;color:var(--muted);">(optional — max 3)</span></label>
+          <label class="inp-label">Bill / Stock Photo <span style="font-size:10px;color:var(--muted);">(max 3)</span></label>
           <div class="in-photo-row">
             <div id="in-photo-list" class="in-photo-list"></div>
             <label class="in-photo-add" id="in-photo-add">📷<br>Add Photo
@@ -862,6 +874,20 @@
         <div class="fi full"><label class="inp-label">Invoice No.</label><input class="inp" id="recv-invoice" placeholder="INV-001"></div>
         <div class="fi full"><label class="inp-label">Supplier / Party</label><input class="inp" id="recv-supplier" placeholder="Supplier name"></div>
         <div class="fi full"><label class="inp-label">Recorded By</label><input class="inp" id="recv-by" placeholder="Ajay"></div>
+        <div class="fi full" id="recv-bill-hint" style="display:none;">
+          <div style="background:#fffbeb;border:1.5px solid #f59e0b;border-radius:8px;padding:10px 14px;font-size:12.5px;color:#92400e;font-weight:600;">
+            📄 Bill ki photo zaroor upload karo — ye receive Accountant approval ke liye jayega. Approve hone ke baad hi stock me aayega.
+          </div>
+        </div>
+        <div class="fi full">
+          <label class="inp-label">Bill / Stock Photo <span style="font-size:10px;color:var(--muted);">(max 3)</span></label>
+          <div class="in-photo-row">
+            <div id="recv-photo-list" class="in-photo-list"></div>
+            <label class="in-photo-add" id="recv-photo-add">📷<br>Add Photo
+              <input type="file" id="recv-photo" accept="image/*" multiple style="display:none;" onchange="addRecvPhotos(this)">
+            </label>
+          </div>
+        </div>
       </div>
     </div>
     <div class="mf"><button class="btn bg" onclick="closeM('receive-modal')">Cancel</button><button class="btn bgn" id="recv-btn" onclick="confirmReceive()">Receive & Add to Stock</button></div>
