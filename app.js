@@ -3721,14 +3721,18 @@ async function renderLedger() {
 
     // IN (inward) + OUT (outward) combine
     let entries = [];
-    inward.filter(r => r.itemName === item).forEach(r => {
+    // calcStocks jaisa hi rule — WIP Reset store me nahi chadhta
+    inward.filter(r => r.itemName === item && r.purpose !== 'WIP Reset').forEach(r => {
       const party = (r.supplier || '').toString().trim();
       const inv   = (r.invoice  || '').toString().trim();
       const label = [party, inv ? 'Inv: ' + inv : ''].filter(Boolean).join(' · ')
                     || (r.remarks || '').toString().trim() || 'Inward';
       entries.push({ date: new Date(r.date), type: 'IN', qty: Number(r.qty) || 0, ref: label, photos: r.photos || '', ds: r.date });
     });
-    outward.filter(r => r.itemName === item).forEach(r => {
+    // calcStocks jaisa hi rule — Dispatch wale outward store se minus nahi hote (WIP/FG se consume)
+    outward.filter(r => r.itemName === item &&
+      !String(r.remarks || '').startsWith('Dispatch:') &&
+      !String(r.remarks || '').startsWith('Direct Dispatch:')).forEach(r => {
       entries.push({ date: new Date(r.date), type: 'OUT', qty: Number(r.qty) || 0,
         ref: r.department || r.issuedTo || r.remarks || 'Issue to Production' });
     });
