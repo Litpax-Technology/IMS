@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Litpax IMS</title>
-<link rel="stylesheet" href="style.css?v=5">
+<link rel="stylesheet" href="style.css?v=6">
 
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
@@ -210,8 +210,8 @@
       </div>
       <div class="card">
         <div class="tw"><table>
-            <thead><tr><th>Date</th><th>Item Name</th><th>Qty</th><th>Unit</th><th>Purpose</th><th>Department</th><th>Issued To</th><th>By</th><th>Remarks</th></tr></thead>
-            <tbody id="out-tb"><tr class="lrow"><td colspan="8"><span class="loader"></span></td></tr></tbody>
+            <thead><tr><th>Date</th><th>Item Name</th><th>Qty</th><th>Unit</th><th>Purpose</th><th>Department</th><th>Issued To</th><th>By</th><th>Remarks</th><th>Photo</th></tr></thead>
+            <tbody id="out-tb"><tr class="lrow"><td colspan="10"><span class="loader"></span></td></tr></tbody>
         </table></div>
         <div id="out-empty" class="empty" style="display:none"><div class="ei">📤</div><div class="et">No outward records</div></div>
       </div>
@@ -615,38 +615,21 @@
 
 <!-- OUTWARD MODAL -->
 <div class="ov" id="outward-modal">
-  <div class="modal">
+  <div class="modal modal-lg">
     <div class="mh"><h2>📤 New Outward Entry</h2><button class="mclose" onclick="closeM('outward-modal')">✕</button></div>
     <div class="mb">
       <div class="fg">
         <div class="fi full">
-          <label class="inp-label">Category *</label>
-          <select class="inp cat-select" id="out-cat" onchange="filterOutwardItems()">
-            <option value="">-- Select Category --</option>
-            <option>Cells</option><option>BMS</option><option>Charger</option>
-            <option>Nickel/Busbar</option><option>Box</option><option>Wire</option>
-            <option>Consumables</option><option>Tools</option><option>Packaging</option>
-          </select>
-        </div>
-        <div class="fi full">
-          <label class="inp-label">Item *</label>
-          <select class="inp" id="out-item" onchange="updOutwardInfo()">
-            <option value="">-- Select Category first --</option>
-          </select>
-        </div>
-        <div class="fi full" id="out-stock-info" style="display:none"><div class="stock-info">Available: <strong id="out-cs">—</strong> &nbsp;|&nbsp; ROP: <strong id="out-rp">—</strong></div><div id="out-item-pic"></div></div>
-        <div class="fi full">
           <label class="inp-label">Purpose *</label>
           <div style="display:flex;gap:10px;">
-            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 14px;border:1.5px solid var(--border);border-radius:8px;flex:1;" id="out-purpose-prod">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 14px;border:1.5px solid var(--border);border-radius:8px;flex:1;">
               <input type="radio" name="out-purpose" value="Production" checked> 🏭 Production
             </label>
-            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 14px;border:1.5px solid var(--border);border-radius:8px;flex:1;" id="out-purpose-repair">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 14px;border:1.5px solid var(--border);border-radius:8px;flex:1;">
               <input type="radio" name="out-purpose" value="Repair/Other"> 🔧 Repair / Other
             </label>
           </div>
         </div>
-        <div class="fi"><label class="inp-label">Quantity *</label><input class="inp" id="out-qty" type="number" min="1" placeholder="0"></div>
         <div class="fi"><label class="inp-label">Date 🔒</label><input class="inp" id="out-date" type="date" readonly style="background:var(--s2);color:var(--muted);cursor:not-allowed;"></div>
         <div class="fi"><label class="inp-label">Department *</label>
           <select class="inp" id="out-dept">
@@ -658,7 +641,24 @@
         </div>
         <div class="fi"><label class="inp-label">Issued To</label><input class="inp" id="out-issuedto" placeholder="Person name"></div>
         <div class="fi"><label class="inp-label">Recorded By</label><input class="inp" id="out-by" placeholder="Ajay"></div>
-        <div class="fi"><label class="inp-label">Remarks</label><input class="inp" id="out-remarks" placeholder="Optional"></div>
+        <div class="fi full"><label class="inp-label">Remarks</label><input class="inp" id="out-remarks" placeholder="Optional"></div>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:18px 0 8px;">
+        <label class="inp-label" style="margin:0;">Items *</label>
+        <span id="out-row-count" style="font-size:11px;color:var(--muted);font-weight:600;"></span>
+      </div>
+      <div id="out-rows"></div>
+      <button type="button" class="btn bg bsm" onclick="addOutRow()">+ Add Item</button>
+
+      <div style="margin-top:16px;">
+        <label class="inp-label">Photo <span style="font-size:10px;color:var(--muted);">(optional, max 3)</span></label>
+        <div class="in-photo-row">
+          <div id="out-photo-list" class="in-photo-list"></div>
+          <label class="in-photo-add" id="out-photo-add">📷<br>Add Photo
+            <input type="file" accept="image/*" multiple style="display:none;" onchange="addOutwardPhotos(this)">
+          </label>
+        </div>
       </div>
     </div>
     <div class="mf"><button class="btn bg" onclick="closeM('outward-modal')">Cancel</button><button class="btn brd" id="out-btn" onclick="saveOutward()">Save Outward</button></div>
@@ -1027,6 +1027,6 @@
   </div>
 </div>
 
-<script src="app.js?v=50"></script>
+<script src="app.js?v=51"></script>
 </body>
 </html>
