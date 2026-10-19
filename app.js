@@ -3,7 +3,7 @@
 // API URL: change here if redeployed
 // ============================================================
 
-const API = 'https://script.google.com/macros/s/AKfycbyMB31aJcHCUAGCHW6njoXv7XagZ8AoDdKz6l5oJlmvAPgeD45QKXesPoBqBWEEu2dN/exec';
+const API = 'https://script.google.com/macros/s/AKfycbyYFq6dvW2m5KTQuBcoGtJ1waP1LTZ6vbyt20BOxHCRgp4OIB80rkU2fVlIx9GeSuI/exec';
 
 function setEl(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
 function showEl(id, show) { const el = document.getElementById(id); if (el) el.style.display = show ? 'inline' : 'none'; }
@@ -259,7 +259,7 @@ const _pendingCalls = {};
 
 // AFTER
 const _writeActions = [
-  'addInward','addOutward','addDispatch','addDirectDispatch','updateDispatch','deleteDispatch',
+  'addInward','addOutward','addOutwardBulk','uploadOutwardPhoto','addDispatch','addDirectDispatch','updateDispatch','deleteDispatch',
   'addItem','updateItem','deleteItem','renameItemEverywhere',
   'saveBomItems','addBomModel','deleteBomModel',
   'createPO','addPOItem','receivePOItem','cancelPO','cancelPOItem',
@@ -737,7 +737,7 @@ async function loadOutward() {
   const deptF    = document.getElementById('out-dept-f').value;
   const itemF    = document.getElementById('out-item-f')?.value || '';
   const purposeF = document.getElementById('out-purpose-f')?.value || '';
-  document.getElementById('out-tb').innerHTML = `<tr class="lrow"><td colspan="9"><span class="loader"></span></td></tr>`;
+  document.getElementById('out-tb').innerHTML = `<tr class="lrow"><td colspan="10"><span class="loader"></span></td></tr>`;
   try {
     const body = {};
     if (dateF) body.date = dateF;
@@ -774,6 +774,7 @@ function renderOutward(rows) {
     <td style="font-size:12px;">${r.issuedTo || '—'}</td>
     <td style="font-size:12px;color:var(--muted);">${r.by || '—'}</td>
     <td style="font-size:12px;color:var(--muted);">${r.remarks || '—'}</td>
+    <td>${photoBtn(r)}</td>
   </tr>`;}).join('');
 }
 function clearOutFilters() {
@@ -786,84 +787,181 @@ function clearOutFilters() {
   loadOutward();
 }
 
-function openOutwardModal() {
+// ── OUTWARD — multi item + photos ──
+let _outRows   = [];   // [{ cat, item, qty }]
+let _outPhotos = [];
+
+async function openOutwardModal(pre) {
+  pre = pre || {};
   _reqIds.outward = newReqId();
-  if (!_stocks.length) {
-    api('getStockSummary').then(d => { _stocks = d; _items = d; }).catch(() => {});
-  }
-  document.getElementById('out-cat').value = '';
-  document.getElementById('out-item').innerHTML = '<option value="">-- Select Category first --</option>';
-  document.getElementById('out-qty').value = '';
-  document.getElementById('out-date').value = today();
-  document.getElementById('out-dept').value = '';
-  document.getElementById('out-issuedto').value = '';
-  document.getElementById('out-by').value = 'Ajay';
-  document.getElementById('out-remarks').value = '';
-  document.getElementById('out-stock-info').style.display = 'none';
+  document.getElementById('out-date').value     = today();
+  document.getElementById('out-dept').value     = pre.department || '';
+  document.getElementById('out-issuedto').value = pre.issuedTo || '';
+  document.getElementById('out-by').value       = 'Ajay';
+  document.getElementById('out-remarks').value  = pre.remarks || '';
+  const prod = document.querySelector('input[name="out-purpose"][value="Production"]');
+  if (prod) prod.checked = true;
+  resetOutPhotos();
+  document.getElementById('out-rows').innerHTML =
+    '<div style="padding:12px 4px;font-size:12px;color:var(--muted);"><span class="loader"></span> Stock load ho raha hai...</div>';
   document.getElementById('outward-modal').classList.add('open');
+  if (!_stocks.length) {
+    try { _stocks = await api('getStockSummary'); _items = _stocks; }
+    catch (e) { toast(e.message, 'err'); }
+  }
+  const s = pre.itemName ? _stocks.find(x => x.name === pre.itemName) : null;
+  _outRows = [{ cat: s ? s.cat : '', item: s ? s.name : '', qty: pre.qty || '' }];
+  renderOutRows();
 }
 
-function filterOutwardItems() {
-  const cat = document.getElementById('out-cat').value;
-  const sel = document.getElementById('out-item');
-  sel.innerHTML = '<option value="">-- Select Item --</option>';
-  document.getElementById('out-stock-info').style.display = 'none';
-  if (!cat) return;
-  const src = _stocks.length ? _stocks : _items;
-  src.filter(s => s.cat === cat).forEach(s => {
-    const opt = document.createElement('option');
-    opt.value = s.name;
-    opt.textContent = s.name;
-    sel.appendChild(opt);
-  });
+function outCatOpts(sel) {
+  const cats = (_config.catOrder && _config.catOrder.length)
+    ? _config.catOrder : [...new Set(_stocks.map(s => s.cat).filter(Boolean))];
+  return '<option value="">-- Category --</option>' +
+    cats.map(c => `<option value="${htmlEnc(c)}" ${c === sel ? 'selected' : ''}>${htmlEnc(c)}</option>`).join('');
 }
 
-async function updOutwardInfo() {
-  const name = document.getElementById('out-item').value;
-  const inf  = document.getElementById('out-stock-info');
-  if (!name) { inf.style.display = 'none'; return; }
-  let s = _stocks.find(x => x.name === name);
-  if (!s) {
-    try {
-      const d = await api('getDashboard');
-      _stocks = d.stocks || [];
-      s = _stocks.find(x => x.name === name);
-    } catch(e) {}
+function outItemOpts(cat, sel) {
+  if (!cat) return '<option value="">-- Pehle Category --</option>';
+  return '<option value="">-- Select Item --</option>' +
+    _stocks.filter(s => s.cat === cat)
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map(s => `<option value="${htmlEnc(s.name)}" ${s.name === sel ? 'selected' : ''}>${htmlEnc(s.name)}</option>`).join('');
+}
+
+function renderOutRows() {
+  const wrap = document.getElementById('out-rows');
+  if (!wrap) return;
+  const single = _outRows.length === 1;
+  wrap.innerHTML = _outRows.map((r, i) => `
+    <div class="out-row">
+      <select class="inp" onchange="setOutCat(${i}, this.value)">${outCatOpts(r.cat)}</select>
+      <select class="inp" onchange="setOutItem(${i}, this.value)">${outItemOpts(r.cat, r.item)}</select>
+      <input class="inp" type="number" min="0" step="any" placeholder="Qty" value="${htmlEnc(r.qty)}"
+        oninput="setOutQty(${i}, this.value)" style="font-family:var(--mono);font-weight:600;">
+      <button type="button" class="btn brd bsm" onclick="removeOutRow(${i})" ${single ? 'disabled style="opacity:.35;"' : ''}>✕</button>
+      <div class="out-row-info" id="out-info-${i}"></div>
+    </div>`).join('');
+  updAllOutInfo();
+}
+
+function updAllOutInfo() {
+  _outRows.forEach((_, i) => updOutRowInfo(i));
+  const n = _outRows.filter(r => r.item && Number(r.qty) > 0).length;
+  setEl('out-row-count', n ? `${n} item ready` : '');
+}
+
+function updOutRowInfo(i) {
+  const el = document.getElementById('out-info-' + i);
+  const r  = _outRows[i];
+  if (!el || !r) return;
+  if (!r.item) { el.innerHTML = ''; return; }
+  const s = _stocks.find(x => x.name === r.item);
+  if (!s) { el.innerHTML = '<span style="color:var(--red);">Item stock me nahi mila</span>'; return; }
+  const q   = Number(r.qty) || 0;
+  const dup = _outRows.some((x, j) => j !== i && x.item === r.item);
+  let h = `Available: <b style="color:var(--navy);font-family:var(--mono);">${s.currentStock} ${htmlEnc(s.unit || '')}</b>`;
+  if (s.imgId) h += ` · <span style="color:var(--accent);cursor:pointer;" data-n="${htmlEnc(s.name)}" onclick="viewItem(this.dataset.n)">📷 Photo</span>`;
+  if (dup) h += ` · <b style="color:var(--red);">⚠ Ye item doosri row me bhi hai</b>`;
+  else if (q > s.currentStock) h += ` · <b style="color:var(--red);">⛔ Stock se zyada</b>`;
+  el.innerHTML = h;
+}
+
+function setOutCat(i, v)  { _outRows[i].cat = v; _outRows[i].item = ''; renderOutRows(); }
+function setOutItem(i, v) { _outRows[i].item = v; updAllOutInfo(); }
+function setOutQty(i, v)  { _outRows[i].qty = v; updAllOutInfo(); }
+
+function addOutRow() {
+  const last = _outRows[_outRows.length - 1];
+  _outRows.push({ cat: last ? last.cat : '', item: '', qty: '' });   // pichhli row ki category carry
+  renderOutRows();
+}
+
+function removeOutRow(i) {
+  if (_outRows.length <= 1) return;
+  _outRows.splice(i, 1);
+  renderOutRows();
+}
+
+// ── OUTWARD PHOTOS ──
+function renderOutPhotos() {
+  const list = document.getElementById('out-photo-list');
+  if (!list) return;
+  list.innerHTML = _outPhotos.map((p, i) =>
+    `<div class="in-photo-th"><img src="${p.url}" alt=""><button type="button" onclick="removeOutwardPhoto(${i})">✕</button></div>`
+  ).join('');
+  document.getElementById('out-photo-add').style.display = _outPhotos.length >= IN_PHOTO_MAX ? 'none' : '';
+}
+
+function addOutwardPhotos(input) {
+  const files = [...(input.files || [])];
+  input.value = '';
+  for (const f of files) {
+    if (_outPhotos.length >= IN_PHOTO_MAX) { toast(`Max ${IN_PHOTO_MAX} photos`, 'warn'); break; }
+    if (f.type && !f.type.startsWith('image/')) continue;
+    _outPhotos.push({ file: f, url: URL.createObjectURL(f) });
   }
-  if (s) {
-    document.getElementById('out-cs').textContent = `${s.currentStock} ${s.unit || ''}`;
-    document.getElementById('out-rp').textContent = `${s.reorderPoint} ${s.unit || ''}`;
-    renderItemPic('out-item-pic', s);
-    inf.style.display = 'block';
-  }
+  renderOutPhotos();
+}
+
+function removeOutwardPhoto(i) {
+  const p = _outPhotos[i];
+  if (p) URL.revokeObjectURL(p.url);
+  _outPhotos.splice(i, 1);
+  renderOutPhotos();
+}
+
+function resetOutPhotos() {
+  _outPhotos.forEach(p => URL.revokeObjectURL(p.url));
+  _outPhotos = [];
+  renderOutPhotos();
 }
 
 async function saveOutward() {
-  const itemName   = document.getElementById('out-item').value;
-  const qty        = Number(document.getElementById('out-qty').value);
-  const date       = document.getElementById('out-date').value;
   const department = document.getElementById('out-dept').value;
-  if (!itemName)   { toast('Please select an item', 'err'); return; }
-  if (!qty || qty <= 0) { toast('Enter a valid quantity', 'err'); return; }
-  if (!department) { toast('Please select a department', 'err'); return; }
+  if (!department) { toast('Department select karo', 'err'); return; }
+  const rows = _outRows.filter(r => r.item || String(r.qty).trim() !== '');
+  if (!rows.length) { toast('Kam se kam ek item daalo', 'err'); return; }
+
+  const seen = new Set();
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i], q = Number(r.qty) || 0;
+    if (!r.item)          { toast(`Row ${i + 1}: item select karo`, 'err'); return; }
+    if (q <= 0)           { toast(`${r.item}: valid qty daalo`, 'err'); return; }
+    if (seen.has(r.item)) { toast(`${r.item} do baar daala hai`, 'err'); return; }
+    seen.add(r.item);
+    const s = _stocks.find(x => x.name === r.item);
+    if (s && q > s.currentStock) { toast(`${r.item}: available sirf ${s.currentStock} ${s.unit || ''}`, 'err'); return; }
+  }
+
   const btn = document.getElementById('out-btn');
   btn.disabled = true; btn.textContent = 'Saving...';
   try {
-    const outPurpose = document.querySelector('input[name="out-purpose"]:checked')?.value || 'Production';
-    await api('addOutward', {
-      reqId: _reqIds.outward,
-      itemName, qty, date, department,
-      purpose:  outPurpose,
+    const photoIds = [];
+    for (let i = 0; i < _outPhotos.length; i++) {
+      btn.textContent = `Photo ${i + 1}/${_outPhotos.length} upload...`;
+      const data = await compressImage(_outPhotos[i].file, 1200, 0.75);
+      const up = await api('uploadOutwardPhoto', { data, mime: 'image/jpeg' });
+      photoIds.push(up.id);
+    }
+    btn.textContent = 'Saving...';
+    const res = await api('addOutwardBulk', {
+      reqId:    _reqIds.outward,
+      department,
+      purpose:  document.querySelector('input[name="out-purpose"]:checked')?.value || 'Production',
       issuedTo: document.getElementById('out-issuedto').value,
       by:       document.getElementById('out-by').value || 'Ajay',
       remarks:  document.getElementById('out-remarks').value,
+      photos:   photoIds.join(','),
+      items:    rows.map(r => ({ itemName: r.item, qty: Number(r.qty) })),
     });
-    toast('Outward saved ✓', 'ok');
+    toast(`Outward saved ✓ — ${res.count} items`, 'ok');
     closeM('outward-modal');
+    resetOutPhotos();
     _stocks = [];
     loadOutward();
     loadDash();
-  } catch(e) { toast(e.message, 'err'); }
+  } catch (e) { toast(e.message, 'err'); }
   finally { btn.disabled = false; btn.textContent = 'Save Outward'; }
 }
 
@@ -3379,9 +3477,9 @@ function renderRequests() {
 
 function fulfillRequest(reqId, itemName, qty, department, requestedBy) {
   window._pendingReqId = reqId;
-  _reqIds.outward = newReqId();
-  document.getElementById('outward-modal').classList.add('open');
   showPage('outward');
+  openOutwardModal({ itemName, qty, department, issuedTo: requestedBy, remarks: 'Req: ' + reqId });
+}
 
   const item = (_stocks && _stocks.find(s => s.name === itemName))
              || (_items  && _items.find(i => i.name === itemName));
@@ -3734,7 +3832,8 @@ async function renderLedger() {
       !String(r.remarks || '').startsWith('Dispatch:') &&
       !String(r.remarks || '').startsWith('Direct Dispatch:')).forEach(r => {
       entries.push({ date: new Date(r.date), type: 'OUT', qty: Number(r.qty) || 0,
-        ref: r.department || r.issuedTo || r.remarks || 'Issue to Production' });
+        ref: r.department || r.issuedTo || r.remarks || 'Issue to Production',
+        photos: r.photos || '', ds: r.date });
     });
     entries = entries.filter(e => !isNaN(e.date)).sort((a,b) => a.date - b.date);
 
