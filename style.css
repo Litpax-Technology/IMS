@@ -808,3 +808,9 @@ thead th { position: sticky; top: 0; z-index: 2; }
 .pv-stage{position:relative;}
 .pv-nav{position:absolute;top:50%;transform:translateY(-50%);width:36px;height:36px;border-radius:50%;border:none;background:rgba(13,31,60,.6);color:#fff;font-size:22px;cursor:pointer;line-height:34px;padding:0;z-index:1;}
 #pv-prev{left:8px;} #pv-next{right:8px;}
+
+/* ── OUTWARD MULTI-ITEM ROWS ── */
+.out-row{display:grid;grid-template-columns:1fr 1.6fr 100px 38px;gap:8px;align-items:center;padding:10px;margin-bottom:8px;border:1px solid var(--border);border-radius:8px;background:var(--s2);}
+.out-row .out-row-info{grid-column:1/-1;font-size:12px;color:var(--muted);}
+.out-row .out-row-info:empty{display:none;}
+@media (max-width:600px){.out-row{grid-template-columns:1fr 1fr;}}
