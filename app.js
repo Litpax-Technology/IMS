@@ -3481,31 +3481,6 @@ function fulfillRequest(reqId, itemName, qty, department, requestedBy) {
   openOutwardModal({ itemName, qty, department, issuedTo: requestedBy, remarks: 'Req: ' + reqId });
 }
 
-  const item = (_stocks && _stocks.find(s => s.name === itemName))
-             || (_items  && _items.find(i => i.name === itemName));
-  const cat = item ? item.cat : '';
-
-  const catSel  = document.getElementById('out-cat');
-  const itemSel = document.getElementById('out-item');
-
-  if (catSel && cat) catSel.value = cat;
-
-  filterOutwardItems();
-  setTimeout(() => {
-    populateItemSelect('out-item');
-    setTimeout(() => {
-      if (itemSel) itemSel.value = itemName;
-      document.getElementById('out-qty').value   = qty;
-      document.getElementById('out-date').value  = today();
-      document.getElementById('out-dept').value  = department || '';
-      document.getElementById('out-by').value       = 'Ajay';
-      document.getElementById('out-issuedto').value  = requestedBy || '';
-      document.getElementById('out-remarks').value   = 'Req: ' + reqId;
-      updOutwardInfo();
-    }, 150);
-  }, 100);
-}
-
 async function cancelRequest(id) {
   if (!confirm('Cancel this request?')) return;
   try {
