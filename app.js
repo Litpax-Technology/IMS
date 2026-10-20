@@ -10,9 +10,8 @@ function showEl(id, show) { const el = document.getElementById(id); if (el) el.s
 
 const DEPTS = ['Volt Wing','Ampere Wing','Volt x Ampere Wing','Mega Grid','Cathodic Wing','Future Cell','Phoenix Wing','Other'];
 
-// ── INWARD APPROVAL — in categories ka Raw Material inward Accountant ke paas jaata hai ──
-const APPROVAL_CATS = ['Cells', 'BMS', 'Nickel/Busbar'];
-function needsApprovalUI(cat, purpose) { return (purpose || 'Raw Material') === 'Raw Material' && APPROVAL_CATS.includes(cat); }
+// ── INWARD APPROVAL — har category ka Raw Material inward Accountant ke paas jaata hai ──
+function needsApprovalUI(cat, purpose) { return (purpose || 'Raw Material') === 'Raw Material'; }
 
 // ── ROLES & PINS ──
 // PINs ab yahan NAHI hain — backend verify karta hai (source me kuch nahi dikhta)
@@ -2595,8 +2594,7 @@ async function loadPOItems(poId) {
                 ${item.receivedDate ? `<div>${fmtD(item.receivedDate)}</div>` : '—'}
               </td>
               <td style="padding:10px 12px;white-space:nowrap;">
-                ${item.status === 'Pending' && pendSet.has(item.itemName.toLowerCase()) ? '<span class="badge b-dep">⏳ Approval Pending</span>' : item.status === 'Pending' ? `
-                  <button class="btn bgn bsm" style="font-size:11px;padding:4px 10px;" onclick="openReceivePOItemModal(
+                ${item.status === 'Pending' && pendSet.has(item.itemName.toLowerCase()) ? '<span class="badge b-dep">⏳ Approval Pending</span>' : item.status === 'Pending' ? `                  <button class="btn bgn bsm" style="font-size:11px;padding:4px 10px;" onclick="openReceivePOItemModal('${poId}','${item.itemName.replace(/'/g,"\\'")}',${item.orderedQty},'${((po && po.supplier) || '').replace(/'/g,"\\'")}')">📥 Receive</button>
                   <button class="btn brd bsm" style="font-size:11px;padding:4px 8px;margin-left:4px;" onclick="cancelPOItemConfirm('${poId}','${item.itemName.replace(/'/g,"\\'")}')">✕</button>
                 ` : '—'}
               </td>
