@@ -498,61 +498,86 @@ async function loadInwardApprovals() {
   } catch (e) { card.style.display = 'none'; }
 }
 
-function openInwardModal() {
+// ── INWARD — ek entry me multiple items (har item alag approval me jata hai) ──
+let _inRows = [];   // [{ cat, item, qty }]
+
+async function openInwardModal() {
   _reqIds.inward = newReqId();
-  if (!_stocks.length) {
-    api('getStockSummary').then(d => { _stocks = d; _items = d; }).catch(() => {});
-  }
-  document.getElementById('in-cat').value = '';
-  document.getElementById('in-item').innerHTML = '<option value="">-- Select Category first --</option>';
-  document.getElementById('in-qty').value = '';
   document.getElementById('in-date').value = today();
   document.getElementById('in-supplier').value = '';
   document.getElementById('in-invoice').value = '';
   document.getElementById('in-by').value = 'Ajay';
   document.getElementById('in-remarks').value = '';
-  document.getElementById('in-stock-info').style.display = 'none';
   resetInPhotos();
   updInwardBillHint();
+  document.getElementById('in-rows').innerHTML =
+    '<div style="padding:12px 4px;font-size:12px;color:var(--muted);"><span class="loader"></span> Items load ho rahe hain...</div>';
   document.getElementById('inward-modal').classList.add('open');
+  if (!_stocks.length) {
+    try { _stocks = await api('getStockSummary'); _items = _stocks; }
+    catch (e) { toast(e.message, 'err'); }
+  }
+  _inRows = [{ cat: '', item: '', qty: '' }];
+  renderInRows();
 }
 
-function filterInwardItems() {
-  const cat = document.getElementById('in-cat').value;
-  updInwardBillHint();
-  const sel = document.getElementById('in-item');
-  sel.innerHTML = '<option value="">-- Select Item --</option>';
-  document.getElementById('in-stock-info').style.display = 'none';
-  if (!cat) return;
-  const filtered = _items.filter(i => i.cat === cat);
-  const addOpt = (name) => { const o = document.createElement('option'); o.value = name; o.textContent = name; sel.appendChild(o); };
-  if (!filtered.length && _stocks.length) {
-    _stocks.filter(s => s.cat === cat).forEach(s => addOpt(s.name));
-  } else {
-    filtered.forEach(i => addOpt(i.name));
-  }
+function renderInRows() {
+  const wrap = document.getElementById('in-rows');
+  if (!wrap) return;
+  const single = _inRows.length === 1;
+  wrap.innerHTML = _inRows.map((r, i) => `
+    <div class="out-row">
+      <select class="inp" onchange="setInCat(${i}, this.value)">${outCatOpts(r.cat)}</select>
+      <select class="inp" onchange="setInItem(${i}, this.value)">${outItemOpts(r.cat, r.item)}</select>
+      <input class="inp" type="number" min="0" step="any" placeholder="Qty" value="${htmlEnc(r.qty)}"
+        oninput="setInQty(${i}, this.value)" style="font-family:var(--mono);font-weight:600;">
+      <button type="button" class="btn brd bsm" onclick="removeInRow(${i})" ${single ? 'disabled style="opacity:.35;"' : ''}>✕</button>
+      <div class="out-row-info" id="in-info-${i}"></div>
+    </div>`).join('');
+  updAllInInfo();
 }
 
-async function updInwardInfo() {
-  const name = document.getElementById('in-item').value;
-  const inf  = document.getElementById('in-stock-info');
-  if (!name) { inf.style.display = 'none'; return; }
-  const s = _stocks.find(x => x.name === name);
-  if (s) {
-    document.getElementById('in-cs').textContent  = `${s.currentStock} ${s.unit || ''}`;
-    document.getElementById('in-rp').textContent  = `${s.reorderPoint} ${s.unit || ''}`;
-    document.getElementById('in-mit').textContent = `${s.mit || 0} ${s.unit || ''}`;
-    renderItemPic('in-item-pic', s);
-    inf.style.display = 'block';
-  }
+function updAllInInfo() {
+  _inRows.forEach((r, i) => {
+    const el = document.getElementById('in-info-' + i);
+    if (!el) return;
+    const s = r.item ? _stocks.find(x => x.name === r.item) : null;
+    if (!s) { el.innerHTML = ''; return; }
+    const u = htmlEnc(s.unit || '');
+    let h = `Stock: <b style="font-family:var(--mono);">${s.currentStock} ${u}</b> · ROP: <b style="font-family:var(--mono);">${s.reorderPoint} ${u}</b> · In Transit: <b style="font-family:var(--mono);">${s.mit || 0} ${u}</b>`;
+    if (_inRows.some((x, j) => j !== i && x.item === r.item)) h += ` · <b style="color:var(--red);">⚠ Ye item doosri row me bhi hai</b>`;
+    el.innerHTML = h;
+  });
+  const n = _inRows.filter(r => r.item && Number(r.qty) > 0).length;
+  setEl('in-row-count', n ? `${n} item ready` : '');
+}
+
+function setInCat(i, v)  { _inRows[i].cat = v; _inRows[i].item = ''; renderInRows(); }
+function setInItem(i, v) { _inRows[i].item = v; updAllInInfo(); }
+function setInQty(i, v)  { _inRows[i].qty = v; updAllInInfo(); }
+function addInRow() {
+  const last = _inRows[_inRows.length - 1];
+  _inRows.push({ cat: last ? last.cat : '', item: '', qty: '' });   // pichhli row ki category carry
+  renderInRows();
+}
+function removeInRow(i) {
+  if (_inRows.length <= 1) return;
+  _inRows.splice(i, 1);
+  renderInRows();
 }
 
 async function saveInward() {
-  const itemName = document.getElementById('in-item').value;
-  const qty      = Number(document.getElementById('in-qty').value);
-  const date     = document.getElementById('in-date').value;
-  if (!itemName) { toast('Please select an item', 'err'); return; }
-  if (!qty || qty <= 0) { toast('Enter a valid quantity', 'err'); return; }
+  const rows = _inRows.filter(r => r.item || String(r.qty).trim() !== '');
+  if (!rows.length) { toast('Kam se kam ek item daalo', 'err'); return; }
+  const seen = new Set();
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i], q = Number(r.qty) || 0;
+    if (!r.item)          { toast(`Row ${i + 1}: item select karo`, 'err'); return; }
+    if (q <= 0)           { toast(`${r.item}: valid qty daalo`, 'err'); return; }
+    if (seen.has(r.item)) { toast(`${r.item} do baar daala hai`, 'err'); return; }
+    seen.add(r.item);
+  }
+  const date = document.getElementById('in-date').value;
   const inPurposeChk = document.querySelector('input[name="in-purpose"]:checked')?.value || 'Raw Material';
   const invoiceVal   = document.getElementById('in-invoice').value.trim();
   if (inPurposeChk === 'Raw Material' && !invoiceVal) {
@@ -561,8 +586,7 @@ async function saveInward() {
     return;
   }
 
-  const inCat = document.getElementById('in-cat').value;
-  if (needsApprovalUI(inCat, inPurposeChk) && !_inPhotos.length &&
+  if (needsApprovalUI('', inPurposeChk) && !_inPhotos.length &&
       !confirm('📄 Bill ki photo upload nahi ki — Accountant ko verify karne me dikkat hogi.\n\nFir bhi bina photo ke bhejein?')) return;
 
   const btn = document.getElementById('in-btn');
@@ -577,18 +601,29 @@ async function saveInward() {
     }
     btn.textContent = 'Saving...';
     const inPurpose = document.querySelector('input[name="in-purpose"]:checked')?.value || 'Raw Material';
-    const res = await api('addInward', {
-      reqId: _reqIds.inward,
-      itemName, qty, date,
-      purpose:  inPurpose,
-      supplier: inPurpose === 'Raw Material' ? document.getElementById('in-supplier').value : '',
-      invoice:  invoiceVal,
-      by:       document.getElementById('in-by').value || 'Ajay',
-      remarks:  document.getElementById('in-remarks').value,
-      photos:   photoIds.join(','),
-    });
-    if (res && res.pending) toast('⏳ Accountant approval ke liye bhej diya — approve hote hi stock me aa jayega', 'warn');
-    else toast('Inward saved ✓', 'ok');
+    // Har item purane addInward se alag jaata hai (same bill/photo) — backend me koi change nahi
+    let pending = 0, saved = 0;
+    for (let i = 0; i < rows.length; i++) {
+      btn.textContent = `Saving ${i + 1}/${rows.length}...`;
+      try {
+        const res = await api('addInward', {
+          reqId: _reqIds.inward + '-' + i,   // har item ka alag reqId (double-save guard)
+          itemName: rows[i].item, qty: Number(rows[i].qty), date,
+          purpose:  inPurpose,
+          supplier: inPurpose === 'Raw Material' ? document.getElementById('in-supplier').value : '',
+          invoice:  invoiceVal,
+          by:       document.getElementById('in-by').value || 'Ajay',
+          remarks:  document.getElementById('in-remarks').value,
+          photos:   photoIds.join(','),
+        });
+        if (res && res.pending) pending++; else saved++;
+      } catch (e) {
+        // Jo pehle chale gaye wo ho gaye; baaki ke liye bata do
+        throw new Error(`${rows[i].item}: ${e.message} — ${i} item pehle hi chale gaye, baaki dobara daalo`);
+      }
+    }
+    if (pending) toast(`⏳ ${pending} item Accountant approval ke liye bhej diye — approve hote hi stock me aa jayenge`, 'warn');
+    else toast(`Inward saved ✓ — ${saved} item`, 'ok');
     closeM('inward-modal');
     _stocks = [];
     loadInward();
