@@ -86,7 +86,10 @@
         <div class="ni" onclick="showPage('closing')" data-page="closing"><span class="ic">🗓️</span><span>Daily Closing</span></div>
         <div class="ni" onclick="showPage('adc')" data-page="adc"><span class="ic">📉</span><span>ADC Calculate</span></div>
       </div>
-
+      <div class="ng">
+        <div class="ng-label">Admin</div>
+        <div class="ni" onclick="showPage('settings')" data-page="settings"><span class="ic">⚙️</span><span>Settings</span></div>
+      </div>
 
     </nav>
     <div class="sfoot">
@@ -546,6 +549,31 @@
           <tbody id="ldg-tb"><tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px;">Item select karo</td></tr></tbody>
         </table></div>
         <div id="ldg-empty" class="empty" style="display:none"><div class="ei">📒</div><div class="et">No entries in this range</div></div>
+      </div>
+    </div>
+
+    <!-- SETTINGS (Admin) -->
+    <div class="page" id="page-settings">
+      <div class="tb">
+        <div class="pt"><h1>Settings</h1><p>Category, brand aur default unit — yahan se add/edit karo</p></div>
+        <div class="ta" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <span id="set-dirty" style="font-size:12px;font-weight:600;color:var(--orange);"></span>
+          <input class="inp" id="set-pin" type="password" inputmode="numeric" placeholder="Admin PIN" autocomplete="off" style="width:120px;">
+          <button class="btn bp" id="set-save-btn" onclick="saveSettings()">💾 Save Changes</button>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:14px;">
+        <div class="ch"><h2>+ Nayi Category</h2></div>
+        <div style="padding:14px 18px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <input class="inp" id="set-new-name" placeholder="Category naam (jaise Cells LFP)" style="width:240px;" onkeydown="if(event.key==='Enter')setAddCat()">
+          <select class="inp" id="set-new-unit" style="width:100px;"></select>
+          <label style="font-size:12px;display:flex;align-items:center;gap:5px;"><input type="checkbox" id="set-new-nobrand"> No brand</label>
+          <button class="btn bg" onclick="setAddCat()">Add</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ch"><h2>Categories</h2><span style="font-size:11px;color:var(--muted);">▲▼ se order — yahi order dropdowns aur PO print me aata hai</span></div>
+        <div id="set-list"></div>
       </div>
     </div>
 
