@@ -814,3 +814,20 @@ thead th { position: sticky; top: 0; z-index: 2; }
 .out-row .out-row-info{grid-column:1/-1;font-size:12px;color:var(--muted);}
 .out-row .out-row-info:empty{display:none;}
 @media (max-width:600px){.out-row{grid-template-columns:1fr 1fr;}}
+
+/* ── SETTINGS PAGE ── */
+.set-row{display:flex;gap:12px;padding:12px 18px;border-bottom:1px solid var(--border);}
+.set-row:last-child{border-bottom:none;}
+.set-move{display:flex;flex-direction:column;gap:4px;}
+.set-move button{width:26px;height:22px;border:1px solid var(--border);background:var(--s2);border-radius:5px;cursor:pointer;font-size:10px;color:var(--muted);}
+.set-move button:disabled{opacity:.3;cursor:default;}
+.set-main{flex:1;min-width:0;}
+.set-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
+.set-name{font-weight:700;color:var(--navy);font-size:14px;}
+.set-chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+.set-chip{display:inline-flex;align-items:center;gap:5px;background:var(--s2);border:1px solid var(--border);border-radius:14px;padding:3px 4px 3px 10px;font-size:12px;}
+.set-chip b{font-family:var(--mono);font-size:10px;color:var(--accent);}
+.set-chip button{border:none;background:transparent;cursor:pointer;color:var(--red);font-size:11px;padding:0 4px;}
+.set-chip button:disabled{color:var(--light);cursor:not-allowed;}
+.set-add{display:inline-flex;gap:4px;}
+.set-add .inp{width:110px;font-size:12px;padding:4px 8px;}
