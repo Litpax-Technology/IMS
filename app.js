@@ -16,7 +16,7 @@ function needsApprovalUI(cat, purpose) { return (purpose || 'Raw Material') === 
 // ── ROLES & PINS ──
 // PINs ab yahan NAHI hain — backend verify karta hai (source me kuch nahi dikhta)
 const ROLES = {
-admin:   { name: 'Admin',   homePage: 'dashboard', pages: ['dashboard','inward','outward','dispatch','wip','items','opening','bom','indent','stock','reorder','closing','adc','ledger'] },
+admin:   { name: 'Admin',   homePage: 'dashboard', pages: ['dashboard','inward','outward','dispatch','wip','items','opening','bom','indent','stock','reorder','closing','adc','ledger','settings'] },
   ajay:    { name: 'Ajay',    homePage: 'inward',    pages: ['inward','outward','items','opening','bom','indent','stock','reorder'] },
   sandeep: { name: 'Nishant', homePage: 'dispatch',  pages: ['dispatch','received','wip','stock','items','bom'] },
   purchase:  { name: 'Purchase',  redirect: 'https://litpax-technology.github.io/SOMS/?pin=1111' },
@@ -263,7 +263,7 @@ const _writeActions = [
   'saveBomItems','addBomModel','deleteBomModel',
   'createPO','addPOItem','receivePOItem','cancelPO','cancelPOItem',
   'addRequest','addRequestBulk','closeRequest','cancelRequest',
-  'setOpeningStock','saveSnapshot','migrateCategories','uploadItemImage','uploadInwardPhoto'
+  'setOpeningStock','saveSnapshot','migrateCategories','uploadItemImage','uploadInwardPhoto','saveConfig'
 ];
 
 async function api(action, body) {
@@ -377,6 +377,7 @@ function showPage(id) {
   if (id === 'adc')          initADC();
   if (id === 'ledger')       initLedger();
   if (id === 'received')     { const d = document.getElementById('recv-date'); if(d) d.value = today(); loadReceived(); }
+  if (id === 'settings')     loadSettings();
 }
 
 // ── BADGES ──
@@ -1858,7 +1859,7 @@ function renderStockTree(stocks) {
   const tree = {};
   stocks.forEach(s => {
     const cat   = s.cat || 'Other';
-    const noBrandCats = ['Wire','Consumables','Tools','Packaging'];
+    const noBrandCats = _config.noBrandCats || ['Wire','Consumables','Tools','Packaging'];
     const brand = noBrandCats.includes(cat) ? '__direct__' : parseBrand(s);
     if (!tree[cat]) tree[cat] = {};
     if (!tree[cat][brand]) tree[cat][brand] = [];
@@ -3914,4 +3915,136 @@ function printLedger() {
   </body></html>`);
   win.document.close();
   setTimeout(() => win.print(), 400);
+}
+
+// ============================================================
+// SETTINGS — Category / Brand manager (Admin only)
+// ============================================================
+let _setCats  = [];     // working copy — Save tak sheet me kuch nahi jaata
+let _setDirty = false;
+
+async function loadSettings() {
+  document.getElementById('set-list').innerHTML = `<div class="empty"><div class="ei">⏳</div><div class="et">Loading...</div></div>`;
+  await loadConfig();
+  if (!_stocks.length) { try { _stocks = await api('getStockSummary'); } catch (e) { toast(e.message, 'err'); } }
+  _setCats = (_config.catOrder || []).map(c => ({
+    name: c,
+    brands: [...(_config.brands[c] || ['Other'])],
+    unit: _config.catUnits[c] || 'Pcs',
+    noBrand: (_config.noBrandCats || []).includes(c),
+    isNew: false,
+  }));
+  _setDirty = false;
+  document.getElementById('set-new-unit').innerHTML = _config.units.map(u => `<option>${htmlEnc(u)}</option>`).join('');
+  renderSettings();
+}
+
+function setCatUse(cat) { return _stocks.filter(s => s.cat === cat).length; }
+function setBrandUse(cat, brand) {
+  const pre = (cat + ' ' + brand + ' ').toLowerCase();
+  return _stocks.filter(s => s.cat === cat && s.name.toLowerCase().startsWith(pre)).length;
+}
+
+function renderSettings() {
+  const wrap = document.getElementById('set-list');
+  setEl('set-dirty', _setDirty ? '● Unsaved changes' : '');
+  if (!_setCats.length) { wrap.innerHTML = `<div class="empty"><div class="et">Koi category nahi</div></div>`; return; }
+  const unitOpts = sel => [...new Set([..._config.units, sel])]
+    .map(u => `<option ${u === sel ? 'selected' : ''}>${htmlEnc(u)}</option>`).join('');
+
+  wrap.innerHTML = _setCats.map((c, i) => {
+    const used = setCatUse(c.name);
+    const chips = c.noBrand
+      ? `<span style="font-size:11px;color:var(--muted);">No-brand — item naam seedha model se banega</span>`
+      : c.brands.map((b, j) => {
+          const bu = setBrandUse(c.name, b);
+          return `<span class="set-chip">${htmlEnc(b)}${bu ? ` <b>${bu}</b>` : ''}<button type="button" onclick="setDelBrand(${i},${j})" ${bu ? 'disabled title="Is brand ke items hain"' : ''}>✕</button></span>`;
+        }).join('') +
+        `<span class="set-add"><input class="inp" id="set-b-${i}" placeholder="+ Brand" onkeydown="if(event.key==='Enter')setAddBrand(${i})"><button type="button" class="btn bg bsm" onclick="setAddBrand(${i})">Add</button></span>`;
+    return `<div class="set-row">
+      <div class="set-move">
+        <button type="button" onclick="setMove(${i},-1)" ${i === 0 ? 'disabled' : ''}>▲</button>
+        <button type="button" onclick="setMove(${i},1)" ${i === _setCats.length - 1 ? 'disabled' : ''}>▼</button>
+      </div>
+      <div class="set-main">
+        <div class="set-head">
+          <span class="set-name">${getCatIcon(c.name)} ${htmlEnc(c.name)}</span>
+          ${c.isNew ? '<span class="badge b-dep">New</span>' : ''}
+          <span style="font-size:11px;color:var(--muted);">${used} items</span>
+          <select class="inp" style="width:95px;font-size:12px;padding:4px 8px;" onchange="setUnit(${i},this.value)">${unitOpts(c.unit)}</select>
+          <label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" ${c.noBrand ? 'checked' : ''} onchange="setNoBrand(${i},this.checked)"> No brand</label>
+          <button type="button" class="btn brd bsm" style="margin-left:auto;" onclick="setDelCat(${i})" ${used ? 'disabled title="Is category ke items hain"' : ''}>Delete</button>
+        </div>
+        <div class="set-chips">${chips}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function setMark() { _setDirty = true; renderSettings(); }
+function setMove(i, d) {
+  const j = i + d;
+  if (j < 0 || j >= _setCats.length) return;
+  [_setCats[i], _setCats[j]] = [_setCats[j], _setCats[i]];
+  setMark();
+}
+function setUnit(i, v)    { _setCats[i].unit = v; setMark(); }
+function setNoBrand(i, v) { _setCats[i].noBrand = v; if (!_setCats[i].brands.length) _setCats[i].brands = ['Other']; setMark(); }
+
+function setAddBrand(i) {
+  const v = (document.getElementById('set-b-' + i).value || '').trim();
+  if (!v) return;
+  if (v.includes(',')) { toast('Brand naam me comma nahi chalega', 'err'); return; }
+  const c = _setCats[i];
+  if (c.brands.some(b => b.toLowerCase() === v.toLowerCase())) { toast(`${v} pehle se hai`, 'warn'); return; }
+  const oi = c.brands.indexOf('Other');              // 'Other' hamesha aakhir me rahe
+  if (oi === -1) c.brands.push(v); else c.brands.splice(oi, 0, v);
+  setMark();
+  setTimeout(() => { const n = document.getElementById('set-b-' + i); if (n) n.focus(); }, 0);
+}
+function setDelBrand(i, j) {
+  const c = _setCats[i];
+  if (setBrandUse(c.name, c.brands[j])) { toast('Is brand ke items hain — hat nahi sakta', 'err'); return; }
+  c.brands.splice(j, 1);
+  setMark();
+}
+function setDelCat(i) {
+  const c = _setCats[i];
+  if (setCatUse(c.name)) { toast('Is category ke items hain — delete nahi ho sakti', 'err'); return; }
+  if (!confirm(`"${c.name}" category hatani hai?`)) return;
+  _setCats.splice(i, 1);
+  setMark();
+}
+function setAddCat() {
+  const name = document.getElementById('set-new-name').value.trim();
+  if (!name) { toast('Category naam daalo', 'err'); return; }
+  if (name.includes(',')) { toast('Naam me comma nahi chalega', 'err'); return; }
+  if (_setCats.some(c => c.name.toLowerCase() === name.toLowerCase())) { toast(`${name} pehle se hai`, 'warn'); return; }
+  _setCats.push({
+    name, brands: ['Other'],
+    unit: document.getElementById('set-new-unit').value || 'Pcs',
+    noBrand: document.getElementById('set-new-nobrand').checked,
+    isNew: true,
+  });
+  document.getElementById('set-new-name').value = '';
+  document.getElementById('set-new-nobrand').checked = false;
+  setMark();
+}
+
+async function saveSettings() {
+  const pinEl = document.getElementById('set-pin');
+  const pin = pinEl.value.trim();
+  if (!pin) { toast('Save ke liye Admin PIN daalo', 'err'); pinEl.focus(); return; }
+  const btn = document.getElementById('set-save-btn');
+  btn.disabled = true; btn.textContent = 'Saving...';
+  try {
+    const r = await api('saveConfig', {
+      pin,
+      categories: _setCats.map(c => ({ name: c.name, brands: c.brands, unit: c.unit, noBrand: c.noBrand })),
+    });
+    pinEl.value = '';
+    toast(`Settings saved ✓ — ${r.count} categories`, 'ok');
+    await loadSettings();               // loadConfig → saare dropdown bhi refresh
+  } catch (e) { toast(e.message, 'err'); }
+  finally { btn.disabled = false; btn.textContent = '💾 Save Changes'; }
 }
