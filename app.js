@@ -17,7 +17,7 @@ function needsApprovalUI(cat, purpose) { return (purpose || 'Raw Material') === 
 // PINs ab yahan NAHI hain — backend verify karta hai (source me kuch nahi dikhta)
 const ROLES = {
 admin:   { name: 'Admin',   homePage: 'dashboard', pages: ['dashboard','inward','outward','dispatch','wip','items','opening','bom','indent','stock','reorder','closing','adc','ledger','settings'] },
-  ajay:    { name: 'Ajay',    homePage: 'inward',    pages: ['inward','outward','items','opening','bom','indent','stock','reorder'] },
+  ajay:    { name: 'Ajay',    homePage: 'inward',    pages: ['inward','outward','diary','items','opening','bom','indent','stock','reorder'] },
   sandeep: { name: 'Nishant', homePage: 'dispatch',  pages: ['dispatch','received','wip','stock','items','bom'] },
   purchase:  { name: 'Purchase',  redirect: 'https://litpax-technology.github.io/SOMS/?pin=1111' },
 
@@ -263,7 +263,8 @@ const _writeActions = [
   'saveBomItems','addBomModel','deleteBomModel',
   'createPO','addPOItem','receivePOItem','cancelPO','cancelPOItem',
   'addRequest','addRequestBulk','closeRequest','cancelRequest',
-  'setOpeningStock','saveSnapshot','migrateCategories','uploadItemImage','uploadInwardPhoto','saveConfig'
+  'setOpeningStock','saveSnapshot','migrateCategories','uploadItemImage','uploadInwardPhoto','saveConfig',
+  'addDiary','updateDiary','setDiaryStatus','markDiaryDone'
 ];
 
 async function api(action, body) {
@@ -365,6 +366,7 @@ function showPage(id) {
   if (id === 'dashboard')    loadDash();
   if (id === 'inward')       loadInward();
   if (id === 'outward')      loadOutward();
+  if (id === 'diary')        loadDiary();
   if (id === 'dispatch')     { const d = document.getElementById('dis-filter-date'); if(d && !d.value) d.value = today(); loadDispatch(); }
   if (id === 'items')        loadItems();
   if (id === 'bom')          loadBom();
@@ -828,6 +830,7 @@ let _outPhotos = [];
 
 async function openOutwardModal(pre) {
   pre = pre || {};
+  _diaryCommitIds = pre.diaryIds || [];
   _reqIds.outward = newReqId();
   document.getElementById('out-date').value     = today();
   document.getElementById('out-dept').value     = pre.department || '';
@@ -844,8 +847,15 @@ async function openOutwardModal(pre) {
     try { _stocks = await api('getStockSummary'); _items = _stocks; }
     catch (e) { toast(e.message, 'err'); }
   }
-  const s = pre.itemName ? _stocks.find(x => x.name === pre.itemName) : null;
-  _outRows = [{ cat: s ? s.cat : '', item: s ? s.name : '', qty: pre.qty || '' }];
+  if (pre.rows && pre.rows.length) {
+    _outRows = pre.rows.map(r => {
+      const st = _stocks.find(x => x.name === r.item);
+      return { cat: st ? st.cat : '', item: st ? st.name : r.item, qty: r.qty };
+    });
+  } else {
+    const s = pre.itemName ? _stocks.find(x => x.name === pre.itemName) : null;
+    _outRows = [{ cat: s ? s.cat : '', item: s ? s.name : '', qty: pre.qty || '' }];
+  }
   renderOutRows();
 }
 
@@ -991,6 +1001,12 @@ async function saveOutward() {
       items:    rows.map(r => ({ itemName: r.item, qty: Number(r.qty) })),
     });
     toast(`Outward saved ✓ — ${res.count} items`, 'ok');
+    if (_diaryCommitIds.length) {
+      try { await api('markDiaryDone', { ids: _diaryCommitIds, batchId: res.batchId }); }
+      catch (e) { toast('Outward ho gaya, par diary update nahi hui — Diary refresh karo', 'warn'); }
+      _diaryCommitIds = [];
+      loadDiary();
+    }
     closeM('outward-modal');
     resetOutPhotos();
     _stocks = [];
@@ -4047,4 +4063,163 @@ async function saveSettings() {
     await loadSettings();               // loadConfig → saare dropdown bhi refresh
   } catch (e) { toast(e.message, 'err'); }
   finally { btn.disabled = false; btn.textContent = '💾 Save Changes'; }
+}
+
+// ============================================================
+// DIARY — notes / tasks / outward drafts (Store role)
+// ============================================================
+let _diaryCommitIds = [];
+let _diary = [], _diaryTab = 'all', _diaryType = 'Note';
+let _dCat = '', _dItem = '';
+const _dSel = {};                       // outward draft id -> false agar untick
+const DY_ICON = { Note: '📝', Task: '✅', Outward: '📤' };
+
+async function loadDiary() {
+  renderDiaryForm();
+  try {
+    const [d, st] = await Promise.all([
+      api('getDiary'),
+      _stocks.length ? Promise.resolve(_stocks) : api('getStockSummary'),
+    ]);
+    _diary = d.data || [];
+    _stocks = st; _items = st;
+    renderDiaryForm();
+    renderDiary();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+function setDiaryType(t) { _diaryType = t; _dCat = ''; _dItem = ''; renderDiaryForm(); }
+function setDiaryTab(t)  { _diaryTab = t; renderDiary(); }
+
+function renderDiaryForm() {
+  document.getElementById('dy-types').innerHTML = ['Note', 'Task', 'Outward'].map(t =>
+    `<button type="button" class="btn ${t === _diaryType ? 'brd' : 'bg'} bsm" onclick="setDiaryType('${t}')">${DY_ICON[t]} ${t}</button>`).join('');
+  const out = _diaryType === 'Outward';
+  document.getElementById('dy-out-fields').style.display = out ? 'flex' : 'none';
+  document.getElementById('dy-due').style.display = _diaryType === 'Task' ? '' : 'none';
+  document.getElementById('dy-text').placeholder =
+    out ? 'Note (optional) — kisko / kyun' : _diaryType === 'Task' ? 'Kaam likho...' : 'Note likho...';
+  if (out) {
+    document.getElementById('dy-cat').innerHTML  = outCatOpts(_dCat);
+    document.getElementById('dy-item').innerHTML = outItemOpts(_dCat, _dItem);
+  }
+  updDiaryInfo();
+}
+
+function updDiaryInfo() {
+  const el = document.getElementById('dy-info');
+  if (!el) return;
+  const s = (_diaryType === 'Outward' && _dItem) ? _stocks.find(x => x.name === _dItem) : null;
+  if (!s) { el.innerHTML = ''; return; }
+  const q = Number(document.getElementById('dy-qty').value) || 0;
+  el.innerHTML = `Available: <b style="font-family:var(--mono);">${s.currentStock} ${htmlEnc(s.unit || '')}</b>` +
+    (q > s.currentStock ? ' · <b style="color:var(--red);">⚠ Stock se zyada — draft ban jaayega, Outward me rukega</b>' : '');
+}
+
+async function saveDiaryEntry() {
+  const text = document.getElementById('dy-text').value.trim();
+  const body = { type: _diaryType, text, by: (ROLES[_currentRole] || {}).name || 'Store' };
+  if (_diaryType === 'Outward') {
+    const q = Number(document.getElementById('dy-qty').value) || 0;
+    if (!_dItem) { toast('Item select karo', 'err'); return; }
+    if (q <= 0)  { toast('Valid qty daalo', 'err'); return; }
+    body.item = _dItem; body.qty = q;
+  } else {
+    if (!text) { toast('Kuch likho', 'err'); return; }
+    if (_diaryType === 'Task') body.due = document.getElementById('dy-due').value || '';
+  }
+  const btn = document.getElementById('dy-add-btn');
+  btn.disabled = true;
+  try {
+    await api('addDiary', body);
+    document.getElementById('dy-text').value = '';
+    document.getElementById('dy-qty').value = '';
+    document.getElementById('dy-due').value = '';
+    _dItem = '';                                   // category carry rehti hai
+    await loadDiary();
+    toast('Diary me add ✓', 'ok');
+  } catch (e) { toast(e.message, 'err'); }
+  finally { btn.disabled = false; }
+}
+
+function renderDiary() {
+  document.getElementById('dy-tabs').innerHTML =
+    [['all', 'Sab'], ['Task', '✅ Tasks'], ['Note', '📝 Notes'], ['Outward', '📤 Outward draft']].map(([k, l]) =>
+      `<button type="button" class="btn ${k === _diaryTab ? 'brd' : 'bg'} bsm" onclick="setDiaryTab('${k}')">${l}</button>`).join('');
+  const vis    = d => _diaryTab === 'all' || d.type === _diaryTab;
+  const open   = _diary.filter(d => d.status === 'Open' && vis(d));
+  const done   = _diary.filter(d => d.status === 'Done' && vis(d));
+  const drafts = _diary.filter(d => d.type === 'Outward' && d.status === 'Open');
+  const nSel   = drafts.filter(d => _dSel[d.id] !== false).length;
+  const cb = document.getElementById('dy-commit-btn');
+  cb.style.display = drafts.length ? '' : 'none';
+  cb.disabled = !nSel;
+  setEl('dy-commit-n', nSel);
+  document.getElementById('dy-list').innerHTML = open.length ? open.map(dyRow).join('')
+    : '<div style="padding:18px;font-size:12px;color:var(--muted);">Koi open entry nahi</div>';
+  document.getElementById('dy-hist').innerHTML = done.length ? done.map(dyRow).join('')
+    : '<div style="padding:18px;font-size:12px;color:var(--muted);">Abhi kuch done nahi</div>';
+}
+
+function dyRow(d) {
+  const isDone = d.status === 'Done';
+  let left, body;
+  if (d.type === 'Outward') {
+    const s = _stocks.find(x => x.name === d.item);
+    left = isDone ? '✔' :
+      `<input type="checkbox" ${_dSel[d.id] === false ? '' : 'checked'} onchange="_dSel['${d.id}']=this.checked;renderDiary()">`;
+    body = `<b>${htmlEnc(d.item)}</b> — <span style="font-family:var(--mono);font-weight:600;">${d.qty} ${htmlEnc(d.unit)}</span>`;
+    if (d.text) body += `<br>${htmlEnc(d.text)}`;
+    if (!isDone && s) body += `<br><small>Available: ${s.currentStock} ${htmlEnc(s.unit || '')}` +
+      (d.qty > s.currentStock ? ' · <b style="color:var(--red);">⛔ Stock se zyada</b>' : '') + '</small>';
+    if (isDone) body += `<br><small>Outward ho gaya · ${htmlEnc(d.batchId)}</small>`;
+  } else if (d.type === 'Task') {
+    left = `<input type="checkbox" ${isDone ? 'checked' : ''} onchange="dyStatus('${d.id}', this.checked ? 'Done' : 'Open')">`;
+    body = htmlEnc(d.text);
+    if (d.due) body += `<br><small style="${!isDone && d.due < today() ? 'color:var(--red);font-weight:600;' : ''}">Due: ${htmlEnc(d.due)}</small>`;
+  } else {
+    left = '📝';
+    body = htmlEnc(d.text);
+  }
+  body += `<br><small>${htmlEnc(d.date)}</small>`;
+  const right = isDone && d.type === 'Outward' ? '' :
+    (isDone ? '' : `<button type="button" class="btn bg bsm" onclick="editDiary('${d.id}')">✏</button>`) +
+    `<button type="button" class="btn bg bsm" onclick="delDiary('${d.id}')">✕</button>`;
+  return `<div class="dy-row ${isDone ? 'dy-done' : ''}"><div class="dy-l">${left}</div><div class="dy-b">${body}</div><div class="dy-r">${right}</div></div>`;
+}
+
+async function dyStatus(id, st) {
+  try { await api('setDiaryStatus', { id, status: st }); await loadDiary(); }
+  catch (e) { toast(e.message, 'err'); loadDiary(); }
+}
+
+async function delDiary(id) {
+  if (!confirm('Ye entry delete karein?')) return;
+  await dyStatus(id, 'Deleted');
+}
+
+async function editDiary(id) {
+  const d = _diary.find(x => x.id === id);
+  if (!d) return;
+  const body = { id };
+  if (d.type === 'Outward') {
+    const q = prompt(`${d.item} — nayi qty:`, d.qty);
+    if (q === null) return;
+    body.qty = q;
+  } else {
+    const t = prompt('Edit karo:', d.text);
+    if (t === null) return;
+    body.text = t;
+  }
+  try { await api('updateDiary', body); await loadDiary(); }
+  catch (e) { toast(e.message, 'err'); }
+}
+
+// Selected outward drafts → Outward modal me prefill (same item ki qty jud jaati hai)
+function commitDiaryOutward() {
+  const sel = _diary.filter(d => d.type === 'Outward' && d.status === 'Open' && _dSel[d.id] !== false);
+  if (!sel.length) { toast('Koi outward line select nahi hai', 'warn'); return; }
+  const m = {};
+  sel.forEach(d => { (m[d.item] = m[d.item] || { item: d.item, qty: 0 }).qty += d.qty; });
+  openOutwardModal({ rows: Object.values(m), diaryIds: sel.map(d => d.id) });
 }
