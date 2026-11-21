@@ -67,6 +67,7 @@
         <div class="ng-label">Transactions</div>
         <div class="ni" onclick="showPage('inward')" data-page="inward"><span class="ic">📥</span><span>Inward</span></div>
         <div class="ni" onclick="showPage('outward')" data-page="outward"><span class="ic">📤</span><span>Outward</span></div>
+        <div class="ni" onclick="showPage('diary')" data-page="diary"><span class="ic">📔</span><span>Diary</span></div>
         <div class="ni" onclick="showPage('dispatch')" data-page="dispatch"><span class="ic">🚚</span><span>Dispatch</span></div>
         <div class="ni" onclick="showPage('received')" data-page="received"><span class="ic">📥</span><span>Received from Store</span></div>
         <div class="ni" onclick="showPage('wip')" data-page="wip"><span class="ic">🏭</span><span>WIP Tracker</span></div>
@@ -217,6 +218,36 @@
             <tbody id="out-tb"><tr class="lrow"><td colspan="10"><span class="loader"></span></td></tr></tbody>
         </table></div>
         <div id="out-empty" class="empty" style="display:none"><div class="ei">📤</div><div class="et">No outward records</div></div>
+      </div>
+    </div>
+
+        <!-- DIARY -->
+    <div class="page" id="page-diary">
+      <div class="tb">
+        <div class="pt"><h1>📔 Diary</h1><p>Notes, tasks aur outward ki rough entries</p></div>
+        <div class="ta"><button class="btn brd" id="dy-commit-btn" style="display:none;" onclick="commitDiaryOutward()">📤 Outward karo (<span id="dy-commit-n">0</span>)</button></div>
+      </div>
+      <div class="card" style="margin-bottom:12px;">
+        <div class="ch"><h2>Nayi entry</h2><div class="ta" id="dy-types"></div></div>
+        <div class="dy-form">
+          <div class="dy-out" id="dy-out-fields" style="display:none;">
+            <select class="inp" id="dy-cat" onchange="_dCat=this.value;_dItem='';renderDiaryForm()"></select>
+            <select class="inp" id="dy-item" onchange="_dItem=this.value;updDiaryInfo()"></select>
+            <input class="inp" id="dy-qty" type="number" min="0" step="any" placeholder="Qty" oninput="updDiaryInfo()" style="width:100px;font-family:var(--mono);font-weight:600;">
+          </div>
+          <div class="dy-info" id="dy-info"></div>
+          <input class="inp" id="dy-text" type="text" placeholder="Note likho..." style="flex:1;min-width:200px;" onkeydown="if(event.key==='Enter')saveDiaryEntry()">
+          <input class="inp" id="dy-due" type="date" style="width:150px;display:none;">
+          <button class="btn brd" id="dy-add-btn" onclick="saveDiaryEntry()">+ Add</button>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:12px;">
+        <div class="ch"><h2>Open</h2><div class="ta" id="dy-tabs"></div></div>
+        <div id="dy-list"></div>
+      </div>
+      <div class="card">
+        <div class="ch"><h2>Done (last 30 din)</h2></div>
+        <div id="dy-hist"></div>
       </div>
     </div>
 
